@@ -34,6 +34,21 @@ test("lib/env.js: validates required and optional variables", () => {
   assert.equal(valid.RATE_LIMIT_STREAM_MAX, 10);
 });
 
+test("lib/env.js: rejects unsupported LLM_PROVIDER (e.g. openai) with clear error message", () => {
+  assert.throws(
+    () => {
+      getEnv({
+        LLM_PROVIDER: "openai",
+        LLM_API_KEY: "fake_key",
+        LLM_MODEL: "gpt-4",
+      });
+    },
+    (err) => {
+      return err.message.includes("LLM_PROVIDER must be 'gemini' or 'google'");
+    }
+  );
+});
+
 test("lib/env.js: parses valid custom L6 variables correctly", () => {
   const custom = getEnv({
     LLM_PROVIDER: "gemini",

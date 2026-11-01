@@ -1751,5 +1751,33 @@ describe("L4 Official Verifier Agent", () => {
         assert.ok(mc.sourceUrl);
       }
     });
+
+    test("NO_KEY: official_verifier with SEARCH_API_KEY unset yields informational note, not timeout", async () => {
+      const snap = makeSnapshot({
+        text: "Apply for Ministry of Education national scheme",
+        entities: [{ kind: "company", value: "Department of Higher Education" }],
+      });
+
+      const noKeySearch = async () => ({
+        ok: false,
+        error: { code: "NO_KEY", message: "Search API key is not configured" },
+      });
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: noKeySearch,
+      });
+
+      assert.equal(res.status, "could_not_check");
+      assert.equal(res.reason, "search_not_configured");
+      assert.ok(
+        res.summary.includes("search not configured (SEARCH_API_KEY missing)"),
+        "Must record search not configured informational note in summary"
+      );
+      assert.ok(
+        !res.summary.includes("timed out"),
+        "Must not report timed out in summary when search key is missing"
+      );
+    });
   });
 });
