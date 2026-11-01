@@ -58,3 +58,4 @@ services/classifier/metrics.json
 
 # OCR data
 *.traineddata
+__pycache__/
