@@ -7,6 +7,7 @@ import {
 } from './urlGuard.js';
 import { scrollPage, extractPageData } from './extract.js';
 import { isSameDomain } from './urlUtils.js';
+import { createSafeProxy } from './safeProxy.js';
 import { CONFIG } from './config.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,15 +92,28 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
   let browser = null;
   let context = null;
 
+  // Spin up safe forward proxy for pinning IPs and blocking DNS rebinding
+  const proxy = await createSafeProxy({
+    byteCap: maxTotalBytes,
+    timeoutMs: navTimeout,
+    onBytes: (bytes) => {
+      totalBytesReceived += bytes;
+    }
+  });
+
   async function setupBrowserContext() {
     if (browser) {
       await browser.close().catch(() => {});
     }
     browser = await chromium.launch({
       headless: true,
+      proxy: {
+        server: `http://127.0.0.1:${proxy.port}`,
+        bypass: '<-loopback>'
+      },
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
+        '--disable-quic',
+        '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-extensions'
@@ -109,8 +123,14 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
       acceptDownloads: false, // Disallow all downloads
+      serviceWorkers: 'block', // Block background service workers
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 deepcrawl/1.0'
+    });
+
+    // Block popups and new tabs
+    context.on('page', (p) => {
+      p.close().catch(() => {});
     });
 
     // Revalidate every request (main frame, subframes, redirects, xhr/fetch) against SSRF
@@ -429,11 +449,14 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     }
   }
 
-  const workerPromises = Array.from({ length: concurrency }, () => worker());
-  await Promise.all(workerPromises);
-
-  if (browser) {
-    await browser.close().catch(() => {});
+  try {
+    const workerPromises = Array.from({ length: concurrency }, () => worker());
+    await Promise.all(workerPromises);
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+    await proxy.close().catch(() => {});
   }
 
   const durationMs = Date.now() - startTime;

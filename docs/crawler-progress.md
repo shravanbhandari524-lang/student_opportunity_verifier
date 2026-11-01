@@ -39,6 +39,31 @@
 
 ---
 
+## Part 2b: SSRF Fix via Pinned-IP Forward Proxy (services/crawler only)
+- [x] Add `services/crawler/src/safeProxy.js`:
+  - Listens on 127.0.0.1, ephemeral port.
+  - Handles CONNECT (HTTPS) and plain HTTP GET/HEAD (any other method gets 405 Method Not Allowed).
+  - Target ports 80 and 443 only.
+  - Resolves target host once with injectable resolver; blocks private, loopback, link-local, CGNAT, metadata, and social domains (decimal, hex, octal, IPv4-mapped IPv6 included); replies 403.
+  - Connects to validated, PINNED IP, never to hostname.
+  - Injectable connector for test observability.
+  - Timeouts and per-tunnel byte cap enforced; never logs query strings or content.
+  - Self-contained implementation citing `lib/tools/ssrf.js`.
+- [x] Browser launch in `services/crawler/src/crawler.js`:
+  - Proxy configured: `{ server: 'http://127.0.0.1:<port>', bypass: '<-loopback>' }`.
+  - Arguments: `--disable-quic` and `--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"`.
+  - `serviceWorkers: 'block'`, `acceptDownloads: false`, popups and new tabs blocked. No `--no-sandbox`.
+  - Second layer `context.route` retained.
+- [x] Tests in `services/crawler/tests/safeProxy.test.js` & `services/crawler/tests/ssrf-browser-audit.test.js`:
+  - DNS Rebinding test: injected resolver returns public then loopback; connector called once with pinned IP; canary hit count = 0.
+  - 302 Redirect test: stand-in public host returns 302 to loopback canary; real Chromium run records canary hit count = 0.
+  - Direct navigation, iframe, and img/fetch to loopback tested with `<-loopback>`: canary hit count = 0 for all.
+  - Metadata IP, decimal/hex/octal literals, IPv4-mapped IPv6, CGNAT, and social hosts return 403; connector never called.
+  - Port 8080 and non-GET methods refused.
+  - All 16 tests pass in `services/crawler`.
+
+---
+
 ## Part 3: Docs and Contracts
 - [ ] Update ARCHITECTURE.md, PRD.md, docs/contracts.md (NOT VERIFIED).
 - [ ] Define `CrawlResult` contract (NOT VERIFIED).

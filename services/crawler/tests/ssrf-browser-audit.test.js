@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import net from 'node:net';
 import { chromium } from 'playwright';
 import { isSafeUrlAsync } from '../src/urlGuard.js';
+import { createSafeProxy } from '../src/safeProxy.js';
 
 test('SSRF Audit: Direct navigations and subframes to private IPs are intercepted and blocked', async () => {
   const blockedRequests = [];
@@ -70,56 +72,154 @@ test('SSRF Audit: Direct navigations and subframes to private IPs are intercepte
   }
 });
 
-test('SSRF Audit: Chromium DNS & Redirect Bypass Vulnerability Verification', async () => {
-  // Test proves that Chromium follows HTTP redirects internally and resolves DNS independently.
-  // When a server issues a 302 redirect, Chromium does not invoke context.route for the redirect target,
-  // and Chromium resolves DNS on its own, bypassing Node-level checks (e.g. via DNS rebinding or redirect to metadata).
-  let redirectHopIntercepted = false;
+test('SSRF Audit Regression: Chromium with safeProxy blocks 302 redirect to private IP (canary hits = 0)', async () => {
+  let canaryHits = 0;
+  const canaryServer = http.createServer((req, res) => {
+    canaryHits++;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('INTERNAL_LEAK');
+  });
+  await new Promise((resolve) => canaryServer.listen(0, '127.0.0.1', resolve));
+  const canaryPort = canaryServer.address().port;
 
-  const redirectServer = http.createServer((req, res) => {
-    if (req.url === '/start-redirect') {
-      res.writeHead(302, { Location: 'http://169.254.169.254/latest/meta-data/' });
+  // Stand-in public server that returns 302 to canary
+  const mockPublicServer = http.createServer((req, res) => {
+    if (req.url === '/redirect-target') {
+      res.writeHead(302, { Location: `http://127.0.0.1:${canaryPort}/secret` });
       res.end();
       return;
     }
-    res.writeHead(200);
-    res.end('ok');
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<html><body>Safe Home</body></html>');
   });
+  await new Promise((resolve) => mockPublicServer.listen(0, '127.0.0.1', resolve));
+  const mockPublicPort = mockPublicServer.address().port;
 
-  await new Promise((resolve) => redirectServer.listen(0, '127.0.0.1', resolve));
-  const port = redirectServer.address().port;
+  // Safe proxy with injected resolver mapping mock-public.test to 93.184.216.34 (public),
+  // and connector routing 93.184.216.34 to mockPublicPort
+  const proxy = await createSafeProxy({
+    resolver: async (host) => {
+      if (host === 'mock-public.test') {
+        return [{ address: '93.184.216.34', family: 4 }];
+      }
+      return [{ address: '127.0.0.1', family: 4 }];
+    },
+    connector: (connOpts, cb) => {
+      if (connOpts.host === '93.184.216.34') {
+        return net.createConnection({ host: '127.0.0.1', port: mockPublicPort }, cb);
+      }
+      return net.createConnection(connOpts, cb);
+    }
+  });
 
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    proxy: {
+      server: `http://127.0.0.1:${proxy.port}`,
+      bypass: '<-loopback>'
+    },
+    args: ['--disable-quic', '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1']
+  });
+
+  const context = await browser.newContext({ acceptDownloads: false });
+  const page = await context.newPage();
+
+  try {
+    try {
+      await page.goto('http://mock-public.test/redirect-target', { timeout: 3000 });
+    } catch {
+      // Expected navigation failure when redirect is blocked with 403
+    }
+
+    assert.equal(canaryHits, 0, 'Canary server on 127.0.0.1 must NEVER receive any hit via redirect');
+  } finally {
+    await browser.close();
+    await proxy.close();
+    await new Promise((resolve) => mockPublicServer.close(resolve));
+    await new Promise((resolve) => canaryServer.close(resolve));
+  }
+});
+
+test('SSRF Audit: Direct navigation, iframe, and img/fetch to loopback are blocked via <-loopback> (canary hits = 0)', async () => {
+  let canaryHits = 0;
+  const canaryServer = http.createServer((req, res) => {
+    canaryHits++;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('CANARY_REACHED');
+  });
+  await new Promise((resolve) => canaryServer.listen(0, '127.0.0.1', resolve));
+  const canaryPort = canaryServer.address().port;
+
+  // Local site hosting iframe and fetch
+  const hostServer = http.createServer((req, res) => {
+    if (req.url === '/test-iframe') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<html><body><iframe src="http://127.0.0.1:${canaryPort}/iframe"></iframe></body></html>`);
+      return;
+    }
+    if (req.url === '/test-fetch') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<html><body><img src="http://127.0.0.1:${canaryPort}/img.png"><script>fetch("http://127.0.0.1:${canaryPort}/api").catch(()=>{});</script></body></html>`);
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('OK');
+  });
+  await new Promise((resolve) => hostServer.listen(0, '127.0.0.1', resolve));
+  const hostPort = hostServer.address().port;
+
+  const proxy = await createSafeProxy({
+    resolver: async (host) => {
+      if (host === 'site.test') return [{ address: '93.184.216.34', family: 4 }];
+      return [{ address: '127.0.0.1', family: 4 }];
+    },
+    connector: (connOpts, cb) => {
+      if (connOpts.host === '93.184.216.34') {
+        return net.createConnection({ host: '127.0.0.1', port: hostPort }, cb);
+      }
+      return net.createConnection(connOpts, cb);
+    }
+  });
+
+  const browser = await chromium.launch({
+    headless: true,
+    proxy: {
+      server: `http://127.0.0.1:${proxy.port}`,
+      bypass: '<-loopback>'
+    },
+    args: ['--disable-quic', '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1']
   });
 
   const context = await browser.newContext({ acceptDownloads: false });
 
-  await context.route('**/*', async (route) => {
-    const url = route.request().url();
-    if (url.includes('169.254.169.254')) {
-      redirectHopIntercepted = true;
-      return route.abort('blockedbyclient');
-    }
-    return route.continue();
-  });
-
-  const page = await context.newPage();
   try {
-    await page.goto(`http://127.0.0.1:${port}/start-redirect`, { timeout: 2000 });
-  } catch {
-    // Navigation error expected
+    // 1. Direct navigation to canary
+    const p1 = await context.newPage();
+    try {
+      await p1.goto(`http://127.0.0.1:${canaryPort}/direct`, { timeout: 2000 });
+    } catch {
+      // Expected blocked
+    }
+    await p1.close();
+    assert.equal(canaryHits, 0, 'Direct navigation must not reach canary');
+
+    // 2. Iframe targeting canary
+    const p2 = await context.newPage();
+    await p2.goto('http://site.test/test-iframe', { waitUntil: 'domcontentloaded', timeout: 3000 });
+    await new Promise((r) => setTimeout(r, 200));
+    await p2.close();
+    assert.equal(canaryHits, 0, 'Iframe navigation must not reach canary');
+
+    // 3. Img / fetch targeting canary
+    const p3 = await context.newPage();
+    await p3.goto('http://site.test/test-fetch', { waitUntil: 'domcontentloaded', timeout: 3000 });
+    await new Promise((r) => setTimeout(r, 200));
+    await p3.close();
+    assert.equal(canaryHits, 0, 'Img/fetch request must not reach canary');
   } finally {
     await browser.close();
-    await new Promise((resolve) => redirectServer.close(resolve));
+    await proxy.close();
+    await new Promise((resolve) => hostServer.close(resolve));
+    await new Promise((resolve) => canaryServer.close(resolve));
   }
-
-  // Demonstration: In standard Playwright with route.continue(), redirectHopIntercepted is false
-  // because Chromium resolves and follows the redirect chain internally in the network stack!
-  assert.equal(
-    redirectHopIntercepted,
-    false,
-    'Chromium handles HTTP redirect chains internally without invoking context.route on document navigations'
-  );
 });
