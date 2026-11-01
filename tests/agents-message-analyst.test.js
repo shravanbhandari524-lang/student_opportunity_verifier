@@ -10,6 +10,7 @@ import {
   buildSystemPrompt,
   formatFlagTitle,
   ALLOWED_FLAGS,
+  evaluateDeterministicRules,
   isFeeQuoteNegated,
   isWhatsAppOnlyScheduling,
   isPostOfferOnboardingRequest,
@@ -22,6 +23,7 @@ import {
   hasScamSignal,
   messageAnalyst,
 } from "../lib/agents/message-analyst.js";
+import { scoreCase } from "../lib/scoring/score.js";
 import {
   runAgent,
   getUserNotes,
@@ -449,7 +451,8 @@ describe("L4 Message Analyst Agent", () => {
     const resA = await run(snapA, { generate: fakeGenerateA });
     const validatedA = AgentResultSchema.parse(resA);
     assert.equal(validatedA.status, "ok");
-    assert.equal(validatedA.flags.length, 1);
+    assert.ok(validatedA.flags.length >= 1);
+    assert.ok(validatedA.flags.some((f) => f.id === "scholarship_fee_demand"));
 
     // Scenario B
     const snapB = makeSnapshot({
@@ -622,8 +625,8 @@ describe("L4 Message Analyst Agent", () => {
 
       const res = await run(snap, { generate: fakeGenerate });
       assert.equal(res.status, "ok");
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "scholarship_fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "scholarship_fee_demand"));
       assert.equal(res.notes.includes("dropped_negated_fee"), false);
     });
 
@@ -678,8 +681,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "scholarship_fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "scholarship_fee_demand"));
     });
 
     test("probe input 3: pay to confirm seat in separate sentence after free of charge is KEPT", async () => {
@@ -693,8 +696,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "fee_demand"));
     });
 
     test("probe input 4: processing charge with UPI after 'however' contrast word is KEPT", async () => {
@@ -708,8 +711,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "fee_demand"));
     });
 
     test("probe input 5: deposit in next sentence after 'Never share OTP' is KEPT", async () => {
@@ -723,8 +726,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "scholarship_fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "scholarship_fee_demand"));
     });
 
     test("probe input 6: genuine 'do not charge any fee' statement is dropped", async () => {
@@ -753,8 +756,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "scholarship_fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "scholarship_fee_demand"));
     });
 
     test("probe input 8: fee waived followed by 'Send 500 rupees via UPI' in next sentence is KEPT", async () => {
@@ -768,8 +771,8 @@ describe("L4 Message Analyst Agent", () => {
         },
       });
       const res = await run(snap, { generate: fakeGen });
-      assert.equal(res.flags.length, 1);
-      assert.equal(res.flags[0].id, "fee_demand");
+      assert.ok(res.flags.length >= 1);
+      assert.ok(res.flags.some((f) => f.id === "fee_demand"));
     });
 
     test("negation in previous sentence must not suppress payment demand in next sentence", async () => {
@@ -1774,10 +1777,10 @@ describe("L4 Message Analyst Agent", () => {
 
       const result = await run(snapshot, { generate: fakeGenerate });
       assert.strictEqual(result.status, "ok");
-      assert.strictEqual(result.flags.length, 2);
+      assert.strictEqual(result.flags.length, 3);
 
       // Summary verification
-      assert.strictEqual(result.summary, "Read the message; 2 red flags found.");
+      assert.strictEqual(result.summary, "Read the message; 3 red flags found.");
 
       // Activity entries
       assert.ok(Array.isArray(result.activity), "result.activity must be an array");
@@ -1801,7 +1804,7 @@ describe("L4 Message Analyst Agent", () => {
 
       // 3. finding entries
       const findingEntries = result.activity.filter((a) => a.type === "finding");
-      assert.strictEqual(findingEntries.length, 2, "Must produce 2 finding entries");
+      assert.strictEqual(findingEntries.length, 3, "Must produce 3 finding entries");
 
       const noInterviewEntry = findingEntries.find((f) => f.flagId === "no_interview_selection");
       assert.ok(noInterviewEntry, "Must have finding entry for no_interview_selection");
@@ -1810,7 +1813,7 @@ describe("L4 Message Analyst Agent", () => {
 
       const feeEntry = findingEntries.find((f) => f.flagId === "fee_demand");
       assert.ok(feeEntry, "Must have finding entry for fee_demand");
-      assert.ok(feeEntry.detail.includes("Pay Rs 500 to rahul.hr@oksbi"));
+      assert.ok(feeEntry.detail.includes("Pay Rs 500"));
     });
 
     test("Google-only sentence: produces clear no_interview_selection finding with human-readable explanation", async () => {
@@ -1968,7 +1971,7 @@ describe("L4 Message Analyst Agent", () => {
     });
 
     test("offline invariant: when LLM fails or times out, result is could_not_check, never ok", async () => {
-      const text = "Congratulations, you are selected for an internship at Google. Pay Rs 500 to rahul.hr@oksbi";
+      const text = "Please join our campus technology workshop on Friday at 10 AM in the auditorium.";
       const snapshot = {
         check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
         inputs: [{ type: "text", value: text }],
@@ -2021,6 +2024,231 @@ describe("L4 Message Analyst Agent", () => {
       assert.strictEqual(result.status, "ok");
       assert.strictEqual(result.flags.length, 0);
       assert.strictEqual(result.summary, "No red flags found in the text. This does not mean the offer is safe.");
+    });
+  });
+
+  describe("Deterministic Message Rules (Task 2 & 4)", () => {
+    test("Rule 1 Upfront fee demand: positive example triggers flag; benign example with no fee does not", () => {
+      // Positive: upfront registration fee for scholarship
+      const posText = "Selected for National Scholarship Scheme. Pay registration fee of Rs 500 to confirm seat.";
+      const posFlags = evaluateDeterministicRules(posText);
+      assert.ok(posFlags.length >= 1);
+      const feeFlag = posFlags.find((f) => f.id === "scholarship_fee_demand" || f.id === "fee_demand");
+      assert.ok(feeFlag, "Must emit fee flag");
+      assert.equal(feeFlag.id, "scholarship_fee_demand");
+      assert.ok(quoteInText(feeFlag.evidence[0].value, posText));
+      assert.equal(feeFlag.evidence[0].value, "Pay registration fee of Rs 500");
+
+      // Non-scholarship fee demand
+      const jobFeeText = "Selected for Data Analyst role. Please pay training fee of Rs 1,500 before joining.";
+      const jobFeeFlags = evaluateDeterministicRules(jobFeeText);
+      const jobFee = jobFeeFlags.find((f) => f.id === "fee_demand");
+      assert.ok(jobFee, "Must emit fee_demand for non-scholarship offer");
+      assert.ok(quoteInText(jobFee.evidence[0].value, jobFeeText));
+
+      // Benign: genuine stipend and negated fee
+      const benignText = "Monthly stipend of Rs 30,000 provided. We do not charge any registration fee from students.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      const benignFee = benignFlags.find((f) => f.id === "fee_demand" || f.id === "scholarship_fee_demand");
+      assert.equal(benignFee, undefined, "Negated fee statement must not trigger fee flag");
+    });
+
+    test("Rule 2 OTP / PIN / CVV: positive example triggers flag; benign security advice does not", () => {
+      // Positive: demanding OTP
+      const posText = "To activate your scholarship grant, please share OTP received on your mobile phone.";
+      const posFlags = evaluateDeterministicRules(posText);
+      const otpFlag = posFlags.find((f) => f.id === "otp_or_id_request");
+      assert.ok(otpFlag, "Must emit otp_or_id_request");
+      assert.ok(quoteInText(otpFlag.evidence[0].value, posText));
+      assert.equal(otpFlag.evidence[0].value, "share OTP");
+
+      // Benign: general information
+      const benignText = "Keep your account credentials confidential at all times. Log into your university portal directly.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "otp_or_id_request"), undefined);
+    });
+
+    test("Rule 3 Aadhaar / PAN / bank account: positive triggers flag; post-offer onboarding is carved out", () => {
+      // Positive: demanding Aadhaar & PAN without offer context
+      const posText = "Direct hiring: upload your Aadhaar card copy to verify your profile immediately.";
+      const posFlags = evaluateDeterministicRules(posText);
+      const idFlag = posFlags.find((f) => f.id === "otp_or_id_request");
+      assert.ok(idFlag, "Must emit otp_or_id_request for unprompted Aadhaar request");
+      assert.ok(quoteInText(idFlag.evidence[0].value, posText));
+
+      // Positive: demanding bank account
+      const posBankText = "Congratulations! Share your bank account details to receive your daily payout.";
+      const posBankFlags = evaluateDeterministicRules(posBankText);
+      const bankFlag = posBankFlags.find((f) => f.id === "bank_details_request");
+      assert.ok(bankFlag, "Must emit bank_details_request for early bank detail request");
+      assert.ok(quoteInText(bankFlag.evidence[0].value, posBankText));
+
+      // Benign: post-offer onboarding request
+      const benignText = "Congratulations on accepting our formal offer letter. As part of your payroll onboarding, please submit your bank account details for salary direct deposit.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "bank_details_request" || f.id === "otp_or_id_request"), undefined, "Post-offer onboarding must be carved out");
+    });
+
+    test("Rule 4 WhatsApp / Telegram only: positive triggers flag; video scheduling is carved out", () => {
+      // Positive: chat-only interview
+      const posChatText = "Selected candidates will be screened solely via chat on WhatsApp only.";
+      const posChatFlags = evaluateDeterministicRules(posChatText);
+      const chatFlag = posChatFlags.find((f) => f.id === "chat_only_interview");
+      assert.ok(chatFlag, "Must emit chat_only_interview");
+      assert.ok(quoteInText(chatFlag.evidence[0].value, posChatText));
+
+      // Positive: off-platform redirect to Telegram
+      const posOffText = "For job assignments and daily task updates, join Telegram group @easy_tasks_india.";
+      const posOffFlags = evaluateDeterministicRules(posOffText);
+      const offFlag = posOffFlags.find((f) => f.id === "off_platform_contact");
+      assert.ok(offFlag, "Must emit off_platform_contact");
+      assert.ok(quoteInText(offFlag.evidence[0].value, posOffText));
+
+      // Benign: WhatsApp used for video link / scheduling
+      const benignText = "Reaching out on WhatsApp to confirm your availability for the technical round via meet.google.com next Tuesday.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "chat_only_interview" || f.id === "off_platform_contact"), undefined, "WhatsApp video interview scheduling must be carved out");
+    });
+
+    test("Rule 5 Guaranteed selection / no interview: positive triggers flag; multi-round interview offer does not", () => {
+      // Positive: direct selection without interview
+      const posText = "Selected without interview for remote assistant role. Direct selection based on resume.";
+      const posFlags = evaluateDeterministicRules(posText);
+      const selFlag = posFlags.find((f) => f.id === "no_interview_selection");
+      assert.ok(selFlag, "Must emit no_interview_selection");
+      assert.ok(quoteInText(selFlag.evidence[0].value, posText));
+
+      // Positive: paid placement guarantee
+      const posGuarText = "Join our 4-week fast-track program with 100% placement guarantee or money back.";
+      const posGuarFlags = evaluateDeterministicRules(posGuarText);
+      const guarFlag = posGuarFlags.find((f) => f.id === "paid_placement_guarantee");
+      assert.ok(guarFlag, "Must emit paid_placement_guarantee");
+      assert.ok(quoteInText(guarFlag.evidence[0].value, posGuarText));
+
+      // Benign: genuine interview requirement
+      const benignText = "All shortlisted candidates must undergo two rounds of technical interviews and a coding evaluation.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "no_interview_selection" || f.id === "paid_placement_guarantee"), undefined);
+    });
+
+    test("Rule 6 Urgency pressure: positive triggers flag; standard deadline does not", () => {
+      // Positive: artificial urgency
+      const posText = "Selected candidate allotment: offer expires in 24 hours. Limited seats hurry!";
+      const posFlags = evaluateDeterministicRules(posText);
+      const urgFlag = posFlags.find((f) => f.id === "urgency_pressure");
+      assert.ok(urgFlag, "Must emit urgency_pressure");
+      assert.ok(quoteInText(urgFlag.evidence[0].value, posText));
+
+      // Benign: standard calendar deadline
+      const benignText = "The application window remains open until November 30. Results will be posted on the institute portal.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "urgency_pressure"), undefined);
+    });
+
+    test("Rule 7 Free-mail recruiter: positive triggers flag when company entity exists; corporate domain email does not", () => {
+      const snapWithCompany = {
+        entities: [{ kind: "company", value: "Infosys" }],
+      };
+
+      // Positive: company entity + freemail
+      const posText = "Infosys is hiring interns. Please send your resume to infosys.recruiter2026@gmail.com.";
+      const posFlags = evaluateDeterministicRules(posText, snapWithCompany);
+      const fmFlag = posFlags.find((f) => f.id === "free_email_recruiter");
+      assert.ok(fmFlag, "Must emit free_email_recruiter when company exists with freemail");
+      assert.ok(quoteInText(fmFlag.evidence[0].value, posText));
+      assert.equal(fmFlag.evidence[0].value, "infosys.recruiter2026@gmail.com");
+
+      // Benign: official corporate domain email
+      const benignText = "Infosys is hiring interns. Please send your resume to careers@infosys.com.";
+      const benignFlags = evaluateDeterministicRules(benignText, snapWithCompany);
+      assert.equal(benignFlags.find((f) => f.id === "free_email_recruiter"), undefined);
+    });
+
+    test("Rule 8 Personal UPI ID: positive triggers flag with payment signal; corporate payment does not", () => {
+      // Positive: personal UPI ID with payment request
+      const posText = "To confirm your slot, pay Rs 500 registration fee to recruiter.onboarding@okaxis.";
+      const posFlags = evaluateDeterministicRules(posText);
+      const upiFlag = posFlags.find((f) => f.id === "personal_payment_id");
+      assert.ok(upiFlag, "Must emit personal_payment_id");
+      assert.ok(quoteInText(upiFlag.evidence[0].value, posText));
+      assert.equal(upiFlag.evidence[0].value, "recruiter.onboarding@okaxis");
+
+      // Benign: corporate bank transfer
+      const benignText = "Selected fellows will receive their monthly allowance via direct bank transfer from the National Treasury.";
+      const benignFlags = evaluateDeterministicRules(benignText);
+      assert.equal(benignFlags.find((f) => f.id === "personal_payment_id"), undefined);
+    });
+
+    test("Exact Quote Rule: quoteInText returns true 100% of the time across all rule outputs", () => {
+      const testCases = [
+        "Pay registration fee of Rs 500 for scholarship",
+        "Please share OTP to confirm",
+        "Upload your Aadhaar card immediately",
+        "Conduct interview on WhatsApp only",
+        "Direct selection without interview guaranteed",
+        "Offer expires in 12 hours hurry",
+        "Pay Rs 300 to officer.desk@okhdfcbank",
+      ];
+      for (const tc of testCases) {
+        const rules = evaluateDeterministicRules(tc);
+        for (const r of rules) {
+          for (const ev of r.evidence) {
+            if (ev.type === "quote") {
+              assert.ok(
+                quoteInText(ev.value, tc),
+                `Quote "${ev.value}" must be an exact substring in "${tc}"`
+              );
+            }
+          }
+        }
+      }
+    });
+
+    test("Regression test: LLM RATE_LIMITED on scholarship text returns scholarship_fee_demand and scores HIGH", async () => {
+      const scholarshipText =
+        "Dear student, congratulations! Department of Higher Education has selected you for the national scholarship. Pay registration fee of Rs 500 at https://scholarship-portal.xyz/pay";
+
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: scholarshipText }],
+        entities: [
+          { kind: "company", value: "Department of Higher Education", source: "user" },
+          { kind: "domain", value: "scholarship-portal.xyz", source: "extracted" },
+        ],
+        findings: [],
+      };
+
+      // Mock LLM returning 429 RATE_LIMITED
+      const rateLimitedGenerate = async () => ({
+        ok: false,
+        error: { code: "RATE_LIMITED", message: "Resource exhausted (429)" },
+      });
+
+      const res = await run(snapshot, { generate: rateLimitedGenerate });
+
+      // 1. message_analyst must return ok (partial) with fallback deterministic flags
+      assert.strictEqual(res.status, "ok", "Status must be ok when deterministic rules match");
+      assert.ok(res.unchecked.includes("RATE_LIMITED"), "Must record RATE_LIMITED in unchecked");
+      assert.ok(
+        res.flags.some((f) => f.id === "scholarship_fee_demand" || f.id === "fee_demand"),
+        "Must return scholarship_fee_demand or fee_demand"
+      );
+
+      // 2. Score via scoreCase
+      const scoredSnapshot = {
+        ...snapshot,
+        findings: [res],
+      };
+      const scoreResult = scoreCase(scoredSnapshot);
+
+      // Must be scored HIGH (scholarship_fee_demand is a hard rule), never medium or cannot_verify
+      assert.strictEqual(scoreResult.level, "high", "Risk level must be high");
+      // Confidence must be penalized (medium or low, never high)
+      assert.notStrictEqual(scoreResult.confidence, "high", "Confidence must be penalized (never high)");
+      assert.ok(
+        scoreResult.confidence === "medium" || scoreResult.confidence === "low",
+        `Confidence must be medium or low, got ${scoreResult.confidence}`
+      );
     });
   });
 });

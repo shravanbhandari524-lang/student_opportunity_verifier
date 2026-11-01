@@ -1581,3 +1581,156 @@ test("report: summary must not claim 'no reports found' when search failed", asy
   assert.ok(report.summary.includes("could not verify this offer") || report.summary.includes("insufficient details"));
 });
 
+test("compound failure test: message_analyst RATE_LIMITED + official_verifier SEARCH_API_KEY missing + isBigBrandWithoutOfficialChannel", async () => {
+  const checkId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const snapshot = {
+    check: { id: checkId, currentRound: 1 },
+    inputs: [
+      {
+        type: "text",
+        value: "Department of Higher Education National Scholarship: Pay registration fee of Rs 500 to confirm award.",
+      },
+    ],
+    entities: [
+      { kind: "company", value: "Department of Higher Education", confirmed: true },
+      { kind: "scheme", value: "National Scholarship Scheme", confirmed: true },
+    ],
+    findings: [],
+  };
+
+  // 1. message_analyst result: LLM hit 429 RATE_LIMITED, returned fallback deterministic flag
+  const messageAnalystResult = {
+    id: 1,
+    checkId,
+    agent: "message_analyst",
+    kind: "agent",
+    round: 1,
+    status: "ok",
+    reason: null,
+    flags: [
+      {
+        id: "scholarship_fee_demand",
+        title: "Scholarship Fee Demand",
+        severity: "high",
+        explanation: 'Demands upfront fee payment for a scholarship: "Pay registration fee of Rs 500".',
+        evidence: [{ type: "quote", value: "Pay registration fee of Rs 500" }],
+      },
+    ],
+    verified: [],
+    newEntities: [],
+    processedEntities: [],
+    unchecked: ["RATE_LIMITED"],
+    manualChecks: [],
+    trace: [{ type: "note", text: "LLM analysis failed (RATE_LIMITED), evaluated 1 deterministic rule flag(s)" }],
+    notes: "Identified 1 red flag(s) via deterministic rules (LLM unavailable: RATE_LIMITED).",
+    activity: [
+      {
+        type: "step",
+        title: "Language model analysis unavailable",
+        detail: "Language model analysis failed: RATE_LIMITED",
+        tool: "llm",
+        status: "failed",
+      },
+    ],
+    summary: "Read the message; 1 red flag found via deterministic rules (language model unavailable).",
+  };
+
+  // 2. official_verifier result: SEARCH_API_KEY missing (NO_KEY)
+  const officialVerifierResult = {
+    id: 2,
+    checkId,
+    agent: "official_verifier",
+    kind: "agent",
+    round: 1,
+    status: "could_not_check",
+    reason: "search_not_configured",
+    flags: [],
+    verified: [],
+    newEntities: [],
+    processedEntities: [],
+    unchecked: [],
+    manualChecks: [
+      {
+        label: "Check National Scholarship Portal",
+        url: "https://scholarships.gov.in",
+        instructions: "Verify scholarship details on official portal",
+      },
+    ],
+    trace: [{ type: "note", text: "search not configured (SEARCH_API_KEY missing)" }],
+    notes: "search not configured (SEARCH_API_KEY missing)",
+    activity: [
+      {
+        type: "limit",
+        title: "Search not configured",
+        detail: "Official search queries skipped because SEARCH_API_KEY is not configured.",
+        tool: "search",
+      },
+    ],
+    summary: "company:Department of Higher Education: search not configured (SEARCH_API_KEY missing)",
+  };
+
+  const caseSnapshot = {
+    ...snapshot,
+    findings: [messageAnalystResult, officialVerifierResult],
+  };
+
+  // 3. Score the case
+  const scoreResult = scoreCase(caseSnapshot);
+
+  // Assert level is "high" (due to scholarship_fee_demand hard rule)
+  assert.strictEqual(scoreResult.level, "high", "Risk level must be high due to upfront fee demand");
+  // Assert confidence is penalized (medium or low, never high)
+  assert.notStrictEqual(scoreResult.confidence, "high", "Confidence must not be high due to compound agent failures");
+  assert.ok(
+    scoreResult.confidence === "medium" || scoreResult.confidence === "low",
+    `Confidence must be medium or low, got ${scoreResult.confidence}`
+  );
+  // Assert hard rule or big brand rule fired
+  assert.ok(
+    scoreResult.rulesFired.includes("big_brand_no_official_channel") ||
+      scoreResult.rulesFired.includes("scholarship_fee_demand")
+  );
+
+  // 4. Generate report
+  const fakeGenerate = async () => ({
+    ok: true,
+    data: {
+      summary: "This offer demands an upfront fee while claiming an official department without official channel verification.",
+      scamTypeGuess: "scholarship",
+      flagExplanations: [
+        {
+          flagId: "scholarship_fee_demand",
+          text: "Legitimate scholarships do not require upfront payment.",
+        },
+      ],
+      extraChecklist: [],
+    },
+  });
+
+  const report = await generateReport(
+    {
+      checkId,
+      findings: caseSnapshot.findings,
+      scoreResult,
+      language: "en",
+    },
+    { generate: fakeGenerate }
+  );
+
+  // 5. Assert report contents
+  assert.strictEqual(report.riskLevel, "high");
+  assert.ok(Array.isArray(report.couldNotCheck), "couldNotCheck must be an array");
+
+  // couldNotCheck clearly states both failures in plain language without raw unhandled errors
+  const hasRateLimitedNote = report.couldNotCheck.some((c) => c.includes("message_analyst: RATE_LIMITED"));
+  const hasSearchMissingNote = report.couldNotCheck.some((c) => c.includes("official_verifier: search_not_configured"));
+  assert.ok(hasRateLimitedNote, "couldNotCheck must report message_analyst RATE_LIMITED");
+  assert.ok(hasSearchMissingNote, "couldNotCheck must report official_verifier search_not_configured");
+
+  // Report must not have unhandled error dumps
+  for (const c of report.couldNotCheck) {
+    assert.ok(!c.includes("UnhandledPromiseRejection"));
+    assert.ok(!c.includes("ECONNREFUSED"));
+  }
+});
+
