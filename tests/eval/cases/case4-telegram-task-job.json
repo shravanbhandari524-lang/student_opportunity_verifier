@@ -1,0 +1,15 @@
+{
+  "id": "case4-telegram-task-job",
+  "synthetic": true,
+  "input": {
+    "text": "Part-time online work opportunity: Earn ₹2,500 to ₹4,500 daily by completing simple YouTube video liking and Google rating tasks on Telegram. Work from home 1-2 hours daily. Join our official Telegram channel @fast_earn_tasks_official to begin trial tasks. Complete 3 trial tasks to receive ₹150 immediate payout. To unlock VIP high-paying tasks and daily payout withdrawal, a refundable security deposit of ₹2,000 must be deposited to task.deposit@okicici.",
+    "handle": "@fast_earn_tasks_official",
+    "upi": "task.deposit@okicici"
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "task_deposit_script",
+    "off_platform_contact"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Telegram task-job scam demanding an upfront deposit to unlock VIP premium tasks."
+}

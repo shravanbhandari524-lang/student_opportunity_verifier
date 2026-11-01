@@ -1,0 +1,15 @@
+{
+  "id": "case-internship-fee-upi",
+  "synthetic": true,
+  "input": {
+    "text": "Tech Mahindra Student Internship Drive 2026. You have been selected for a 3-month remote web development internship. To secure your slot, transfer an upfront registration and document verification fee of ₹950 to coordinator.onboarding@paytm immediately. Offer valid for 24 hours.",
+    "upi": "coordinator.onboarding@paytm",
+    "company": "Tech Mahindra"
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "fee_demand",
+    "personal_payment_id"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Internship with upfront registration fee payable to a personal UPI handle."
+}

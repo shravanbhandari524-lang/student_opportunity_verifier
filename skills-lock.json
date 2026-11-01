@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "ML Model Training": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/ml-model-training/SKILL.md",
+      "computedHash": "47b34b94b9f0dd144305fdbb32ed7cba8d4cce117a91b00bddcbbec163e1fb11"
+    },
+    "gravitas": {
+      "source": "udaysharmadev/Gravitas",
+      "sourceType": "github",
+      "skillPath": "skills/gravitas/SKILL.md",
+      "computedHash": "8863c27cff43e45d1e9be5432445075181e28226e40ec5f3bbfe594ccd6ada84"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "case-microsoft-impersonation",
+  "synthetic": true,
+  "input": {
+    "text": "Congratulations! You have been shortlisted for the Microsoft Software Engineering Internship 2026. Monthly stipend: ₹45,000/month. Please review the internship guidelines at https://microsoft-careers-india.example and submit your details to rahul.recruiter@gmail.com. No registration fee is required.",
+    "link": "https://microsoft-careers-india.example",
+    "company": "Microsoft"
+  },
+  "expectedLevel": "medium",
+  "expectedFlagsIncluded": [
+    "lookalike_domain",
+    "free_email_recruiter"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Microsoft internship impersonation with .example reserved domain, Gmail recruiter, stipend, no fee."
+}

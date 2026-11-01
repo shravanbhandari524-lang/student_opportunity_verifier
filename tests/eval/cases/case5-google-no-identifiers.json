@@ -1,0 +1,10 @@
+{
+  "id": "case5-google-no-identifiers",
+  "synthetic": true,
+  "input": {
+    "text": "Congratulations, you are selected for an internship at Google."
+  },
+  "expectedLevel": "medium",
+  "expectedFlagsIncluded": [],
+  "notes": "[SYNTHETIC TEST CASE] Vague opportunity stating selection for an internship at Google without domain, email, phone, or payment identifiers; expected Medium or Cannot verify, never Low."
+}

@@ -1,0 +1,12 @@
+{
+  "id": "case2-genuine-scholarship-nsp",
+  "synthetic": true,
+  "input": {
+    "text": "National Scholarship Portal (NSP) Central Sector Scheme of Scholarship for College and University Students 2026. Applications are invited from eligible undergraduate students with family income under ₹4.5 lakh. The scholarship provides financial support of ₹12,000 per annum credited directly to bank accounts. Selected scholars must verify their Aadhaar and provide active bank account details for direct benefit transfer (DBT). No application fee or deposit of any kind is charged by the Ministry or NSP. Apply only through the official Government portal at https://scholarships.gov.in.",
+    "link": "https://scholarships.gov.in",
+    "company": "National Scholarship Portal"
+  },
+  "expectedLevel": "low",
+  "expectedFlagsIncluded": [],
+  "notes": "[SYNTHETIC TEST CASE] Genuine government scholarship notice referencing official scholarships.gov.in portal and DBT disbursement without fees; tests for false positives."
+}

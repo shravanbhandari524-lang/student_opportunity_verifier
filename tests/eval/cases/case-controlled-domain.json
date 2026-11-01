@@ -1,0 +1,52 @@
+{
+  "id": "case-controlled-domain",
+  "synthetic": true,
+  "input": {
+    "text": "Congratulations! You have been shortlisted for the Microsoft Software Engineering Internship 2026. Monthly stipend: ₹45,000/month. Please review the internship guidelines at https://microsoft-careers-india.example and submit your details to rahul.recruiter@gmail.com. No registration fee is required.",
+    "link": "https://microsoft-careers-india.example",
+    "company": "Microsoft"
+  },
+  "fixtureDomains": {
+    "microsoft-careers-india.example": {
+      "rdap": {
+        "ok": true,
+        "data": {
+          "registrationDate": "2026-10-29T10:00:00.000Z",
+          "ageDays": 3,
+          "evidenceUrl": "https://rdap.org/domain/microsoft-careers-india.example",
+          "registrar": "Example Registrar"
+        }
+      },
+      "dns": {
+        "ok": true,
+        "data": {
+          "resolvedIps": ["93.184.216.34"],
+          "evidenceUrl": "https://dns.google/resolve?name=microsoft-careers-india.example"
+        }
+      },
+      "ssl": {
+        "ok": true,
+        "data": {
+          "valid": true,
+          "issuer": "Let's Encrypt",
+          "evidenceUrl": "https://microsoft-careers-india.example"
+        }
+      },
+      "wayback": {
+        "ok": true,
+        "data": {
+          "firstSeen": null,
+          "snapshotCount": 0,
+          "hasHistory": false,
+          "evidenceUrl": "https://web.archive.org/web/*/microsoft-careers-india.example"
+        }
+      }
+    }
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "domain_new",
+    "domain_no_history"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Controlled domain fixture: registered 3 days ago, valid cert, no archive history."
+}

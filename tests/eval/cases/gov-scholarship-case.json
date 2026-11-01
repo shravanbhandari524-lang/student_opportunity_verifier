@@ -1,0 +1,14 @@
+{
+  "id": "gov-scholarship-2026",
+  "synthetic": true,
+  "input": {
+    "text": "Government of India – National Student Digital Empowerment Scholarship 2026. Selected students enrolled in undergraduate programs are eligible for financial assistance of ₹45,000 per academic year. Registration is available through the National Scholarship Verification Portal. Applicants must complete Aadhaar verification and submit their bank account details. A refundable document verification deposit of ₹799 is required to activate the scholarship. Limited to 5000 students nationwide. Last date: 5 November 2026. Issued under the Department of Higher Education."
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "scholarship_fee_demand",
+    "not_on_official_portal"
+  ],
+  "expectedOfficialVerdict": "unverified",
+  "notes": "[SYNTHETIC TEST CASE] Government scholarship scam with refundable fee demand; official registry search produces unverified verdict without contradiction."
+}

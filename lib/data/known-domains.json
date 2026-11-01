@@ -1,0 +1,362 @@
+[
+  {
+    "domain": "ugc.ac.in",
+    "name": "University Grants Commission",
+    "category": "education_regulator",
+    "country": "IN",
+    "notes": "Higher education regulatory body in India",
+    "source_url": "https://www.ugc.gov.in/"
+  },
+  {
+    "domain": "aicte-india.org",
+    "name": "All India Council for Technical Education",
+    "category": "education_regulator",
+    "country": "IN",
+    "notes": "Statutory body and national-level council for technical education",
+    "source_url": "https://www.aicte-india.org/"
+  },
+  {
+    "domain": "scholarships.gov.in",
+    "name": "National Scholarship Portal",
+    "category": "scholarship_portal",
+    "country": "IN",
+    "notes": "Government of India national scholarship portal",
+    "source_url": "https://scholarships.gov.in/"
+  },
+  {
+    "domain": "internship.aicte-india.org",
+    "name": "AICTE Internship Enterprise Portal",
+    "category": "internship_portal",
+    "country": "IN",
+    "notes": "Official AICTE internship portal for college students",
+    "source_url": "https://internship.aicte-india.org/"
+  },
+  {
+    "domain": "mhrd.gov.in",
+    "name": "Ministry of Education (formerly MHRD)",
+    "category": "government_ministry",
+    "country": "IN",
+    "notes": "Central government education ministry",
+    "source_url": "https://www.education.gov.in/"
+  },
+  {
+    "domain": "education.gov.in",
+    "name": "Ministry of Education",
+    "category": "government_ministry",
+    "country": "IN",
+    "notes": "Official portal of the Ministry of Education, India",
+    "source_url": "https://www.education.gov.in/"
+  },
+  {
+    "domain": "nta.ac.in",
+    "name": "National Testing Agency",
+    "category": "examination_authority",
+    "country": "IN",
+    "notes": "Indian premier testing organisation",
+    "source_url": "https://nta.ac.in/"
+  },
+  {
+    "domain": "buddy4study.com",
+    "name": "Buddy4Study",
+    "category": "scholarship_platform",
+    "country": "IN",
+    "notes": "Prominent private scholarship aggregation platform in India",
+    "source_url": "https://www.buddy4study.com/"
+  },
+  {
+    "domain": "internshala.com",
+    "name": "Internshala",
+    "category": "internship_platform",
+    "country": "IN",
+    "notes": "Major student internship and training platform in India",
+    "source_url": "https://internshala.com/"
+  },
+  {
+    "domain": "naukri.com",
+    "name": "Naukri",
+    "category": "job_portal",
+    "country": "IN",
+    "notes": "Indian employment and job search website",
+    "source_url": "https://www.naukri.com/"
+  },
+  {
+    "domain": "unstop.com",
+    "name": "Unstop",
+    "category": "competition_platform",
+    "country": "IN",
+    "notes": "Platform for college students competitions, hackathons, and hiring challenges",
+    "source_url": "https://unstop.com/"
+  },
+  {
+    "domain": "iitb.ac.in",
+    "name": "IIT Bombay",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Bombay",
+    "source_url": "https://www.iitb.ac.in/"
+  },
+  {
+    "domain": "iitd.ac.in",
+    "name": "IIT Delhi",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Delhi",
+    "source_url": "https://home.iitd.ac.in/"
+  },
+  {
+    "domain": "iitm.ac.in",
+    "name": "IIT Madras",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Madras",
+    "source_url": "https://www.iitm.ac.in/"
+  },
+  {
+    "domain": "tcs.com",
+    "name": "Tata Consultancy Services",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global IT services and consulting enterprise",
+    "source_url": "https://www.tcs.com/"
+  },
+  {
+    "domain": "infosys.com",
+    "name": "Infosys",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global digital services and consulting enterprise",
+    "source_url": "https://www.infosys.com/"
+  },
+  {
+    "domain": "wipro.com",
+    "name": "Wipro",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global information technology and business consulting firm",
+    "source_url": "https://www.wipro.com/"
+  },
+  {
+    "domain": "google.com",
+    "name": "Google",
+    "category": "tech_company",
+    "country": "US",
+    "notes": "Global technology company",
+    "source_url": "https://about.google/"
+  },
+  {
+    "domain": "microsoft.com",
+    "name": "Microsoft",
+    "category": "tech_company",
+    "country": "US",
+    "notes": "Global technology company",
+    "source_url": "https://www.microsoft.com/"
+  },
+  {
+    "domain": "amazon.com",
+    "name": "Amazon",
+    "category": "tech_company",
+    "country": "US",
+    "notes": "Global commerce and cloud enterprise",
+    "source_url": "https://www.aboutamazon.com/"
+  },
+  {
+    "domain": "cognizant.com",
+    "name": "Cognizant",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Multinational information technology services and consulting enterprise",
+    "source_url": "https://www.cognizant.com/"
+  },
+  {
+    "domain": "accenture.com",
+    "name": "Accenture",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global professional services enterprise with major India delivery centers",
+    "source_url": "https://www.accenture.com/"
+  },
+  {
+    "domain": "hcltech.com",
+    "name": "HCLTech",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Indian multinational information technology consulting enterprise",
+    "source_url": "https://www.hcltech.com/"
+  },
+  {
+    "domain": "techmahindra.com",
+    "name": "Tech Mahindra",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Indian multinational information technology enterprise",
+    "source_url": "https://www.techmahindra.com/"
+  },
+  {
+    "domain": "ltimindtree.com",
+    "name": "LTIMindtree",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global technology consulting and digital solutions enterprise",
+    "source_url": "https://www.ltimindtree.com/"
+  },
+  {
+    "domain": "capgemini.com",
+    "name": "Capgemini",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global leader in consulting, digital transformation and engineering services",
+    "source_url": "https://www.capgemini.com/"
+  },
+  {
+    "domain": "deloitte.com",
+    "name": "Deloitte",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global professional services enterprise and campus hiring leader",
+    "source_url": "https://www.deloitte.com/"
+  },
+  {
+    "domain": "pwc.in",
+    "name": "PwC India",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Professional services firm in India providing advisory, tax and assurance",
+    "source_url": "https://www.pwc.in/"
+  },
+  {
+    "domain": "ey.com",
+    "name": "EY",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global professional services organization with major India operations",
+    "source_url": "https://www.ey.com/"
+  },
+  {
+    "domain": "kpmg.com",
+    "name": "KPMG",
+    "category": "corporate_recruiter",
+    "country": "IN",
+    "notes": "Global professional services network of audit, tax and advisory firms",
+    "source_url": "https://www.kpmg.com/"
+  },
+  {
+    "domain": "iitk.ac.in",
+    "name": "IIT Kanpur",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Kanpur",
+    "source_url": "https://www.iitk.ac.in/"
+  },
+  {
+    "domain": "iitkgp.ac.in",
+    "name": "IIT Kharagpur",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Kharagpur",
+    "source_url": "https://www.iitkgp.ac.in/"
+  },
+  {
+    "domain": "iitr.ac.in",
+    "name": "IIT Roorkee",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Roorkee",
+    "source_url": "https://www.iitr.ac.in/"
+  },
+  {
+    "domain": "iitg.ac.in",
+    "name": "IIT Guwahati",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Technology Guwahati",
+    "source_url": "https://www.iitg.ac.in/"
+  },
+  {
+    "domain": "bits-pilani.ac.in",
+    "name": "BITS Pilani",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Birla Institute of Technology and Science, Pilani",
+    "source_url": "https://www.bits-pilani.ac.in/"
+  },
+  {
+    "domain": "iisc.ac.in",
+    "name": "IISc Bangalore",
+    "category": "premier_institute",
+    "country": "IN",
+    "notes": "Indian Institute of Science Bangalore",
+    "source_url": "https://iisc.ac.in/"
+  },
+  {
+    "domain": "du.ac.in",
+    "name": "University of Delhi",
+    "category": "central_university",
+    "country": "IN",
+    "notes": "Collegiate central university in New Delhi",
+    "source_url": "https://www.du.ac.in/"
+  },
+  {
+    "domain": "jnu.ac.in",
+    "name": "Jawaharlal Nehru University",
+    "category": "central_university",
+    "country": "IN",
+    "notes": "Public central major research university in New Delhi",
+    "source_url": "https://www.jnu.ac.in/"
+  },
+  {
+    "domain": "bhu.ac.in",
+    "name": "Banaras Hindu University",
+    "category": "central_university",
+    "country": "IN",
+    "notes": "Collegiate, central, and research university in Varanasi",
+    "source_url": "https://www.bhu.ac.in/"
+  },
+  {
+    "domain": "swayam.gov.in",
+    "name": "SWAYAM",
+    "category": "education_platform",
+    "country": "IN",
+    "notes": "Government of India initiative for free online courses and certification",
+    "source_url": "https://swayam.gov.in/"
+  },
+  {
+    "domain": "nptel.ac.in",
+    "name": "NPTEL",
+    "category": "education_platform",
+    "country": "IN",
+    "notes": "National Programme on Technology Enhanced Learning (IITs & IISc initiative)",
+    "source_url": "https://nptel.ac.in/"
+  },
+  {
+    "domain": "upsc.gov.in",
+    "name": "Union Public Service Commission",
+    "category": "examination_authority",
+    "country": "IN",
+    "notes": "Premier central recruiting agency of Government of India",
+    "source_url": "https://upsc.gov.in/"
+  },
+  {
+    "domain": "ssc.gov.in",
+    "name": "Staff Selection Commission",
+    "category": "examination_authority",
+    "country": "IN",
+    "notes": "Government of India staff selection organisation",
+    "source_url": "https://ssc.gov.in/"
+  },
+  {
+    "domain": "ibps.in",
+    "name": "Institute of Banking Personnel Selection",
+    "category": "examination_authority",
+    "country": "IN",
+    "notes": "Central autonomous recruitment agency for public sector bank personnel in India",
+    "source_url": "https://www.ibps.in/"
+  },
+  {
+    "domain": "cbse.gov.in",
+    "name": "Central Board of Secondary Education",
+    "category": "education_board",
+    "country": "IN",
+    "notes": "National level board of education in India for public and private schools",
+    "source_url": "https://www.cbse.gov.in/"
+  }
+]
