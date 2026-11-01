@@ -172,3 +172,66 @@ test('safeProxy: refuses port 8080 and non-GET/HEAD methods on plain HTTP', asyn
     await proxy.close();
   }
 });
+
+test('safeProxy: byte cap terminates connection and counts bytes accurately', async () => {
+  const content = 'X'.repeat(5000);
+  const dataServer = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end(content);
+  });
+  await new Promise((resolve) => dataServer.listen(0, '127.0.0.1', resolve));
+  const dataPort = dataServer.address().port;
+
+  let trackedBytes = 0;
+  const proxy = await createSafeProxy({
+    byteCap: 1000,
+    resolver: async () => [{ address: '93.184.216.34', family: 4 }],
+    connector: (connOpts, cb) => net.createConnection({ host: '127.0.0.1', port: dataPort }, cb),
+    onBytes: (b) => {
+      trackedBytes += b;
+    }
+  });
+
+  try {
+    // Stream request through proxy
+    await new Promise((resolve) => {
+      const req = http.request(
+        {
+          host: '127.0.0.1',
+          port: proxy.port,
+          method: 'GET',
+          path: 'http://data.test/'
+        },
+        (res) => {
+          res.on('data', () => {});
+          res.on('end', resolve);
+          res.on('error', resolve);
+        }
+      );
+      req.on('error', resolve);
+      req.end();
+    });
+
+    assert.ok(trackedBytes >= 1000, 'Tracked bytes must register streamed chunks up to/exceeding cap');
+
+    // Subsequent request is refused with 413 Payload Too Large
+    const resBlocked = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          host: '127.0.0.1',
+          port: proxy.port,
+          method: 'GET',
+          path: 'http://data.test/'
+        },
+        resolve
+      );
+      req.on('error', reject);
+      req.end();
+    });
+
+    assert.equal(resBlocked.statusCode, 413, 'Subsequent request must return 413 Payload Too Large');
+  } finally {
+    await proxy.close();
+    await new Promise((resolve) => dataServer.close(resolve));
+  }
+});

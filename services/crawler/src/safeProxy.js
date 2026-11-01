@@ -96,7 +96,8 @@ export async function validateAndPinHost(rawHost, port, resolver) {
  * @param {number} [options.timeoutMs=25000]
  * @param {number} [options.idleTimeoutMs=10000]
  * @param {(bytes: number) => void} [options.onBytes]
- * @returns {Promise<{ server: http.Server, port: number, close: () => Promise<void> }>}
+ * @param {(decision: { host: string, port: number, decision: 'allow' | 'block', status: number, reason?: string }) => void} [options.onDecision]
+ * @returns {Promise<{ server: http.Server, port: number, decisionLog: Array<{ host: string, port: number, decision: string, status: number }>, close: () => Promise<void> }>}
  */
 export async function createSafeProxy(options = {}) {
   const resolver = options.resolver || ((host) => dns.lookup(host, { all: true }));
@@ -105,21 +106,27 @@ export async function createSafeProxy(options = {}) {
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
   const idleTimeoutMs = options.idleTimeoutMs || DEFAULT_IDLE_TIMEOUT_MS;
   const onBytes = options.onBytes || (() => {});
+  const onDecision = options.onDecision || (() => {});
 
   let totalBytes = 0;
+  const decisionLog = [];
+
+  function recordDecision(host, port, decision, status, reason) {
+    const entry = { host, port, decision, status };
+    if (reason) entry.reason = reason;
+    decisionLog.push(entry);
+    try {
+      onDecision(entry);
+    } catch {
+      // Ignore callback errors
+    }
+  }
 
   const server = http.createServer();
 
   // Handle plain HTTP (GET / HEAD)
   server.on('request', async (clientReq, clientRes) => {
     try {
-      const method = (clientReq.method || '').toUpperCase();
-      if (!ALLOWED_HTTP_METHODS.has(method)) {
-        clientRes.writeHead(405, { 'Content-Type': 'text/plain' });
-        clientRes.end('Method Not Allowed (Crawl is read-only)');
-        return;
-      }
-
       let parsedUrl = null;
       try {
         parsedUrl = new URL(clientReq.url);
@@ -132,8 +139,17 @@ export async function createSafeProxy(options = {}) {
       const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : 80;
       const host = parsedUrl.hostname;
 
+      const method = (clientReq.method || '').toUpperCase();
+      if (!ALLOWED_HTTP_METHODS.has(method)) {
+        recordDecision(host, port, 'block', 405, 'Method Not Allowed (Crawl is read-only)');
+        clientRes.writeHead(405, { 'Content-Type': 'text/plain' });
+        clientRes.end('Method Not Allowed (Crawl is read-only)');
+        return;
+      }
+
       const check = await validateAndPinHost(host, port, resolver);
       if (!check.valid || !check.pinnedIp) {
+        recordDecision(host, port, 'block', 403, check.reason || 'Blocked host or IP');
         clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
         clientRes.end(`Forbidden: ${check.reason || 'Blocked host or IP'}`);
         return;
@@ -141,10 +157,13 @@ export async function createSafeProxy(options = {}) {
 
       // Check cumulative byte cap
       if (totalBytes >= byteCap) {
+        recordDecision(host, port, 'block', 413, 'Crawl byte cap exceeded');
         clientRes.writeHead(413, { 'Content-Type': 'text/plain' });
         clientRes.end('Payload Too Large: Crawl byte cap exceeded');
         return;
       }
+
+      recordDecision(host, port, 'allow', 200);
 
       // Forward request to pinned IP
       const targetReq = http.request({
@@ -205,16 +224,20 @@ export async function createSafeProxy(options = {}) {
 
       const check = await validateAndPinHost(host, port, resolver);
       if (!check.valid || !check.pinnedIp) {
+        recordDecision(host, port, 'block', 403, check.reason || 'Blocked host or IP');
         clientSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n');
         clientSocket.destroy();
         return;
       }
 
       if (totalBytes >= byteCap) {
+        recordDecision(host, port, 'block', 413, 'Crawl byte cap exceeded');
         clientSocket.write('HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n');
         clientSocket.destroy();
         return;
       }
+
+      recordDecision(host, port, 'allow', 200);
 
       // Connect to PINNED IP address directly via connector
       const targetSocket = connector(
@@ -287,6 +310,7 @@ export async function createSafeProxy(options = {}) {
   return {
     server,
     port,
+    decisionLog,
     close: () =>
       new Promise((resolve) => {
         server.close(resolve);

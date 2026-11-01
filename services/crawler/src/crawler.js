@@ -42,8 +42,128 @@ export function buildTree(pages, startUrl) {
 }
 
 /**
+ * Launches a hardened Chromium browser and context wired through safeProxy.
+ * Shared launcher used in both production crawl() and security/audit tests.
+ *
+ * @param {object} [options={}]
+ * @param {object} [options.proxy] - Optional pre-created safe proxy
+ * @param {(host: string) => Promise<Array<{ address: string, family: number }>>} [options.resolver]
+ * @param {(options: object, callback?: () => void) => net.Socket} [options.connector]
+ * @param {number} [options.byteCap]
+ * @param {number} [options.timeoutMs]
+ * @param {(bytes: number) => void} [options.onBytes]
+ * @param {(decision: object) => void} [options.onDecision]
+ * @param {boolean} [options.disableContextRoute=false] - When true, disables Playwright context.route (for testing proxy isolation)
+ * @param {(info: { url: string, reason: string }) => void} [options.onBlockedRequest]
+ * @param {object} [options.viewport]
+ * @param {string} [options.userAgent]
+ * @returns {Promise<{ browser: any, context: any, proxy: any, close: () => Promise<void> }>}
+ */
+export async function launchCrawlBrowser(options = {}) {
+  const {
+    proxy: existingProxy,
+    resolver,
+    connector,
+    byteCap,
+    timeoutMs = 15000,
+    onBytes,
+    onDecision,
+    disableContextRoute = false,
+    onBlockedRequest = () => {},
+    viewport = { width: 1280, height: 800 },
+    userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 deepcrawl/1.0'
+  } = options;
+
+  let proxy = existingProxy;
+  let ownProxy = false;
+  if (!proxy) {
+    proxy = await createSafeProxy({
+      resolver,
+      connector,
+      byteCap,
+      timeoutMs,
+      onBytes,
+      onDecision
+    });
+    ownProxy = true;
+  }
+
+  const browser = await chromium.launch({
+    headless: true,
+    proxy: {
+      server: `http://127.0.0.1:${proxy.port}`,
+      bypass: '<-loopback>'
+    },
+    args: [
+      '--disable-quic',
+      '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-extensions'
+    ]
+  });
+
+  const context = await browser.newContext({
+    viewport,
+    acceptDownloads: false, // Disallow all downloads
+    serviceWorkers: 'block', // Block background service workers
+    userAgent
+  });
+
+  // Block popups and new pages opened by pages
+  context.on('page', async (p) => {
+    const opener = await p.opener().catch(() => null);
+    if (opener) {
+      await p.close().catch(() => {});
+    }
+  });
+
+  if (!disableContextRoute) {
+    await context.route('**/*', async (route) => {
+      try {
+        const req = route.request();
+        const method = (req.method() || '').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+          onBlockedRequest({ url: req.url(), reason: `Method ${method} not allowed (read-only)` });
+          return route.abort('blockedbyclient');
+        }
+
+        const reqUrl = req.url();
+        if (!reqUrl.startsWith('http://') && !reqUrl.startsWith('https://')) {
+          onBlockedRequest({ url: reqUrl, reason: 'Disallowed protocol' });
+          return route.abort('blockedbyclient');
+        }
+
+        const safe = await isSafeUrlAsync(reqUrl, resolver);
+        if (!safe.safe) {
+          onBlockedRequest({ url: reqUrl, reason: safe.reason });
+          return route.abort('blockedbyclient');
+        }
+
+        return route.continue();
+      } catch {
+        onBlockedRequest({ url: route.request().url(), reason: 'Route error' });
+        return route.abort('blockedbyclient');
+      }
+    });
+  }
+
+  return {
+    browser,
+    context,
+    proxy,
+    close: async () => {
+      await browser.close().catch(() => {});
+      if (ownProxy) {
+        await proxy.close().catch(() => {});
+      }
+    }
+  };
+}
+
+/**
  * Core reusable crawl function.
- * Strictly read-only: never fills forms, never submits forms, never takes screenshots,
+ * Strictly read-only: never fills forms, never submits forms, never captures page images,
  * rejects downloads, enforces hard caps and SSRF guards.
  */
 export async function crawl(options = {}, { onProgress, signal } = {}) {
@@ -57,7 +177,7 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     throw new Error(`Invalid start URL: "${startRaw}"`);
   }
 
-  const startCheck = await isSafeUrlAsync(normalizedStart);
+  const startCheck = await isSafeUrlAsync(normalizedStart, options.resolver);
   if (!startCheck.safe) {
     throw new Error(`Cannot crawl URL: ${startCheck.reason}`);
   }
@@ -91,75 +211,27 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
 
   let browser = null;
   let context = null;
-
-  // Spin up safe forward proxy for pinning IPs and blocking DNS rebinding
-  const proxy = await createSafeProxy({
-    byteCap: maxTotalBytes,
-    timeoutMs: navTimeout,
-    onBytes: (bytes) => {
-      totalBytesReceived += bytes;
-    }
-  });
+  let crawlBrowser = null;
 
   async function setupBrowserContext() {
-    if (browser) {
-      await browser.close().catch(() => {});
+    if (crawlBrowser) {
+      await crawlBrowser.close().catch(() => {});
     }
-    browser = await chromium.launch({
-      headless: true,
-      proxy: {
-        server: `http://127.0.0.1:${proxy.port}`,
-        bypass: '<-loopback>'
+    crawlBrowser = await launchCrawlBrowser({
+      resolver: options.resolver,
+      connector: options.connector,
+      byteCap: maxTotalBytes,
+      timeoutMs: navTimeout,
+      onBytes: (bytes) => {
+        totalBytesReceived += bytes;
       },
-      args: [
-        '--disable-quic',
-        '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-extensions'
-      ]
-    });
-
-    context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      acceptDownloads: false, // Disallow all downloads
-      serviceWorkers: 'block', // Block background service workers
-      userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 deepcrawl/1.0'
-    });
-
-    // Block popups and new tabs
-    context.on('page', (p) => {
-      p.close().catch(() => {});
-    });
-
-    // Revalidate every request (main frame, subframes, redirects, xhr/fetch) against SSRF
-    await context.route('**/*', async (route) => {
-      try {
-        const req = route.request();
-        const reqUrl = req.url();
-
-        // Check protocol
-        if (!reqUrl.startsWith('http://') && !reqUrl.startsWith('https://')) {
-          blockedRequestsCount++;
-          jobErrors.push(`Blocked request: ${reqUrl} (Disallowed protocol)`);
-          return route.abort('blockedbyclient');
-        }
-
-        // Validate SSRF
-        const safe = await isSafeUrlAsync(reqUrl);
-        if (!safe.safe) {
-          blockedRequestsCount++;
-          jobErrors.push(`Blocked request: ${reqUrl} (${safe.reason})`);
-          return route.abort('blockedbyclient');
-        }
-
-        return route.continue();
-      } catch {
+      onBlockedRequest: ({ url, reason }) => {
         blockedRequestsCount++;
-        return route.abort('blockedbyclient');
+        jobErrors.push(`Blocked request: ${url} (${reason})`);
       }
     });
+    browser = crawlBrowser.browser;
+    context = crawlBrowser.context;
   }
 
   await setupBrowserContext();
@@ -227,7 +299,7 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     const pageErrors = [];
 
     // Pre-navigation safety check
-    const safetyCheck = await isSafeUrlAsync(current.url);
+    const safetyCheck = await isSafeUrlAsync(current.url, options.resolver);
     if (!safetyCheck.safe) {
       blockedRequestsCount++;
       const reasonMsg = `Blocked request: ${current.url} (${safetyCheck.reason})`;
@@ -251,7 +323,7 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     }
 
     // Robots.txt check
-    const robotsAllowed = await isAllowedByRobotsTxt(current.url);
+    const robotsAllowed = await isAllowedByRobotsTxt(current.url, options.resolver);
     if (!robotsAllowed) {
       blockedRequestsCount++;
       const reasonMsg = `Robots.txt skip: ${current.url} (Disallowed by robots.txt)`;
@@ -308,7 +380,7 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
           pageErrors.push(`HTTP status ${statusCode}`);
         }
 
-        const finalSafety = await isSafeUrlAsync(finalUrl);
+        const finalSafety = await isSafeUrlAsync(finalUrl, options.resolver);
         if (!finalSafety.safe) {
           blockedRequestsCount++;
           pageErrors.push(`Redirected to unsafe URL: ${finalSafety.reason}`);
@@ -453,10 +525,9 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     const workerPromises = Array.from({ length: concurrency }, () => worker());
     await Promise.all(workerPromises);
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
+    if (crawlBrowser) {
+      await crawlBrowser.close().catch(() => {});
     }
-    await proxy.close().catch(() => {});
   }
 
   const durationMs = Date.now() - startTime;

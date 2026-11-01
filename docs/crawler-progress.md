@@ -64,6 +64,20 @@
 
 ---
 
+## Part 2c: Verify SSRF Fix and Enforce Read-Only Methods (services/crawler only)
+- [x] Shared production launcher `launchCrawlBrowser` exported from `services/crawler/src/crawler.js`, accepting injected resolver, connector, byteCap, timeouts, and callbacks. Used by both production `crawl()` and security tests.
+- [x] Redirect controls verified in `services/crawler/tests/ssrf-browser-audit.test.js`:
+  - Positive control (A -> B across stand-in public hosts): succeeds, receives 200, destination reached.
+  - Negative control (A -> Loopback canary 302): blocked with 403, canary hit count = 0. Decision log records Hop 1 allowed (200), Hop 2 refused (403).
+- [x] Layer independence verified: test mode with `disableContextRoute: true` re-runs loopback navigation, iframe, img/fetch, and 302 redirect. Canary hit count is 0 with proxy alone.
+- [x] Read-only method enforcement: `context.route` aborts every request whose method is not GET or HEAD (`route.abort('blockedbyclient')`). Script `fetch(..., {method: 'POST'})` and `form.submit()` recorded 0 server hits.
+- [x] Proxy byte counter test added (`crawler-security.test.js` & `safeProxy.test.js`): proves `totalBytesReceived` increments accurately and terminates crawl upon exceeding limit (`stopReason: 'byteLimit'`).
+- [x] Forbidden terms checked: zero occurrences of `openai`, `OPENAI`, `LLM_`, `.fill(`, `.type(`, `screenshot`, `archiver`, `--no-sandbox` (grep exit code 1), zero occurrences of `click(` (grep exit code 1).
+- [x] Chromium without `--no-sandbox` in Linux/container deployment: NOT VERIFIED.
+- [x] All 18 tests in `services/crawler` pass offline; root 1042 tests pass; lint and build pass.
+
+---
+
 ## Part 3: Docs and Contracts
 - [ ] Update ARCHITECTURE.md, PRD.md, docs/contracts.md (NOT VERIFIED).
 - [ ] Define `CrawlResult` contract (NOT VERIFIED).

@@ -201,9 +201,10 @@ export function isBasicSafeUrl(urlString) {
  * Resolves DNS for the given URL and blocks private/reserved IPs.
  *
  * @param {string} urlString
+ * @param {(host: string) => Promise<Array<{ address: string, family: number }>>} [resolver]
  * @returns {Promise<{ safe: boolean, reason?: string }>}
  */
-export async function isSafeUrlAsync(urlString) {
+export async function isSafeUrlAsync(urlString, resolver = (host) => dns.lookup(host, { all: true })) {
   const basic = isBasicSafeUrl(urlString);
   if (!basic.safe) return basic;
 
@@ -220,7 +221,7 @@ export async function isSafeUrlAsync(urlString) {
     }
 
     // Resolve DNS (IPv4 + IPv6)
-    const records = await dns.lookup(host, { all: true });
+    const records = await resolver(host);
     if (!records || records.length === 0) {
       return { safe: false, reason: `DNS lookup returned no addresses for ${host}` };
     }
@@ -440,9 +441,10 @@ export function matchesRobotsRules(urlString, rules) {
  * Fetches and checks robots.txt for a given URL.
  *
  * @param {string} targetUrl
+ * @param {(host: string) => Promise<Array<{ address: string, family: number }>>} [resolver]
  * @returns {Promise<boolean>}
  */
-export async function isAllowedByRobotsTxt(targetUrl) {
+export async function isAllowedByRobotsTxt(targetUrl, resolver) {
   try {
     const url = new URL(targetUrl);
     const origin = url.origin;
@@ -452,7 +454,7 @@ export async function isAllowedByRobotsTxt(targetUrl) {
     }
 
     const robotsUrl = `${origin}/robots.txt`;
-    const safeCheck = await isSafeUrlAsync(robotsUrl);
+    const safeCheck = await isSafeUrlAsync(robotsUrl, resolver);
     if (!safeCheck.safe) {
       return false;
     }

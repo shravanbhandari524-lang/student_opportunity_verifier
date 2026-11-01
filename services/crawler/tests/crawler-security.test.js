@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import net from 'node:net';
 import fs from 'node:fs';
 import { createApp } from '../src/app.js';
 import { createJob, getJob, cancelJob, cleanupExpiredJobs } from '../src/jobs.js';
 import { CONFIG } from '../src/config.js';
 import { extractPageData } from '../src/extract.js';
+import { crawl } from '../src/crawler.js';
 
 test('Security: src/llm.js and openai dependency do not exist', () => {
   const llmPath = new URL('../src/llm.js', import.meta.url);
@@ -135,4 +137,34 @@ test('Security: Form extraction is strictly read-only and flags sensitive inputs
     assert.equal(payForm.hasOtp, true);
     assert.equal(payForm.hasPayment, true);
   });
+});
+
+test('Security: crawl() integrates proxy byte counter into total byte limit and stops crawl upon byteLimit', async () => {
+  // Stand-in server delivering payload exceeding crawl byte limit
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<html><body>' + 'D'.repeat(20000) + '</body></html>');
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const serverPort = server.address().port;
+
+  try {
+    const result = await crawl({
+      url: 'http://bigpayload.test/',
+      maxPages: 3,
+      maxTotalBytes: 3000,
+      navigationTimeoutMs: 5000,
+      resolver: async () => [{ address: '93.184.216.34', family: 4 }],
+      connector: (opts, cb) => net.createConnection({ host: '127.0.0.1', port: serverPort }, cb)
+    });
+
+    assert.equal(result.truncated, true, 'Result must be marked truncated when byte cap exceeded');
+    assert.ok(
+      result.summary.stopReason === 'byteLimit' || result.limitsUsed.totalBytesReceived >= 3000,
+      'Stop reason or bytes received must reflect byte limit'
+    );
+    assert.ok(result.limitsUsed.totalBytesReceived >= 3000, 'Total bytes received must be tracked through proxy');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
