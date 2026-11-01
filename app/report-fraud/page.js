@@ -5,8 +5,6 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getReportFraudErrorMessage } from "./errors.js";
 
-// Helpline & portal official source: https://cybercrime.gov.in (National Cyber Crime Helpline: 1930)
-
 const PAYMENT_METHODS = [
   { value: "", label: "Select payment method (optional)" },
   { value: "upi", label: "UPI (Google Pay, PhonePe, Paytm, BHIM)" },
@@ -33,14 +31,12 @@ function ReportFraudContent() {
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Sync initial query param if it arrives
   useEffect(() => {
     if (initialCheckId) {
       setCheckId(initialCheckId);
     }
   }, [initialCheckId]);
 
-  // Compute maximum allowed date (today) and minimum allowed date (365 days ago)
   const todayStr = new Date().toISOString().slice(0, 10);
   const minDateStr = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -99,390 +95,342 @@ function ReportFraudContent() {
       await navigator.clipboard.writeText(result.narrative);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // Fallback
-    }
+    } catch {}
   };
 
-  const switchToStandalone = () => {
-    setCheckId("");
-    setError(null);
-    setErrorCode(null);
+  const handleDownload = () => {
+    if (!result?.narrative) return;
+    const blob = new Blob([result.narrative], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cybercrime-complaint-${checkId ? checkId.slice(0, 8) : "draft"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div style={{ maxWidth: "880px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2rem" }}>
+    <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-8">
+      {/* Breadcrumb */}
+      <div>
+        <Link
+          href={checkId ? `/check/${checkId}` : "/"}
+          className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+        >
+          <span>←</span>
+          <span>{checkId ? `Back to Case #${checkId.slice(0, 8)}` : "Back to Home"}</span>
+        </Link>
+      </div>
+
       {/* Header */}
       <div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-          <span style={{ fontSize: "1.75rem" }}>🚨</span>
-          <h1 style={{ fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-            Fraud Assistance & Complaint Generator
-          </h1>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-2 h-2 rounded-full bg-crimson-500" aria-hidden="true" />
+          <span className="font-mono text-xs uppercase text-zinc-500 tracking-wider">
+            Victim Incident Response &amp; Legal Draft
+          </span>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem", lineHeight: 1.5 }}>
-          If you have transferred money, shared OTPs, or sent personal bank documents to a suspicious offer, take immediate action below.
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Already Paid or Shared Personal Details?
+        </h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+          Immediate, sequential containment steps to minimize financial loss, freeze fraudulent beneficiary accounts, and draft a formal cybercrime complaint.
         </p>
       </div>
 
-      {/* Golden Hour Emergency Action Banner */}
-      <div
-        className="card"
-        style={{
-          borderLeft: "4px solid var(--danger-primary, #ef4444)",
-          backgroundColor: "var(--bg-card, #ffffff)",
-          padding: "1.25rem 1.5rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.75rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontWeight: 800, color: "var(--danger-primary, #ef4444)", fontSize: "1rem" }}>
-            ⚡ CRITICAL FIRST STEP (GOLDEN HOUR)
-          </span>
-        </div>
-        <p style={{ fontSize: "0.95rem", lineHeight: 1.6, margin: 0 }}>
-          Call the <strong>National Cyber Crime Helpline: 1930</strong> immediately. Reporting within the first 2 hours (&quot;Golden Hour&quot;) significantly increases the chances of freezing fraudulent transactions before money is withdrawn by fraudsters.
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginTop: "0.25rem" }}>
-          <a
-            href="tel:1930"
-            className="button"
-            style={{
-              backgroundColor: "var(--danger-primary, #ef4444)",
-              color: "#ffffff",
-              textDecoration: "none",
-              fontWeight: 700,
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-            }}
-          >
-            📞 Dial 1930
-          </a>
-          <a
-            href="https://cybercrime.gov.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="button button-secondary"
-            style={{
-              textDecoration: "none",
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-            }}
-          >
-            🌐 cybercrime.gov.in ↗
-          </a>
-        </div>
-      </div>
-
-      {/* Mode Notification */}
-      {checkId ? (
-        <div
-          style={{
-            padding: "0.75rem 1rem",
-            borderRadius: "6px",
-            backgroundColor: "var(--bg-card-subtle, #f3f4f6)",
-            fontSize: "0.9rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span>
-            Linked to Check ID: <code>{checkId.slice(0, 8)}...</code> (Evidence and quotes from your report will be incorporated)
-          </span>
-          <button
-            type="button"
-            onClick={switchToStandalone}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--accent-primary, #2563eb)",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              textDecoration: "underline",
-            }}
-          >
-            Switch to standalone mode
-          </button>
-        </div>
-      ) : (
-        <div
-          style={{
-            padding: "0.75rem 1rem",
-            borderRadius: "6px",
-            backgroundColor: "var(--bg-card-subtle, #f3f4f6)",
-            fontSize: "0.9rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span>
-            Standalone Mode: Generating general complaint draft without linked check evidence.
-          </span>
-          <Link
-            href="/check"
-            style={{
-              color: "var(--accent-primary, #2563eb)",
-              fontSize: "0.85rem",
-              textDecoration: "underline",
-            }}
-          >
-            Run an offer check first
-          </Link>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && (
-        <div
-          className="card"
-          style={{
-            borderColor: "var(--danger-primary, #ef4444)",
-            backgroundColor: "rgba(239, 68, 68, 0.08)",
-            padding: "1rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <strong style={{ color: "var(--danger-primary, #ef4444)" }}>Error:</strong>
-          <span style={{ fontSize: "0.95rem" }}>{error}</span>
-          {(errorCode === "CHECK_EXPIRED" || errorCode === "NOT_FOUND" || errorCode === "STATE_CONFLICT") && checkId && (
-            <button
-              type="button"
-              onClick={() => {
-                switchToStandalone();
-                handleSubmit();
-              }}
-              className="button button-secondary"
-              style={{ alignSelf: "flex-start", marginTop: "0.25rem", fontSize: "0.85rem" }}
-            >
-              Generate Standalone Summary Now
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Incident Input Form */}
-      <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>Incident Details (Optional)</h2>
-        <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", margin: 0 }}>
-          Providing these details formats the complaint narrative ready for submission to your bank and the cybercrime portal.
-        </p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem", fontWeight: 600 }}>
-            <span>Amount Disputed (INR)</span>
-            <input
-              type="number"
-              min="1"
-              max="10000000"
-              placeholder="e.g. 2500"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="input"
-              style={{ padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}
-            />
-          </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem", fontWeight: 600 }}>
-            <span>Incident Date</span>
-            <input
-              type="date"
-              max={todayStr}
-              min={minDateStr}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="input"
-              style={{ padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}
-            />
-          </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem", fontWeight: 600 }}>
-            <span>Payment Method</span>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="input"
-              style={{ padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem", fontWeight: 600 }}>
-            <span>Report Language</span>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="input"
-              style={{ padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}
-            >
-              <option value="en">English</option>
-              <option value="hi">हिंदी (Hindi)</option>
-            </select>
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="button button-primary"
-          style={{
-            alignSelf: "flex-start",
-            padding: "0.65rem 1.25rem",
-            fontWeight: 700,
-            cursor: loading ? "wait" : "pointer",
-          }}
-        >
-          {loading ? "Generating Draft..." : "Generate Formal Complaint Draft"}
-        </button>
-      </form>
-
-      {/* Complaint Narrative Output */}
-      {result && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>{result.title}</h2>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="button button-secondary"
-                style={{
-                  padding: "0.4rem 0.8rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {copied ? "✓ Copied to Clipboard" : "📋 Copy Complaint Text"}
-              </button>
+      {/* Golden Hour Helpline Banner */}
+      <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">🚨</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                National Cyber Crime Helpline: Dial 1930
+              </span>
+              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+                CRITICAL GOLDEN HOUR
+              </span>
             </div>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
+              If fraudulent UPI or bank transactions occurred within the last <strong>2 to 4 hours</strong>, call 1930 immediately to intercept and freeze funds before they are siphoned across money mule chains.
+            </p>
+          </div>
+        </div>
 
-            <pre
-              style={{
-                backgroundColor: "var(--bg-card-subtle, #f9fafb)",
-                padding: "1rem",
-                borderRadius: "6px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                fontFamily: "monospace",
-                fontSize: "0.85rem",
-                lineHeight: 1.5,
-                border: "1px solid var(--border-subtle)",
-                maxHeight: "450px",
-                overflowY: "auto",
-              }}
-            >
-              {result.narrative}
-            </pre>
+        <a
+          href="tel:1930"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded shadow-sm whitespace-nowrap transition-colors"
+        >
+          <span>Call 1930 Now</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      {/* 5-Step Immediate Containment Checklist */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+          Sequential Containment Protocol
+        </h2>
+
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md divide-y divide-zinc-200 dark:divide-zinc-800">
+          {/* Step 1 */}
+          <div className="p-4 flex items-start gap-4">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-700 dark:text-zinc-300">
+              01
+            </span>
+            <div>
+              <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 block">
+                Stop All Further Transfers (Halt Flow)
+              </span>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                Do not send any &ldquo;clearance fees,&rdquo; &ldquo;tax deposits,&rdquo; or &ldquo;unfreezing charges.&rdquo; Scammers routinely demand a second or third payment claiming it will release previous amounts.
+              </p>
+            </div>
           </div>
 
-          {/* Actionable Victim Steps */}
-          {result.victimSteps && result.victimSteps.length > 0 && (
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>Recommended Steps to Protect Yourself</h3>
-              <ul style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {result.victimSteps.map((step, idx) => (
-                  <li key={idx} style={{ fontSize: "0.95rem", lineHeight: 1.5 }}>
-                    {step}
-                  </li>
+          {/* Step 2 */}
+          <div className="p-4 flex items-start gap-4">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-700 dark:text-zinc-300">
+              02
+            </span>
+            <div>
+              <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 block">
+                Notify Bank &amp; Freeze UPI / Netbanking
+              </span>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                Call your bank&apos;s 24x7 emergency fraud desk. Request to block your compromised debit card, reset your UPI PIN, and flag the beneficiary transaction reference (UTR) for chargeback / lien marking.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="p-4 flex items-start gap-4">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-700 dark:text-zinc-300">
+              03
+            </span>
+            <div>
+              <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 block">
+                Preserve Digital Evidence
+              </span>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                Do not delete chat transcripts or call records. Export complete WhatsApp/Telegram chat history, take uncropped screenshots of UPI payment receipts showing the 12-digit UTR, and note sender handles.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="p-4 flex items-start gap-4">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-700 dark:text-zinc-300">
+              04
+            </span>
+            <div>
+              <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 block">
+                Lodge Complaint on National Cyber Crime Portal
+              </span>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                File a report at <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-mono text-zinc-900 dark:text-zinc-100">cybercrime.gov.in ↗</a> under Financial Fraud. Use the structured complaint narrative generator below.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 5 */}
+          <div className="p-4 flex items-start gap-4">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-700 dark:text-zinc-300">
+              05
+            </span>
+            <div>
+              <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 block">
+                Report Impersonation via Chakshu (Sanchar Saathi)
+              </span>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                Report the fraudulent mobile number, SMS sender header, or WhatsApp handle on the Department of Telecommunications portal at <a href="https://sancharsaathi.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-mono text-zinc-900 dark:text-zinc-100">sancharsaathi.gov.in ↗</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pre-filled Complaint Summary Generator Form */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md p-5 flex flex-col gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            Generate Official Complaint Narrative
+          </h2>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+            Produces an objective, police-ready complaint text structured for the National Cyber Crime Reporting Portal.
+          </p>
+        </div>
+
+        {checkId && (
+          <div className="flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-800/50 rounded border border-zinc-200 dark:border-zinc-800 text-xs">
+            <span className="text-zinc-600 dark:text-zinc-400 font-mono">
+              Linked Investigation: <strong>Case #{checkId.slice(0, 8)}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setCheckId("")}
+              className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline"
+            >
+              Unlink and draft standalone
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="comp-amount" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Defrauded Amount in INR (Optional):
+              </label>
+              <input
+                type="number"
+                id="comp-amount"
+                min="1"
+                placeholder="e.g. 3500"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="comp-date" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Transaction Date (Optional):
+              </label>
+              <input
+                type="date"
+                id="comp-date"
+                max={todayStr}
+                min={minDateStr}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="comp-method" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Payment Method Used:
+              </label>
+              <select
+                id="comp-method"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
                 ))}
-              </ul>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="comp-lang" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Complaint Language:
+              </label>
+              <select
+                id="comp-lang"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
+              >
+                <option value="en">English (Official Standard)</option>
+                <option value="hi">Hindi (हिंदी)</option>
+              </select>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded text-xs text-red-700 dark:text-red-300">
+              {error}
             </div>
           )}
 
-          {/* Reporting Channels */}
-          {result.reportingChannels && result.reportingChannels.length > 0 && (
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>Official Reporting Channels</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {result.reportingChannels.map((ch, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "6px",
-                      border: "1px solid var(--border-subtle)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.25rem",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "0.95rem" }}>{ch.name}</strong>
-                      {ch.verified ? (
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            padding: "0.15rem 0.4rem",
-                            borderRadius: "4px",
-                            backgroundColor: "rgba(16, 185, 129, 0.15)",
-                            color: "var(--success-primary, #10b981)",
-                            fontWeight: 700,
-                          }}
-                        >
-                          Official Portal
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: "0.72rem",
-                            padding: "0.15rem 0.4rem",
-                            borderRadius: "4px",
-                            backgroundColor: "rgba(245, 158, 11, 0.15)",
-                            color: "var(--warning-primary, #f59e0b)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Advisory (Verify independently)
-                        </span>
-                      )}
-                    </div>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{ch.text}</span>
-                    {ch.url && (
-                      <a
-                        href={ch.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "var(--accent-primary, #2563eb)",
-                          textDecoration: "underline",
-                          marginTop: "0.2rem",
-                        }}
-                      >
-                        {ch.url} ↗
-                      </a>
-                    )}
-                  </div>
-                ))}
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-semibold text-xs rounded shadow-sm disabled:opacity-50 transition-colors"
+            >
+              {loading ? (
+                <>
+                  <span className="spinner" />
+                  <span>Generating Complaint Narrative...</span>
+                </>
+              ) : (
+                <>
+                  <span>Generate Complaint Text</span>
+                  <span aria-hidden="true">→</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Generated Result Container */}
+        {result && (
+          <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                {result.title || "Official Complaint Draft"}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs rounded border border-zinc-300 dark:border-zinc-700 transition-colors"
+                >
+                  {copied ? "✓ Copied" : "📋 Copy Text"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs rounded border border-zinc-300 dark:border-zinc-700 transition-colors"
+                >
+                  ⬇ Download .txt
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <textarea
+              readOnly
+              rows={10}
+              value={result.narrative || ""}
+              className="w-full p-3 font-mono text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded text-zinc-900 dark:text-zinc-100 leading-relaxed focus:outline-none resize-none"
+            />
+
+            {Array.isArray(result.victimSteps) && result.victimSteps.length > 0 && (
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded text-xs flex flex-col gap-1.5">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  Recommended Next Steps from Summary:
+                </span>
+                <ul className="list-disc pl-5 text-zinc-600 dark:text-zinc-400 space-y-1">
+                  {result.victimSteps.map((step, idx) => (
+                    <li key={idx}>{step}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function ReportFraudPage() {
   return (
-    <Suspense fallback={<div className="card">Loading fraud reporting assistant...</div>}>
+    <Suspense
+      fallback={
+        <div className="max-w-4xl mx-auto px-4 py-12 text-center text-xs font-mono text-zinc-500">
+          Loading fraud assistance workspace...
+        </div>
+      }
+    >
       <ReportFraudContent />
     </Suspense>
   );

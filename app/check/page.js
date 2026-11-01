@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { recordClientLog } from "../../lib/client-logger.js";
+import { HANDLE_PLATFORMS } from "../../lib/contracts/enums.js";
 
 const SAMPLE_OFFERS = [
   {
@@ -11,17 +11,22 @@ const SAMPLE_OFFERS = [
     upiId: "hr-techcorp@oksbi",
     url: "http://techcorp-internship-careers.xyz",
     company: "TechCorp India",
+    userNotes: "Received via an unsolicited email from a free outlook address.",
   },
   {
     label: "Telegram Task Job",
     text: "Dear student, earn ₹3000 to ₹5000 daily working from home! Just subscribe to YouTube channels and like videos. 100% legal part-time opportunity. Contact our Telegram manager @task_payouts_daily to start your first trial task.",
     handle: "@task_payouts_daily",
+    handlePlatform: "telegram",
     company: "Global Media Promotions",
+    userNotes: "They added me to a random group with 2,000 members sharing screenshots of payouts.",
   },
   {
-    label: "Scholarship Fee Scheme",
+    label: "PM Yuva Scholarship Scheme",
     text: "National Merit Scholarship Alert 2026: You are eligible to receive ₹50,000 direct scholarship under PM Yuva Scholarship scheme. Complete document verification at http://pm-yuva-scholarship-gov.in-portal.org and submit application processing fee of ₹499.",
     url: "http://pm-yuva-scholarship-gov.in-portal.org",
+    company: "Ministry of Education Scheme",
+    userNotes: "Came as an SMS to my father's phone asking to pay processing fee immediately.",
   },
 ];
 
@@ -29,58 +34,99 @@ export default function CheckPage() {
   const router = useRouter();
 
   const [text, setText] = useState("");
+  const [userNotes, setUserNotes] = useState("");
   const [url, setUrl] = useState("");
   const [upiId, setUpiId] = useState("");
   const [company, setCompany] = useState("");
   const [handle, setHandle] = useState("");
+  const [handlePlatform, setHandlePlatform] = useState("");
   const [phone, setPhone] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [language, setLanguage] = useState("en");
   const [consent, setConsent] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [files, setFiles] = useState([]);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   function applySample(sample) {
     setText(sample.text || "");
+    setUserNotes(sample.userNotes || "");
     setUrl(sample.url || "");
     setUpiId(sample.upiId || "");
     setCompany(sample.company || "");
     setHandle(sample.handle || "");
+    setHandlePlatform(sample.handlePlatform || "");
+    setPhone(sample.phone || "");
+    setYoutubeUrl(sample.youtubeUrl || "");
     setConsent(true);
     setError(null);
   }
 
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files || []);
+    if (files.length + selected.length > 5) {
+      setError("Maximum 5 screenshots allowed.");
+      return;
+    }
+
+    for (const f of selected) {
+      if (f.size > 5 * 1024 * 1024) {
+        setError(`File ${f.name} exceeds the 5 MB limit.`);
+        return;
+      }
+      if (!["image/png", "image/jpeg", "image/jpg"].includes(f.type)) {
+        setError(`File ${f.name} must be PNG or JPG format.`);
+        return;
+      }
+    }
+
+    setFiles((prev) => [...prev, ...selected].slice(0, 5));
+    setError(null);
+  }
+
+  function removeFile(index) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    setError(null);
 
-    if (!text.trim() && !url.trim() && !selectedFile) {
-      setError("Please provide offer message text, a website link, or upload a screenshot to verify.");
+    // Client-side validation: at least text, file, or url required
+    const hasText = text.trim().length > 0;
+    const hasFiles = files.length > 0;
+    const hasUrl = url.trim().length > 0;
+
+    if (!hasText && !hasFiles && !hasUrl) {
+      setError("Please provide at least one primary input: paste message text, upload an image, or enter a website URL.");
       return;
     }
 
     if (!consent) {
-      setError("Please acknowledge that this is a risk assessment and not a legal verdict.");
+      setError("Please check the consent box acknowledging that this is a risk assessment, not a legal verdict.");
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setSubmitting(true);
 
     try {
       const formData = new FormData();
-      if (text.trim()) formData.append("text", text.trim());
-      if (url.trim()) formData.append("url", url.trim());
+      if (hasText) formData.append("text", text.trim());
+      if (userNotes.trim()) formData.append("userNotes", userNotes.trim());
+      if (hasUrl) formData.append("url", url.trim());
       if (upiId.trim()) formData.append("upiId", upiId.trim());
       if (company.trim()) formData.append("company", company.trim());
       if (handle.trim()) formData.append("handle", handle.trim());
+      if (handlePlatform.trim()) formData.append("handlePlatform", handlePlatform.trim());
       if (phone.trim()) formData.append("phone", phone.trim());
+      if (youtubeUrl.trim()) formData.append("youtubeUrl", youtubeUrl.trim());
       formData.append("language", language);
       formData.append("consent", "true");
 
-      if (selectedFile) {
-        formData.append("images", selectedFile, selectedFile.name);
+      for (const f of files) {
+        formData.append("images", f);
       }
 
       const res = await fetch("/api/checks", {
@@ -88,54 +134,59 @@ export default function CheckPage() {
         body: formData,
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error?.message || data.message || "Failed to submit check. Please try again.");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Check creation failed with status ${res.status}`);
       }
 
-      const checkId = data.checkId || data.id;
-      if (!checkId) {
-        throw new Error("Missing check ID in server response");
-      }
+      const data = await res.json();
+      const checkId = data.checkId;
 
-      recordClientLog({
-        checkId,
-        type: "check_created",
-        agent: "client",
-        summary: `Created check ${checkId.slice(0, 8)}... (language: ${language})`,
-      });
+      // Save to local device history
+      try {
+        const raw = localStorage.getItem("ov_recent_checks");
+        const prev = raw ? JSON.parse(raw) : [];
+        const entry = {
+          id: checkId,
+          timestamp: new Date().toISOString(),
+          summary: company || url || upiId || (text ? text.slice(0, 40) : "New check"),
+          riskLevel: "unknown",
+        };
+        const updated = [entry, ...prev.filter((p) => p.id !== checkId)].slice(0, 10);
+        localStorage.setItem("ov_recent_checks", JSON.stringify(updated));
+      } catch {}
 
       router.push(`/check/${checkId}`);
     } catch (err) {
-      setError(err.message);
-      setLoading(false);
+      setError(err.message || "An unexpected error occurred during submission.");
+      setSubmitting(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: "740px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2rem" }}>
-      <div>
-        <h1 style={{ fontSize: "2rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-          Verify an Opportunity
+    <div className="container-narrow" style={{ padding: "2rem 1rem 4rem 1rem" }}>
+      {/* Title */}
+      <div style={{ marginBottom: "1.75rem" }}>
+        <h1 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+          New Opportunity Check
         </h1>
-        <p style={{ color: "var(--text-secondary)", marginTop: "0.35rem", fontSize: "0.98rem" }}>
-          Paste the scholarship, job offer, or message you received below to initiate automated multi-agent fact checking.
+        <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginTop: "4px" }}>
+          Paste an offer transcript, upload screenshot evidence, or submit payment handles for multi-agent forensic verification.
         </p>
       </div>
 
-      {/* Quick Test Samples */}
-      <div className="card-subtle" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)" }}>
-          Quick Demo: Test with a sample suspicious offer
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {SAMPLE_OFFERS.map((s) => (
+      {/* Preset Pills */}
+      <div className="panel-subtle" style={{ marginBottom: "1.75rem", padding: "1rem" }}>
+        <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
+          Try a Test Case / Demo Scenario:
+        </span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {SAMPLE_OFFERS.map((s, idx) => (
             <button
-              key={s.label}
+              key={idx}
               type="button"
-              className="btn-secondary btn-sm"
               onClick={() => applySample(s)}
+              className="btn btn-secondary btn-sm"
             >
               {s.label}
             </button>
@@ -143,199 +194,317 @@ export default function CheckPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Main Submission Form */}
+      <form onSubmit={handleSubmit} className="panel" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        {/* Primary Input 1: Message Text */}
+        <div className="form-group" style={{ margin: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <label htmlFor="check-text" className="form-label">
+              Offer Letter / Message Transcript:
+            </label>
+            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+              {text.length} / 10,000
+            </span>
+          </div>
+          <textarea
+            id="check-text"
+            rows={5}
+            maxLength={10000}
+            placeholder="Paste WhatsApp messages, email text, SMS notices, or job offer letters here..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="input-field"
+          />
+        </div>
+
+        {/* Primary Input 2: Screenshots (Vision Extraction) */}
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">
+            Upload Chat Screenshots / Offer PDFs (Up to 5 images, max 5 MB each):
+          </label>
+          <input
+            type="file"
+            id="check-files"
+            multiple
+            accept="image/png, image/jpeg, image/jpg"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <label htmlFor="check-files" className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+              📎 Choose images
+            </label>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+              {files.length > 0 ? `${files.length} image(s) selected` : "No files chosen (optional)"}
+            </span>
+          </div>
+
+          {/* Thumbnails */}
+          {files.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+              {files.map((file, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "4px 8px",
+                    backgroundColor: "var(--bg-muted)",
+                    border: "1px solid var(--border-primary)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "12px",
+                  }}
+                >
+                  <span style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: "0 4px", color: "var(--status-crimson)" }}
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Optional Other Context (userNotes) - Required by PRD */}
+        <div className="form-group" style={{ margin: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <label htmlFor="check-notes" className="form-label">
+              Other Relevant Information (Optional):
+            </label>
+            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+              {userNotes.length} / 5,000
+            </span>
+          </div>
+          <textarea
+            id="check-notes"
+            rows={2}
+            maxLength={5000}
+            placeholder="Add any extra context (e.g. 'They contacted me on Telegram first', 'Recruiter requested payment via personal QR code')..."
+            value={userNotes}
+            onChange={(e) => setUserNotes(e.target.value)}
+            className="input-field"
+          />
+        </div>
+
+        {/* Specific Identifier Fields (Accordion / Toggle) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="btn btn-ghost btn-sm"
+            style={{ paddingLeft: 0, color: "var(--text-secondary)", fontWeight: 600 }}
+          >
+            {showAdvanced ? "▾ Hide specific identifier fields" : "▸ Add specific link, UPI ID, handle, or company (Optional)"}
+          </button>
+
+          {showAdvanced && (
+            <div
+              style={{
+                marginTop: "0.75rem",
+                padding: "1rem",
+                backgroundColor: "var(--bg-subtle)",
+                border: "1px solid var(--border-primary)",
+                borderRadius: "var(--radius-sm)",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              <div>
+                <label htmlFor="field-url" className="form-label" style={{ fontSize: "12px" }}>
+                  Website / Offer Link:
+                </label>
+                <input
+                  type="url"
+                  id="field-url"
+                  placeholder="https://company-careers.example"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="field-upi" className="form-label" style={{ fontSize: "12px" }}>
+                  UPI ID / Payment VPA:
+                </label>
+                <input
+                  type="text"
+                  id="field-upi"
+                  placeholder="e.g. hr-desk@okhdfc"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="field-company" className="form-label" style={{ fontSize: "12px" }}>
+                  Claimed Company / Scheme:
+                </label>
+                <input
+                  type="text"
+                  id="field-company"
+                  placeholder="e.g. Google India / PMSS"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="field-handle" className="form-label" style={{ fontSize: "12px" }}>
+                  Social Handle / Manager Contact:
+                </label>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <select
+                    id="field-platform"
+                    value={handlePlatform}
+                    onChange={(e) => setHandlePlatform(e.target.value)}
+                    className="input-field"
+                    style={{ width: "95px" }}
+                  >
+                    <option value="">Platform</option>
+                    {HANDLE_PLATFORMS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    id="field-handle"
+                    placeholder="@recruiter_jobs"
+                    value={handle}
+                    onChange={(e) => setHandle(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="field-phone" className="form-label" style={{ fontSize: "12px" }}>
+                  Recruiter Phone Number:
+                </label>
+                <input
+                  type="tel"
+                  id="field-phone"
+                  placeholder="+91 98765 43210"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="field-youtube" className="form-label" style={{ fontSize: "12px" }}>
+                  YouTube Video Link (Task gig check):
+                </label>
+                <input
+                  type="url"
+                  id="field-youtube"
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Report Language Preference */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <label htmlFor="pref-lang" className="form-label" style={{ fontSize: "13px", margin: 0 }}>
+            Preferred Report Language:
+          </label>
+          <select
+            id="pref-lang"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="input-field"
+            style={{ width: "auto" }}
+          >
+            <option value="en">English (default)</option>
+            <option value="hi">Hindi (हिंदी)</option>
+          </select>
+        </div>
+
+        {/* Mandatory Consent Checkbox (PRD §5) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            padding: "10px 12px",
+            backgroundColor: "var(--bg-subtle)",
+            border: "1px solid var(--border-primary)",
+            borderRadius: "var(--radius-sm)",
+          }}
+        >
+          <input
+            type="checkbox"
+            id="consent-check"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            style={{
+              marginTop: "3px",
+              cursor: "pointer",
+              width: "15px",
+              height: "15px",
+              accentColor: "var(--accent-primary)",
+            }}
+          />
+          <label htmlFor="consent-check" style={{ fontSize: "13px", color: "var(--text-primary)", cursor: "pointer", lineHeight: 1.45 }}>
+            <strong>Consent &amp; Safety Acknowledgement:</strong> I understand that this tool performs an automated risk assessment based on publicly available data, not a legal verdict. No screenshot images or user chats are permanently stored.
+          </label>
+        </div>
+
+        {/* Error Alert */}
         {error && (
           <div
             style={{
-              padding: "0.8rem 1rem",
-              backgroundColor: "var(--risk-high-bg)",
-              color: "var(--risk-high)",
-              border: "1px solid var(--risk-high-border)",
+              padding: "10px 12px",
+              backgroundColor: "var(--status-crimson-bg)",
+              border: "1px solid var(--status-crimson-border)",
+              color: "var(--status-crimson-text)",
               borderRadius: "var(--radius-sm)",
-              fontSize: "0.9rem",
+              fontSize: "13px",
               fontWeight: 500,
             }}
+            role="alert"
           >
             {error}
           </div>
         )}
 
-        {/* Message Text Input */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <label htmlFor="offer-text" style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-            Offer message or details:
-          </label>
-          <textarea
-            id="offer-text"
-            className="input-textarea"
-            placeholder="Paste the WhatsApp message, job email, SMS or Telegram invitation here..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-        </div>
-
-        {/* Screenshot Upload */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <label htmlFor="offer-file" style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-            Screenshot or document image (optional):
-          </label>
-          <input
-            id="offer-file"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="input-text"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                setSelectedFile(e.target.files[0]);
-              } else {
-                setSelectedFile(null);
-              }
-            }}
-          />
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-            PNG, JPEG, WebP up to 5MB. In compliance with DPDP Act, images are automatically deleted immediately after extraction.
-          </span>
-        </div>
-
-        {/* Toggle Additional Fields */}
-        <div>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
-          >
-            <span>{showAdvanced ? "▲ Hide specific identifiers" : "▼ Add specific identifiers (UPI, URL, Company, Phone)"}</span>
-          </button>
-        </div>
-
-        {showAdvanced && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "1rem",
-              padding: "1rem",
-              backgroundColor: "var(--bg-card-subtle)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-url" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                Website or Link URL:
-              </label>
-              <input
-                id="field-url"
-                type="text"
-                placeholder="https://..."
-                className="input-text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-upi" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                UPI ID (VPA):
-              </label>
-              <input
-                id="field-upi"
-                type="text"
-                placeholder="name@okhdfcbank"
-                className="input-text"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-company" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                Claimed Company:
-              </label>
-              <input
-                id="field-company"
-                type="text"
-                placeholder="e.g. Infosys, TCS"
-                className="input-text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-handle" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                Telegram / Instagram Handle:
-              </label>
-              <input
-                id="field-handle"
-                type="text"
-                placeholder="@username"
-                className="input-text"
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-phone" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                Contact Phone:
-              </label>
-              <input
-                id="field-phone"
-                type="text"
-                placeholder="+91..."
-                className="input-text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label htmlFor="field-language" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                Report Language:
-              </label>
-              <select
-                id="field-language"
-                className="input-select"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-              >
-                <option value="en">English</option>
-                <option value="hi">हिंदी (Hindi)</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Consent Checkbox (Strictly required per PRD) */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginTop: "0.5rem" }}>
-          <input
-            id="consent-checkbox"
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            style={{ marginTop: "0.25rem", cursor: "pointer", width: "16px", height: "16px" }}
-          />
-          <label htmlFor="consent-checkbox" style={{ fontSize: "0.88rem", color: "var(--text-secondary)", cursor: "pointer" }}>
-            I understand that this tool generates an automated risk assessment based on publicly verifiable evidence. It is intended for student guidance and does not constitute a legal verdict.
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+        {/* Submit CTA */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid var(--border-divider)", paddingTop: "1rem" }}>
           <button
             type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{ padding: "0.75rem 1.75rem" }}
+            disabled={submitting}
+            className="btn btn-primary"
+            style={{ padding: "10px 24px", fontSize: "14px", fontWeight: 600 }}
           >
-            {loading ? (
+            {submitting ? (
               <>
                 <span className="spinner" />
-                <span>Starting Investigation...</span>
+                <span>Extracting details...</span>
               </>
             ) : (
-              <span>Start Investigation →</span>
+              <>
+                <span>Submit and Review Extraction</span>
+                <span aria-hidden="true">→</span>
+              </>
             )}
           </button>
         </div>

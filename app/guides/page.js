@@ -6,180 +6,182 @@ import { GUIDES_CONTENT } from "../../lib/guides/content.js";
 
 export default function GuidesPage() {
   const [selectedType, setSelectedType] = useState(GUIDES_CONTENT[0]?.type || "scholarship_scam");
+  const [search, setSearch] = useState("");
 
-  const currentGuide = GUIDES_CONTENT.find((g) => g.type === selectedType) || GUIDES_CONTENT[0];
+  const filteredGuides = GUIDES_CONTENT.filter((g) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return g.title.toLowerCase().includes(q) || g.summary.toLowerCase().includes(q);
+  });
+
+  const activeGuide = GUIDES_CONTENT.find((g) => g.type === selectedType) || GUIDES_CONTENT[0];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-      <div>
-        <h1 style={{ fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-          Student Scam Awareness & Guides
+    <div className="container-wide" style={{ padding: "2rem 1rem 4rem 1rem" }}>
+      {/* Title & Search Header */}
+      <div style={{ marginBottom: "2rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.5rem" }}>
+          <span className="status-dot emerald" aria-hidden="true" />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", textTransform: "uppercase", color: "var(--text-secondary)", letterSpacing: "0.05em" }}>
+            Student Security Intelligence · 6 Archetypes
+          </span>
+        </div>
+        <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+          Scam Awareness &amp; Verification Guides
         </h1>
-        <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem", fontSize: "1.05rem", maxWidth: "65ch" }}>
-          Authoritative, evidence-backed breakdowns of the 6 primary scam patterns targeting Indian students and job seekers.
+        <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginTop: "4px", maxWidth: "70ch" }}>
+          Evidence-backed breakdowns of fraudulent opportunities targeting college students and job seekers across India.
         </p>
+
+        {/* Search Bar */}
+        <div style={{ marginTop: "1rem", maxWidth: "480px" }}>
+          <input
+            type="search"
+            placeholder="Search scam types, red flags, or keywords..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-field"
+            aria-label="Search guides"
+          />
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-        {/* Guides Selector Sidebar / Tab Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Select Pattern
+      {/* 2-Column Desktop Layout (Selector left, active guide right) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
+        {/* Left Column: Archetypes List */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.04em" }}>
+            Select Pattern ({filteredGuides.length}):
           </span>
-          {GUIDES_CONTENT.map((g) => {
+
+          {filteredGuides.map((g) => {
             const isSelected = g.type === selectedType;
+
             return (
               <div
                 key={g.type}
-                className="card"
+                className="panel"
                 style={{
-                  textAlign: "left",
                   padding: "1rem",
-                  backgroundColor: isSelected ? "var(--bg-card-subtle)" : "var(--bg-card)",
-                  borderColor: isSelected ? "var(--accent-primary)" : "var(--border-subtle)",
-                  borderWidth: isSelected ? "2px" : "1px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.4rem",
+                  cursor: "pointer",
+                  backgroundColor: isSelected ? "var(--bg-subtle)" : "var(--bg-surface)",
+                  borderLeft: isSelected ? "3px solid var(--accent-primary)" : "1px solid var(--border-primary)",
+                  transition: "all 120ms ease",
                 }}
+                onClick={() => setSelectedType(g.type)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedType(g.type);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
               >
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(g.type)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    textAlign: "left",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.25rem",
-                  }}
-                >
-                  <strong style={{ fontSize: "0.98rem", color: isSelected ? "var(--accent-primary)" : "var(--text-primary)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
                     {g.title}
-                  </strong>
-                  <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                    {g.summary}
+                  </h3>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-muted)" }}>
+                    #{g.type.slice(0, 4)}
                   </span>
-                </button>
-                <Link
-                  href={`/guides/${g.type}`}
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "var(--accent-primary, #2563eb)",
-                    textDecoration: "underline",
-                    alignSelf: "flex-start",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  Open full guide page →
-                </Link>
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.45 }}>
+                  {g.summary}
+                </p>
+                <div style={{ marginTop: "8px", display: "flex", justifyContent: "flex-end" }}>
+                  <Link
+                    href={`/guides/${g.type}`}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: "11px", padding: "2px 6px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Dedicated page →
+                  </Link>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Selected Guide Detail View */}
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div>
-            <div style={{ display: "inline-block", fontSize: "0.8rem", color: "var(--accent-primary)", fontWeight: 600, marginBottom: "0.3rem" }}>
-              GUIDE ARCHETYPE: {currentGuide.type.toUpperCase().replace(/_/g, " ")}
+        {/* Right Column: Detailed Guide View */}
+        {activeGuide && (
+          <div className="panel" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div className="panel-header" style={{ margin: 0, paddingBottom: "1rem" }}>
+              <div>
+                <span className="badge badge-medium" style={{ marginBottom: "6px" }}>
+                  {activeGuide.type.replace("_", " ")}
+                </span>
+                <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
+                  {activeGuide.title}
+                </h2>
+              </div>
+              <Link href={`/guides/${activeGuide.type}`} className="btn btn-secondary btn-sm">
+                Full View ↗
+              </Link>
             </div>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700 }}>{currentGuide.title}</h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginTop: "0.35rem", lineHeight: 1.5 }}>
-              {currentGuide.summary}
-            </p>
-          </div>
 
-          {/* How It Operates */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>How this scam operates:</h3>
-            <ul style={{ paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.92rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              {currentGuide.howItWorks.map((step, idx) => (
-                <li key={idx}>{step}</li>
-              ))}
-            </ul>
-          </div>
+            {/* How it Works */}
+            <div>
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+                How the Scam Operates:
+              </h3>
+              <ol style={{ paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+                {activeGuide.howItWorks.map((step, idx) => (
+                  <li key={idx}>{step}</li>
+                ))}
+              </ol>
+            </div>
 
-          {/* Key Red Flags */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--risk-high)" }}>
-              Key Red Flags to Watch For:
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-              {currentGuide.redFlags.map((flag, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "0.6rem",
-                    padding: "0.65rem 0.85rem",
-                    backgroundColor: "var(--bg-card-subtle)",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "0.9rem",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <span style={{ color: "var(--risk-high)", fontWeight: 700 }}>✕</span>
-                  <span>{flag}</span>
-                </div>
-              ))}
+            {/* Red Flags */}
+            <div style={{ padding: "1rem", backgroundColor: "var(--status-crimson-bg)", border: "1px solid var(--status-crimson-border)", borderRadius: "var(--radius-sm)" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--status-crimson-text)", marginBottom: "8px" }}>
+                🚩 High-Risk Red Flags:
+              </h3>
+              <ul style={{ paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px", color: "var(--text-primary)", lineHeight: 1.5 }}>
+                {activeGuide.redFlags.map((flag, idx) => (
+                  <li key={idx}>{flag}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* What to Verify Next */}
+            <div>
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+                What to Verify Before Acting:
+              </h3>
+              <ul style={{ paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+                {activeGuide.whatToVerify.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Already Paid Emergency Steps */}
+            <div style={{ padding: "1rem", backgroundColor: "var(--bg-subtle)", borderLeft: "3px solid var(--status-amber)", borderRadius: "var(--radius-sm)" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "6px" }}>
+                Already Transferred Money or Shared Bank Details?
+              </h3>
+              <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "8px" }}>
+                Immediately contact your bank to freeze transactions and call the <strong>National Cyber Crime Helpline at 1930</strong> (within 2 hours for maximum recovery chance).
+              </p>
+              <Link href="/report-fraud" className="btn btn-secondary btn-sm">
+                Open Emergency Action Guide →
+              </Link>
+            </div>
+
+            {/* Check CTA */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-divider)", paddingTop: "1rem" }}>
+              <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                Received an offer matching this pattern?
+              </span>
+              <Link href="/check" className="btn btn-primary">
+                Verify this offer now →
+              </Link>
             </div>
           </div>
-
-          {/* What to Verify */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--accent-primary)" }}>
-              What to Verify Before Doing Anything:
-            </h3>
-            <ul style={{ paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.92rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              {currentGuide.whatToVerify.map((verify, idx) => (
-                <li key={idx}>{verify}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* What to Do */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Immediate Safety Rules:</h3>
-            <ul style={{ paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.92rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              {currentGuide.whatToDo.map((todo, idx) => (
-                <li key={idx}><strong>Rule:</strong> {todo}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* If already paid */}
-          <div
-            style={{
-              padding: "1rem 1.15rem",
-              backgroundColor: "var(--risk-high-bg)",
-              border: "1px solid var(--risk-high-border)",
-              borderRadius: "var(--radius-sm)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-            }}
-          >
-            <strong style={{ color: "var(--risk-high)", fontSize: "0.98rem" }}>
-              Already Paid? Take Immediate Action:
-            </strong>
-            <ul style={{ paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.88rem", lineHeight: 1.5 }}>
-              {currentGuide.alreadyPaid.map((step, idx) => (
-                <li key={idx}>{step}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Link href="/check" className="btn-primary" style={{ padding: "0.65rem 1.4rem" }}>
-              Check a Suspicious Offer Now →
-            </Link>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,258 +1,255 @@
 import Link from "next/link";
+import RecentChecks from "../components/RecentChecks.js";
 
 const SCAM_ARCHETYPES = [
   {
+    type: "scholarship_scam",
     title: "Fake Scholarship",
-    pattern: "WhatsApp or SMS links promising selection for government schemes or awards.",
-    signals: "Registration fees, non-.gov.in domains, unlisted schemes, or APK download links.",
+    badge: "Government / NGO",
+    pattern: "WhatsApp or SMS circulars claiming eligibility for high scholarships under central or state schemes.",
+    signals: "Demands processing/registration fees, non-.gov.in domains, unlisted schemes, or APK download links.",
     icon: "🎓",
   },
   {
+    type: "job_internship_scam",
     title: "Fake Internship or Job",
-    pattern: "Direct offer letters without an interview, impersonating well-known tech firms.",
-    signals: "Security/laptop deposits, free Gmail/Outlook HR addresses, personal UPI IDs.",
+    badge: "Recruitment / HR",
+    pattern: "Direct offer letters without technical interviews, impersonating reputed technology corporations or MNCs.",
+    signals: "Security/laptop deposits, free Gmail/Outlook HR addresses, personal UPI IDs, or copied offer templates.",
     icon: "💼",
   },
   {
+    type: "task_gig_scam",
     title: "Task & Part-Time Gigs",
-    pattern: "Telegram work-from-home gigs promising ₹3,000–₹5,000/day for liking videos or rating maps.",
-    signals: "Small initial payout to build trust, followed by mandatory prepaid deposit tasks.",
+    badge: "Telegram / Payout",
+    pattern: "Work-from-home offers promising ₹3,000–₹5,000/day for liking videos, rating map locations, or reviewing hotels.",
+    signals: "Small initial payout to establish false trust, followed by mandatory prepaid deposit tasks to release funds.",
     icon: "📱",
   },
   {
+    type: "money_mule_scam",
     title: "Money Mule Offer",
-    pattern: "Requests to 'rent out your bank account' or receive transfers for high commissions.",
-    signals: "Demands for ATM cards, OTPs, or bank netbanking logins; leads to criminal liability.",
+    badge: "Bank Account / Crime",
+    pattern: "Requests to 'rent out your bank account' or receive third-party funds in exchange for high commissions.",
+    signals: "Requests for ATM cards, netbanking credentials, OTP sharing; creates severe personal criminal liability.",
     icon: "🏦",
   },
   {
+    type: "competition_certificate_scam",
     title: "Fake Competition & Certificates",
-    pattern: "Contests charging entry fees and offering instant verified prestige certificates.",
-    signals: "Borrowed logos, unverifiable organizers, sold certificates with no real judging.",
+    badge: "Contest / Award",
+    pattern: "Hackathons, essay contests, or case studies charging entry fees and promising instant verified certificates.",
+    signals: "Borrowed enterprise logos, unverifiable organizers, pay-to-receive prestige awards with no evaluation.",
     icon: "🏆",
   },
   {
+    type: "overseas_admission_scam",
     title: "Overseas Study & Visa Agent",
-    pattern: "Agents guaranteeing foreign university admission or student visa bypasses.",
-    signals: "Large cash/crypto deposits to personal accounts and forged admission letters.",
+    badge: "Study Abroad / Visa",
+    pattern: "Unlicensed agents guaranteeing direct foreign university admission or student visa bypasses without IELTS.",
+    signals: "Large upfront cash/crypto deposits to personal accounts, forged admission letters, refusal to sign contracts.",
     icon: "✈️",
   },
 ];
 
+export const metadata = {
+  title: "Verifier | Forensic Multi-Agent Opportunity Authenticity",
+  description:
+    "Deterministic multi-agent verification workspace for institutional authenticity, scholarship validation, and job offer fraud triage.",
+};
+
 export default function HomePage() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "3.5rem" }}>
-      {/* Hero Section */}
-      <section
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.25rem",
-          alignItems: "flex-start",
-          maxWidth: "800px",
-          paddingTop: "1rem",
-        }}
-      >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.3rem 0.8rem",
-            backgroundColor: "var(--accent-light)",
-            color: "var(--accent-primary)",
-            borderRadius: "var(--radius-full)",
-            fontSize: "0.85rem",
-            fontWeight: 600,
-          }}
-        >
-          <span>Evidence-Backed Verification for Students</span>
+    <div className="container-wide" style={{ padding: "2rem 1rem 4rem 1rem" }}>
+      {/* Hero Header */}
+      <section style={{ marginBottom: "2.5rem" }} aria-labelledby="hero-title">
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.75rem" }}>
+          <span className="status-dot emerald" aria-hidden="true" />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "var(--text-secondary)", letterSpacing: "0.05em" }}>
+            Forensic Runtime Engine · Cluster Alpha Online
+          </span>
         </div>
 
         <h1
+          id="hero-title"
           style={{
-            fontSize: "clamp(2.2rem, 4.5vw, 3.25rem)",
-            fontWeight: 800,
-            lineHeight: 1.15,
+            fontSize: "clamp(28px, 4vw, 42px)",
+            fontWeight: 700,
             letterSpacing: "-0.03em",
+            color: "var(--text-primary)",
+            lineHeight: 1.15,
+            marginBottom: "0.75rem",
           }}
         >
-          Check suspicious student opportunities before you pay or share details.
+          Verify Scholarships, Jobs &amp; Student Offers
         </h1>
 
         <p
           style={{
-            fontSize: "1.12rem",
+            fontSize: "15px",
             color: "var(--text-secondary)",
+            maxWidth: "75ch",
             lineHeight: 1.6,
-            maxWidth: "68ch",
           }}
         >
-          Received a job offer asking for a training deposit? A Telegram gig paying for YouTube likes?
-          A scholarship claiming government sponsorship on a strange website? We run multi-agent
-          investigations across official domains, UPI handles, and scam registries to deliver an
-          evidence-backed risk report.
+          Deterministic multi-agent verification workspace. Cross-references suspicious WhatsApp messages, offer letters, UPI IDs, and domain records against authentic government gazettes, corporate registries, and threat databases.
         </p>
+      </section>
 
-        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-          <Link href="/check" className="btn-primary" style={{ padding: "0.8rem 1.6rem", fontSize: "1rem" }}>
-            Check an Offer Now →
+      {/* Quick Action / Triage Guidance Banner */}
+      <section
+        className="panel-subtle"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "1.25rem",
+          marginBottom: "2.5rem",
+          borderLeft: "4px solid var(--accent-primary)",
+        }}
+        aria-label="Quick Check Opportunity"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "700px" }}>
+          <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-primary)" }}>
+            Received a suspicious internship letter, task offer, or scholarship circular?
+          </span>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+            Paste message text, upload offer screenshots, or enter payment identifiers. Our 6 specialist agents check facts in parallel and produce an evidence-backed risk assessment with a next-steps checklist.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          <Link href="/check" className="btn btn-primary" style={{ padding: "9px 18px", fontSize: "14px", fontWeight: 600 }}>
+            <span>Start new check</span>
+            <span aria-hidden="true">→</span>
           </Link>
-          <a href="#how-it-works" className="btn-secondary" style={{ padding: "0.8rem 1.4rem", fontSize: "1rem" }}>
-            How Verification Works
-          </a>
+          <Link href="/guides" className="btn btn-secondary" style={{ padding: "9px 16px", fontSize: "14px" }}>
+            Explore guides
+          </Link>
         </div>
       </section>
 
-      {/* 3 Steps: Grounded and Direct */}
-      <section id="how-it-works" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.65rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            How it works in 3 transparent steps
-          </h2>
-          <p style={{ color: "var(--text-secondary)", marginTop: "0.25rem", fontSize: "0.95rem" }}>
-            Deterministic code and specialist agents establish facts. The LLM only summarizes and explains.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "1.25rem",
-          }}
-        >
-          <div className="card">
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: 800,
-                color: "var(--accent-primary)",
-                marginBottom: "0.5rem",
-              }}
-            >
-              01
+      {/* Architecture & Telemetry Highlights (4 Metrics) */}
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "1rem",
+          marginBottom: "2.5rem",
+        }}
+        aria-label="Engine Specifications"
+      >
+        {[
+          { label: "Specialist Agents", val: "6 Agents", desc: "Parallel forensic inquiry" },
+          { label: "Pipeline Depth", val: "2 Rounds", desc: "Autonomous entity discovery" },
+          { label: "Scoring Principle", val: "Pure Code", desc: "Zero LLM risk hallucination" },
+          { label: "Privacy Standard", val: "DPDP 2023", desc: "No permanent PII retention" },
+        ].map((stat, idx) => (
+          <div key={idx} className="panel" style={{ padding: "1rem" }}>
+            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {stat.label}
+            </span>
+            <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>
+              {stat.val}
             </div>
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 600, marginBottom: "0.35rem" }}>
-              Submit offer signals
-            </h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.92rem", lineHeight: 1.5 }}>
-              Paste the offer message, upload chat screenshots, or provide the website link, company name, and UPI ID.
-            </p>
-          </div>
-
-          <div className="card">
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: 800,
-                color: "var(--accent-primary)",
-                marginBottom: "0.5rem",
-              }}
-            >
-              02
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+              {stat.desc}
             </div>
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 600, marginBottom: "0.35rem" }}>
-              Multi-agent fact check
-            </h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.92rem", lineHeight: 1.5 }}>
-              Specialist agents inspect domain age, typosquatting, official .gov.in status, UPI patterns, and scam database hits in parallel.
-            </p>
           </div>
-
-          <div className="card">
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: 800,
-                color: "var(--accent-primary)",
-                marginBottom: "0.5rem",
-              }}
-            >
-              03
-            </div>
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 600, marginBottom: "0.35rem" }}>
-              Evidence report & checklist
-            </h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.92rem", lineHeight: 1.5 }}>
-              Get an objective risk assessment (Low, Medium, High, or Cannot Verify) with verifiable quotes, source links, and next verification steps.
-            </p>
-          </div>
-        </div>
+        ))}
       </section>
 
-      {/* Scam Archetypes Grid */}
-      <section style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.65rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            Common patterns targeted at students
-          </h2>
-          <p style={{ color: "var(--text-secondary)", marginTop: "0.25rem", fontSize: "0.95rem" }}>
-            The 6 primary patterns analyzed by our verification engine.
-          </p>
+      {/* 6 Scam Archetypes Grid */}
+      <section aria-labelledby="archetypes-heading" style={{ marginBottom: "2.5rem" }}>
+        <div className="panel-header" style={{ marginBottom: "1.25rem" }}>
+          <div>
+            <h2 id="archetypes-heading" style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-primary)" }}>
+              The 6 Primary Student Scam Archetypes
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "2px" }}>
+              Recognize the predatory patterns targeting college students, job seekers, and parents.
+            </p>
+          </div>
+          <Link href="/guides" className="btn btn-secondary btn-sm">
+            View all guides →
+          </Link>
         </div>
 
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: "1.25rem",
+            gap: "1rem",
           }}
         >
           {SCAM_ARCHETYPES.map((scam) => (
             <div
-              key={scam.title}
-              className="card card-interactive"
-              style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}
+              key={scam.type}
+              className="panel"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                gap: "1rem",
+              }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <span style={{ fontSize: "1.35rem" }} role="img" aria-label={scam.title}>
-                  {scam.icon}
-                </span>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: 600 }}>{scam.title}</h3>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                  <span style={{ fontSize: "22px" }} aria-hidden="true">{scam.icon}</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      padding: "2px 6px",
+                      backgroundColor: "var(--bg-muted)",
+                      borderRadius: "var(--radius-xs)",
+                      color: "var(--text-secondary)",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {scam.badge}
+                  </span>
+                </div>
+
+                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
+                  {scam.title}
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "0.5rem" }}>
+                  {scam.pattern}
+                </p>
+
+                <div
+                  style={{
+                    padding: "6px 8px",
+                    backgroundColor: "var(--bg-subtle)",
+                    borderLeft: "2px solid var(--status-crimson)",
+                    borderRadius: "var(--radius-xs)",
+                    fontSize: "12px",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <strong style={{ color: "var(--status-crimson-text)" }}>Red Flags:</strong> {scam.signals}
+                </div>
               </div>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                {scam.pattern}
-              </p>
-              <div
-                style={{
-                  marginTop: "auto",
-                  paddingTop: "0.65rem",
-                  borderTop: "1px solid var(--border-subtle)",
-                  fontSize: "0.82rem",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <strong style={{ color: "var(--text-primary)" }}>Warning signs:</strong> {scam.signals}
+
+              <div style={{ paddingTop: "0.5rem", borderTop: "1px solid var(--border-divider)" }}>
+                <Link
+                  href={`/guides/${scam.type}`}
+                  className="btn btn-ghost btn-sm"
+                  style={{ width: "100%", justifyContent: "space-between" }}
+                >
+                  <span>Read verification guide</span>
+                  <span aria-hidden="true">→</span>
+                </Link>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Safety CTA */}
-      <section
-        className="card"
-        style={{
-          backgroundColor: "var(--bg-card-subtle)",
-          padding: "2.5rem 2rem",
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "1rem",
-        }}
-      >
-        <h2 style={{ fontSize: "1.75rem", fontWeight: 700 }}>
-          Received an offer that feels questionable?
-        </h2>
-        <p style={{ maxWidth: "600px", color: "var(--text-secondary)", fontSize: "0.98rem" }}>
-          Never pay upfront registration, security deposits, or uniform fees. Check an offer before you act in seconds.
-        </p>
-        <Link href="/check" className="btn-primary" style={{ padding: "0.75rem 1.5rem" }}>
-          Verify an Opportunity Now →
-        </Link>
-      </section>
+      {/* Recent Checks from Local Device */}
+      <RecentChecks />
     </div>
   );
 }
