@@ -1,0 +1,239 @@
+{
+  "meta": {
+    "date": "2026-10-29T05:48:49.276Z",
+    "mode": "fixtures",
+    "gitCommit": "18cb5125dbd631b4b9a73eb67ddf99bee6333876",
+    "model": "mock-model",
+    "scoringConfigHash": "sha256:default-rules-v1",
+    "datasetPath": "data/eval/sample-cases.json",
+    "datasetHash": "6f2cb401e52420dfc427fd6496c749ab59fa16ca7af6577be95c983dfba0869a",
+    "partial": false
+  },
+  "datasetSummary": {
+    "total": 14,
+    "byLevel": {
+      "low": 2,
+      "medium": 2,
+      "high": 8,
+      "cannot_verify": 2
+    },
+    "byScamType": {
+      "scholarship": 4,
+      "internship": 3,
+      "task_job": 2,
+      "mule_offer": 1,
+      "competition": 2,
+      "overseas_agent": 1,
+      "unknown": 1
+    },
+    "byLanguage": {
+      "en": 13,
+      "hi": 1
+    },
+    "byTextLanguage": {
+      "en": 0,
+      "hi": 0,
+      "hinglish": 0,
+      "other": 0
+    },
+    "byProvenance": {
+      "synthetic": 14,
+      "real_public": 0,
+      "paraphrased": 0
+    },
+    "disagreementsCount": 0,
+    "qualifyingCount": 0
+  },
+  "metrics": {
+    "totalCases": 3,
+    "agreement": 1,
+    "confusionMatrix": {
+      "low": {
+        "low": 1,
+        "medium": 0,
+        "high": 0,
+        "cannot_verify": 0
+      },
+      "medium": {
+        "low": 0,
+        "medium": 0,
+        "high": 0,
+        "cannot_verify": 0
+      },
+      "high": {
+        "low": 0,
+        "medium": 0,
+        "high": 1,
+        "cannot_verify": 0
+      },
+      "cannot_verify": {
+        "low": 0,
+        "medium": 0,
+        "high": 0,
+        "cannot_verify": 1
+      }
+    },
+    "correct": 3,
+    "dangerousMisses": 0,
+    "dangerousMissesHighToLow": 0,
+    "dangerousMissesElevatedToLow": 0,
+    "falseAlarms": 0,
+    "falseAlarmsLowToHigh": 0,
+    "overCautious": 0,
+    "unhelpfulAbstention": 0,
+    "missedAbstention": 0,
+    "otherMisclassifications": 0,
+    "cannotVerifyRate": 0.333,
+    "couldNotCheckShare": 0,
+    "perScamType": {
+      "scholarship": {
+        "count": 1,
+        "agreement": 1,
+        "dangerousMisses": 0,
+        "falseAlarms": 0
+      },
+      "unknown": {
+        "count": 1,
+        "agreement": 1,
+        "dangerousMisses": 0,
+        "falseAlarms": 0
+      },
+      "task_job": {
+        "count": 1,
+        "agreement": 1,
+        "dangerousMisses": 0,
+        "falseAlarms": 0
+      }
+    },
+    "flagAgreementRates": {
+      "graph_match": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "scholarship_fee_demand": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "personal_payment_id": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "domain_new": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "urgency_pressure": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "classifier_high": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "off_platform_contact": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      }
+    },
+    "perFlagPrecision": {
+      "graph_match": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "scholarship_fee_demand": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "personal_payment_id": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "domain_new": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "urgency_pressure": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "classifier_high": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      },
+      "off_platform_contact": {
+        "count": 1,
+        "agreementRate": 1,
+        "precision": 1,
+        "note": "how often the final level matched the label in cases where this flag fired; not the accuracy of the flag"
+      }
+    },
+    "perAgentStatusRates": {},
+    "confidenceCalibration": {
+      "low": {
+        "count": 1,
+        "agreement": 1
+      },
+      "medium": {
+        "count": 0,
+        "agreement": 0
+      },
+      "high": {
+        "count": 2,
+        "agreement": 1
+      }
+    },
+    "latencies": {
+      "min": 10,
+      "p50": 23,
+      "p90": 45,
+      "p95": 48,
+      "p99": 50,
+      "max": 51,
+      "mean": 28
+    },
+    "callsPerCase": {
+      "meanLlmCalls": 0,
+      "meanSearchCalls": 0,
+      "maxLlmCalls": 0,
+      "maxSearchCalls": 0
+    },
+    "wilsonInterval": {
+      "low": 0.439,
+      "high": 1,
+      "p": 1
+    },
+    "bootstrapInterval": {
+      "low": 0.439,
+      "high": 1,
+      "p": 1
+    }
+  },
+  "failures": [],
+  "classifierMetrics": null
+}

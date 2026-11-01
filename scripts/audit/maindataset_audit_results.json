@@ -1,0 +1,581 @@
+{
+  "dataset_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/maindataset.csv",
+  "total_rows": 600,
+  "fieldnames": [
+    "id",
+    "text",
+    "label",
+    "scam_type",
+    "language",
+    "channel",
+    "source_type",
+    "source_url",
+    "source_date",
+    "license_note",
+    "group_id",
+    "labeler_1",
+    "labeler_2",
+    "notes"
+  ],
+  "col_missing": {
+    "source_url": 600,
+    "labeler_2": 600
+  },
+  "label_counts": {
+    "suspicious": 300,
+    "benign": 300
+  },
+  "scam_type_counts": {
+    "scholarship": 50,
+    "internship": 50,
+    "task_job": 50,
+    "mule_offer": 50,
+    "competition": 50,
+    "overseas_agent": 50
+  },
+  "under_50_scam_types": [],
+  "channel_counts": {
+    "sms": 100,
+    "email": 100,
+    "web": 100,
+    "whatsapp": 100,
+    "telegram": 100,
+    "instagram": 100
+  },
+  "language_col_counts": {
+    "en": 330,
+    "hinglish": 180,
+    "hi": 90
+  },
+  "char_len_stats": {
+    "min": 82,
+    "max": 515,
+    "mean": 198.12166666666667,
+    "median": 165.0
+  },
+  "word_len_stats": {
+    "min": 12,
+    "max": 66,
+    "mean": 26.38,
+    "median": 22.0
+  },
+  "exact_duplicates": 0,
+  "normalized_duplicates": 0,
+  "near_duplicate_pairs_count": 0,
+  "near_duplicate_leaks_count": 0,
+  "total_groups": 180,
+  "leaked_groups_count": 83,
+  "total_pairs": 126,
+  "leaked_pairs_count": 36,
+  "test_metrics": {
+    "benign": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    },
+    "suspicious": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 120.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 120.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      60,
+      0
+    ],
+    [
+      0,
+      60
+    ]
+  ],
+  "cv_5fold_macro_f1_mean": 0.996666435169109,
+  "cv_5fold_macro_f1_std": 0.00408276643008515,
+  "cv_5fold_acc_mean": 0.9966666666666667,
+  "cv_5fold_acc_std": 0.004082482904638616,
+  "scam_type_perf": {
+    "competition": {
+      "count": 50,
+      "accuracy": 0.98,
+      "f1": 0.98989898989899
+    },
+    "internship": {
+      "count": 50,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "mule_offer": {
+      "count": 50,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "none": {
+      "count": 300,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "overseas_agent": {
+      "count": 50,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "scholarship": {
+      "count": 50,
+      "accuracy": 0.98,
+      "f1": 0.98989898989899
+    },
+    "task_job": {
+      "count": 50,
+      "accuracy": 1.0,
+      "f1": 1.0
+    }
+  },
+  "lang_perf": {
+    "en": {
+      "count": 330,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "hi": {
+      "count": 90,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "hinglish": {
+      "count": 180,
+      "accuracy": 0.9888888888888889,
+      "f1": 0.9888875169774047
+    }
+  },
+  "top_suspicious_features": [
+    [
+      "rs",
+      2.5934255860875237
+    ],
+    [
+      "fakebank",
+      2.128672585734365
+    ],
+    [
+      "000",
+      1.7188977631770692
+    ],
+    [
+      "transfer",
+      1.3446102692202209
+    ],
+    [
+      "to",
+      1.2965069949524022
+    ],
+    [
+      "daily",
+      1.158484251816146
+    ],
+    [
+      "candidate",
+      1.1344466229189198
+    ],
+    [
+      "task",
+      1.0313786108349678
+    ],
+    [
+      "login",
+      0.9954795745146818
+    ],
+    [
+      "fee rs",
+      0.9753181832828912
+    ],
+    [
+      "password",
+      0.9727086235266106
+    ],
+    [
+      "visa",
+      0.9449100741595082
+    ],
+    [
+      "\u0906\u0908",
+      0.9446565614118064
+    ],
+    [
+      "fakebank \u092a\u0930",
+      0.9446565614118064
+    ],
+    [
+      "your",
+      0.9357163479130891
+    ],
+    [
+      "liye",
+      0.9249823243472806
+    ],
+    [
+      "ke liye",
+      0.9249823243472806
+    ],
+    [
+      "\u0915\u0930\u0928",
+      0.9133769374308269
+    ],
+    [
+      "clearance",
+      0.8768745529418313
+    ],
+    [
+      "invalid",
+      0.8629138877581548
+    ]
+  ],
+  "top_benign_features": [
+    [
+      "the",
+      -1.467317253953266
+    ],
+    [
+      "\u0932\u092f",
+      -1.0540415539210262
+    ],
+    [
+      "notice",
+      -1.0348150429412795
+    ],
+    [
+      "office",
+      -0.9774466150010962
+    ],
+    [
+      "work study",
+      -0.8958305054861776
+    ],
+    [
+      "guidelines",
+      -0.89565238569708
+    ],
+    [
+      "department",
+      -0.8561462641491924
+    ],
+    [
+      "to the",
+      -0.8337460335605074
+    ],
+    [
+      "campus",
+      -0.824165714708206
+    ],
+    [
+      "students",
+      -0.814864417640554
+    ],
+    [
+      "example",
+      -0.8148465887609307
+    ],
+    [
+      "open",
+      -0.814337765176441
+    ],
+    [
+      "cell",
+      -0.7801474425889999
+    ],
+    [
+      "room",
+      -0.7724379393288973
+    ],
+    [
+      "academic",
+      -0.7606444669737603
+    ],
+    [
+      "hai",
+      -0.7123780129468351
+    ],
+    [
+      "library",
+      -0.7043639295798344
+    ],
+    [
+      "international",
+      -0.6968910765924506
+    ],
+    [
+      "report",
+      -0.6807790468451212
+    ],
+    [
+      "are",
+      -0.661903451739308
+    ]
+  ],
+  "privacy": {
+    "phone_count": 0,
+    "upi_count": 143,
+    "email_count": 0,
+    "pan_count": 0,
+    "aadhaar_count": 0
+  },
+  "cv_misclassified": [
+    {
+      "fold": 1,
+      "index": 11,
+      "id": "DATA-012",
+      "line": 13,
+      "text": "Student Opportunity Notice: All-India Student Aid Society dwara merit fellowship announce ho chuki hai. Selected awardees apna bank account passbook copy aur transaction PIN accounts@student-aid.example par email karein before 30 November. Required security authentication verify na karne par scholarship allotment cancel kar diya jayega.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob": [
+        0.528706898961682,
+        0.471293101038318
+      ],
+      "scam_type": "scholarship",
+      "language": "hinglish"
+    },
+    {
+      "fold": 3,
+      "index": 242,
+      "id": "DATA-243",
+      "line": 244,
+      "text": "Inter-Collegiate Coding Contest: Hackathon final stage registration details contest portal par Friday night tak register karein.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob": [
+        0.5665458535809633,
+        0.4334541464190367
+      ],
+      "scam_type": "competition",
+      "language": "hinglish"
+    }
+  ],
+  "test_misclassified": [],
+  "top_15_examples": [
+    {
+      "index": 11,
+      "id": "DATA-012",
+      "line": 13,
+      "text": "Student Opportunity Notice: All-India Student Aid Society dwara merit fellowship announce ho chuki hai. Selected awardees apna bank account passbook copy aur transaction PIN accounts@student-aid.example par email karein before 30 November. Required security authentication verify na karne par scholarship allotment cancel kar diya jayega.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob_suspicious": 0.471293101038318,
+      "prob_benign": 0.528706898961682,
+      "is_error": true,
+      "uncertainty": 0.028706898961681993,
+      "scam_type": "scholarship",
+      "language": "hinglish"
+    },
+    {
+      "index": 242,
+      "id": "DATA-243",
+      "line": 244,
+      "text": "Inter-Collegiate Coding Contest: Hackathon final stage registration details contest portal par Friday night tak register karein.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob_suspicious": 0.4334541464190367,
+      "prob_benign": 0.5665458535809633,
+      "is_error": true,
+      "uncertainty": 0.06654585358096332,
+      "scam_type": "competition",
+      "language": "hinglish"
+    },
+    {
+      "index": 368,
+      "id": "DATA-369",
+      "line": 370,
+      "text": "\u0915\u0949\u0928\u094d\u091f\u093f\u0928\u0947\u0902\u091f\u0932 \u091f\u0947\u0915\u094d\u0928\u094b\u0932\u0949\u091c\u0940 \u0938\u0949\u0932\u094d\u092f\u0942\u0936\u0902\u0938: \u0938\u093f\u0938\u094d\u091f\u092e\u094d\u0938 \u0907\u0902\u091c\u0940\u0928\u093f\u092f\u0930\u093f\u0902\u0917 \u0907\u0902\u091f\u0930\u094d\u0928\u0936\u093f\u092a \u0915\u0947 \u091a\u092f\u0928\u093f\u0924 \u091b\u093e\u0924\u094d\u0930 \u0905\u092a\u0928\u0940 \u0938\u094d\u0935\u0940\u0915\u0943\u0924\u093f https://continental-tech.example/join \u092a\u0930 27 \u0928\u0935\u0902\u092c\u0930 \u0924\u0915 \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902\u0964 \u0915\u094b\u0908 \u0936\u0941\u0932\u094d\u0915 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964 \u0905\u092a\u0928\u0940 \u092a\u094d\u0930\u0935\u093f\u0937\u094d\u091f\u093f \u0938\u092e\u092f \u0930\u0939\u0924\u0947 \u092a\u0942\u0930\u0940 \u0915\u0930\u0947\u0902\u0964",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.49892689606268015,
+      "prob_benign": 0.5010731039373199,
+      "is_error": false,
+      "uncertainty": 0.0010731039373198525,
+      "scam_type": "none",
+      "language": "hi"
+    },
+    {
+      "index": 31,
+      "id": "DATA-032",
+      "line": 33,
+      "text": "\u0930\u093e\u091c\u094d\u092f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u0932\u094d\u092f\u093e\u0923 \u092c\u094d\u092f\u0942\u0930\u094b: \u0928\u093f\u0903\u0936\u0941\u0932\u094d\u0915 \u0932\u0948\u092a\u091f\u0949\u092a \u092f\u094b\u091c\u0928\u093e \u0915\u0947 \u0932\u093f\u090f \u091a\u092f\u0928\u093f\u0924 \u091b\u093e\u0924\u094d\u0930 \u0915\u0942\u0930\u093f\u092f\u0930 \u0936\u0941\u0932\u094d\u0915 \u0930\u0941 950 \u0932\u093f\u0902\u0915 https://matric-aid.invalid/device \u092a\u0930 25 \u0928\u0935\u0902\u092c\u0930 \u0924\u0915 \u091c\u092e\u093e \u0915\u0930\u0947\u0902\u0964 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f 28 \u0928\u0935\u0902\u092c\u0930 \u0928\u093f\u0930\u094d\u0927\u093e\u0930\u093f\u0924 \u0939\u0948\u0964",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5079776514740318,
+      "prob_benign": 0.49202234852596816,
+      "is_error": false,
+      "uncertainty": 0.007977651474031844,
+      "scam_type": "scholarship",
+      "language": "hi"
+    },
+    {
+      "index": 123,
+      "id": "DATA-124",
+      "line": 125,
+      "text": "\u0905\u0915\u093e\u0926\u092e\u093f\u0915 \u091f\u093e\u0938\u094d\u0915 \u0930\u091c\u093f\u0938\u094d\u091f\u094d\u0930\u0940: \u0911\u0928\u0932\u093e\u0907\u0928 \u0921\u093e\u091f\u093e \u092e\u0942\u0932\u094d\u092f\u093e\u0902\u0915\u0928 \u0915\u093e\u0930\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u091a\u092f\u0928\u093f\u0924 \u091b\u093e\u0924\u094d\u0930 \u0905\u092a\u0928\u093e \u091b\u093e\u0924\u094d\u0930 \u092a\u094b\u0930\u094d\u091f\u0932 \u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u0932\u093f\u0902\u0915 https://task-registry.test/eval \u092a\u0930 26 \u0928\u0935\u0902\u092c\u0930 \u0924\u0915 \u0905\u0935\u0936\u094d\u092f \u0938\u092c\u092e\u093f\u091f \u0915\u0930\u0947\u0902\u0964 \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0935\u093f\u0902\u0921\u094b \u0906\u091c \u0936\u093e\u092e 5 \u092c\u091c\u0947 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u090f\u0917\u0940\u0964",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5103508807815732,
+      "prob_benign": 0.4896491192184268,
+      "is_error": false,
+      "uncertainty": 0.010350880781573202,
+      "scam_type": "task_job",
+      "language": "hi"
+    },
+    {
+      "index": 285,
+      "id": "DATA-286",
+      "line": 287,
+      "text": "\u0915\u0949\u0932\u0947\u091c\u093f\u090f\u091f \u0917\u094d\u0932\u094b\u092c\u0932 \u090f\u0921\u092e\u093f\u0936\u0902\u0938 \u092c\u094d\u092f\u0942\u0930\u094b \u092a\u0930\u093f\u092a\u0924\u094d\u0930: \u0935\u093f\u0926\u0947\u0936\u0940 \u0935\u093f\u0936\u094d\u0935\u0935\u093f\u0926\u094d\u092f\u093e\u0932\u092f\u094b\u0902 \u092e\u0947\u0902 \u0905\u0927\u094d\u092f\u092f\u0928 \u0915\u0947 \u0907\u091a\u094d\u091b\u0941\u0915 \u091b\u093e\u0924\u094d\u0930 \u0927\u094d\u092f\u093e\u0928 \u0926\u0947\u0902\u0964 \u0926\u0942\u0924\u093e\u0935\u093e\u0938 \u0938\u093e\u0915\u094d\u0937\u093e\u0924\u094d\u0915\u093e\u0930 \u0915\u0947 \u0932\u093f\u090f \u092a\u094d\u0930\u093e\u0925\u092e\u093f\u0915\u0924\u093e \u0938\u094d\u0932\u0949\u091f \u0914\u0930 \u0935\u0940\u091c\u093e \u0926\u0938\u094d\u0924\u093e\u0935\u0947\u091c \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0915\u0947 \u0932\u093f\u090f \u0938\u092d\u0940 \u0906\u0935\u0947\u0926\u0915 \u091b\u093e\u0924\u094d\u0930\u094b\u0902 \u0915\u094b \u0915\u0902\u0938\u0941\u0932\u0930 \u0938\u0939\u093e\u092f\u0924\u093e \u0936\u0941\u0932\u094d\u0915 \u0930\u0941 6,500 \u092f\u0942\u092a\u0940\u0906\u0908 global-admissions@fakebank \u092a\u0930 28 \u0928\u0935\u0902\u092c\u0930 \u0938\u0947 \u092a\u0942\u0930\u094d\u0935 \u091c\u092e\u093e \u0915\u0930\u0928\u093e \u0905\u0928\u093f\u0935\u093e\u0930\u094d\u092f \u0939\u0948\u0964 \u0938\u0940\u091f \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0939\u094b\u0928\u0947 \u0915\u0947 \u092c\u093e\u0926 \u0914\u092a\u091a\u093e\u0930\u093f\u0915 \u092a\u0924\u094d\u0930 \u091f\u0947\u0932\u0940\u0917\u094d\u0930\u093e\u092e \u092a\u0930 \u0909\u092a\u0932\u092c\u094d\u0927 \u0915\u0930\u093e\u092f\u093e \u091c\u093e\u090f\u0917\u093e\u0964",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5201557096120647,
+      "prob_benign": 0.4798442903879353,
+      "is_error": false,
+      "uncertainty": 0.0201557096120647,
+      "scam_type": "overseas_agent",
+      "language": "hi"
+    },
+    {
+      "index": 62,
+      "id": "DATA-063",
+      "line": 64,
+      "text": "United Student Welfare Board: Internship onboarding advisory. Selected trainees must upload scanned marksheet and internet banking login PIN at https://student-welfare.test/onboard grant expires before 25 November to claim stipend.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5211445494692644,
+      "prob_benign": 0.47885545053073564,
+      "is_error": false,
+      "uncertainty": 0.021144549469264362,
+      "scam_type": "internship",
+      "language": "en"
+    },
+    {
+      "index": 502,
+      "id": "DATA-503",
+      "line": 504,
+      "text": "HackIndus 2026 hackathon registrations open. Free registration, Rs 50,000 cash prizes. Team register karein https://hackathon-indus.example/portal valid before 25 November.",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.46490232266593073,
+      "prob_benign": 0.5350976773340692,
+      "is_error": false,
+      "uncertainty": 0.035097677334069266,
+      "scam_type": "none",
+      "language": "hinglish"
+    },
+    {
+      "index": 223,
+      "id": "DATA-224",
+      "line": 225,
+      "text": "\u0911\u0932 \u0907\u0902\u0921\u093f\u092f\u093e \u0915\u094b\u0921\u093f\u0902\u0917 \u0915\u093e\u0909\u0902\u0938\u093f\u0932: \u0939\u0948\u0915\u093e\u0925\u0949\u0928 \u092b\u093e\u0907\u0928\u0932 \u0915\u0947 \u0932\u093f\u090f \u0905\u092a\u0928\u093e \u092a\u094d\u0930\u094b\u091c\u0947\u0915\u094d\u091f \u0915\u094b\u0921 \u090f\u0935\u0902 \u0938\u0930\u094d\u0935\u0930 \u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u092a\u094b\u0930\u094d\u091f\u0932 https://coding-council.invalid/submit \u092a\u0930 29 \u0928\u0935\u0902\u092c\u0930 \u0938\u0947 \u092a\u0939\u0932\u0947 \u0905\u092a\u0932\u094b\u0921 \u0915\u0930\u0947\u0902\u0964 \u0915\u0943\u092a\u092f\u093e \u0938\u092e\u092f \u0930\u0939\u0924\u0947 \u0905\u092a\u0928\u0940 \u092a\u094d\u0930\u0935\u093f\u0937\u094d\u091f\u093f \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902\u0964",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5362652599134653,
+      "prob_benign": 0.4637347400865347,
+      "is_error": false,
+      "uncertainty": 0.0362652599134653,
+      "scam_type": "competition",
+      "language": "hi"
+    },
+    {
+      "index": 64,
+      "id": "DATA-065",
+      "line": 66,
+      "text": "Eastern Technology Consortium: Cloud trainee technical onboarding details candidate portal par Friday shaam se pehle check karein.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5423739293445639,
+      "prob_benign": 0.45762607065543615,
+      "is_error": false,
+      "uncertainty": 0.042373929344563854,
+      "scam_type": "internship",
+      "language": "hinglish"
+    },
+    {
+      "index": 18,
+      "id": "DATA-019",
+      "line": 20,
+      "text": "National Talent Council: Engineering scholarship grant Rs 30,000 approve ho chuka hai. Portal par verification documents submit karein, registration status approve ho jayega.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5430167248339237,
+      "prob_benign": 0.4569832751660763,
+      "is_error": false,
+      "uncertainty": 0.043016724833923714,
+      "scam_type": "scholarship",
+      "language": "hinglish"
+    },
+    {
+      "index": 165,
+      "id": "DATA-166",
+      "line": 167,
+      "text": "\u0907\u0902\u0938\u094d\u091f\u0947\u0902\u091f \u092a\u0947\u0906\u0909\u091f \u0939\u092c: \u0905\u092a\u0928\u0947 \u092c\u0948\u0902\u0915 \u0916\u093e\u0924\u0947 \u0915\u0947 \u092e\u093e\u0927\u094d\u092f\u092e \u0938\u0947 \u091b\u093e\u0924\u094d\u0930\u0935\u0943\u0924\u094d\u0924\u093f \u092b\u0902\u0921 \u091f\u094d\u0930\u093e\u0902\u0938\u092b\u0930 \u0915\u0930\u0947\u0902 \u0914\u0930 10% \u0915\u092e\u0940\u0936\u0928 \u0915\u092e\u093e\u090f\u0902\u0964 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902 payout@instant-hub.example \u092a\u0930\u0964 \u0911\u0928\u0932\u093e\u0907\u0928 \u0906\u0935\u0947\u0926\u0928 27 \u0928\u0935\u0902\u092c\u0930 \u0924\u0915 \u0938\u094d\u0935\u0940\u0915\u093e\u0930\u094d\u092f \u0939\u0948\u0902\u0964",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5473866236649734,
+      "prob_benign": 0.45261337633502663,
+      "is_error": false,
+      "uncertainty": 0.04738662366497337,
+      "scam_type": "mule_offer",
+      "language": "hi"
+    },
+    {
+      "index": 37,
+      "id": "DATA-038",
+      "line": 39,
+      "text": "Immediate action required: Collegiate Bursary Trust: Shortlisted candidates must email their student identity card and bank passbook copies to bursary@gyandeep.example before Friday to avoid cancellation.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5532885231992482,
+      "prob_benign": 0.44671147680075185,
+      "is_error": false,
+      "uncertainty": 0.05328852319924815,
+      "scam_type": "scholarship",
+      "language": "en"
+    },
+    {
+      "index": 91,
+      "id": "DATA-092",
+      "line": 93,
+      "text": "Kestrel Publishing Hub: Creative intern role selected. Submit student portal password at https://kestrel-media.invalid/claim before 26 November.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.556097520448113,
+      "prob_benign": 0.443902479551887,
+      "is_error": false,
+      "uncertainty": 0.056097520448113,
+      "scam_type": "internship",
+      "language": "en"
+    },
+    {
+      "index": 8,
+      "id": "DATA-009",
+      "line": 10,
+      "text": "Sterling Welfare Foundation: Candidate records for the annual Rs 15,000 welfare grant have been approved. Send your marksheet copy and processing fee receipt to info@sterling-aid.example. Complete document submission before the final date immediately.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5578304995798813,
+      "prob_benign": 0.4421695004201187,
+      "is_error": false,
+      "uncertainty": 0.05783049957988129,
+      "scam_type": "scholarship",
+      "language": "en"
+    }
+  ]
+}

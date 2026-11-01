@@ -1,0 +1,1233 @@
+{
+  "dataset_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/dataset.csv",
+  "total_rows": 89,
+  "label_counts": {
+    "suspicious": 44,
+    "benign": 45
+  },
+  "scam_type_counts": {
+    "fake_scholarship": 5,
+    "fake_internship_job": 16,
+    "fake_competition": 3,
+    "task_job": 5,
+    "money_mule": 4,
+    "fake_loan": 3,
+    "unclassified_scam": 8
+  },
+  "language_counts": {
+    "English": 89
+  },
+  "char_len_stats": {
+    "min": 89,
+    "max": 199,
+    "mean": 113.79775280898876,
+    "median": 110.0
+  },
+  "word_len_stats": {
+    "min": 12,
+    "max": 30,
+    "mean": 17.46067415730337,
+    "median": 17.0
+  },
+  "exact_duplicates": 0,
+  "normalized_duplicates": 0,
+  "near_duplicate_pairs_count": 0,
+  "near_duplicate_leaks_count": 0,
+  "test_metrics": {
+    "benign": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 9.0
+    },
+    "suspicious": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 9.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 18.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 18.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      9,
+      0
+    ],
+    [
+      0,
+      9
+    ]
+  ],
+  "cv_5fold_macro_f1_mean": 0.976388888888889,
+  "cv_5fold_macro_f1_std": 0.047222222222222235,
+  "cv_5fold_acc_mean": 0.9764705882352942,
+  "cv_5fold_acc_std": 0.04705882352941177,
+  "top_suspicious_words": [
+    [
+      "rs",
+      1.2979048902106065
+    ],
+    [
+      "pay",
+      0.5692220668933574
+    ],
+    [
+      "earn",
+      0.5527412611889917
+    ],
+    [
+      "fee",
+      0.5261955209230708
+    ],
+    [
+      "of rs",
+      0.442902296015513
+    ],
+    [
+      "deposit",
+      0.4238155134136187
+    ],
+    [
+      "earn rs",
+      0.41961178236984387
+    ],
+    [
+      "selected for",
+      0.38812907926211937
+    ],
+    [
+      "selected",
+      0.33611763032111575
+    ],
+    [
+      "per",
+      0.32621734861828433
+    ],
+    [
+      "fee rs",
+      0.3004290615135202
+    ],
+    [
+      "fee of",
+      0.27533006866466503
+    ],
+    [
+      "account",
+      0.27474479616447123
+    ],
+    [
+      "pay rs",
+      0.2666286223306194
+    ],
+    [
+      "to",
+      0.26395183507604636
+    ],
+    [
+      "deposit rs",
+      0.26076524355794334
+    ],
+    [
+      "bank",
+      0.26016407804429864
+    ],
+    [
+      "2000",
+      0.25928715958811993
+    ],
+    [
+      "rs 2000",
+      0.25928715958811993
+    ],
+    [
+      "charge",
+      0.2591803623465218
+    ]
+  ],
+  "top_benign_words": [
+    [
+      "the",
+      -1.2910360921135173
+    ],
+    [
+      "has",
+      -0.5658702124318301
+    ],
+    [
+      "has been",
+      -0.5451161455133895
+    ],
+    [
+      "been",
+      -0.5231316576453519
+    ],
+    [
+      "is",
+      -0.5186204036339266
+    ],
+    [
+      "on",
+      -0.4943994815765716
+    ],
+    [
+      "for the",
+      -0.4110894891975446
+    ],
+    [
+      "at",
+      -0.38093609114031846
+    ],
+    [
+      "your",
+      -0.375443799601935
+    ],
+    [
+      "to the",
+      -0.33943503094220523
+    ],
+    [
+      "official",
+      -0.32978377507923334
+    ],
+    [
+      "application for",
+      -0.3154272064221828
+    ],
+    [
+      "application",
+      -0.3154272064221828
+    ],
+    [
+      "will",
+      -0.31300023678362277
+    ],
+    [
+      "open",
+      -0.2973050745584271
+    ],
+    [
+      "your application",
+      -0.27733636947443296
+    ],
+    [
+      "thank",
+      -0.2712664962228354
+    ],
+    [
+      "thank you",
+      -0.2712664962228354
+    ],
+    [
+      "you for",
+      -0.2712664962228354
+    ],
+    [
+      "student",
+      -0.2594933858186219
+    ]
+  ],
+  "privacy": {
+    "phone_count": 0,
+    "upi_count": 2,
+    "email_count": 0,
+    "pan_count": 0,
+    "aadhaar_count": 0
+  },
+  "cv_misclassified": [
+    {
+      "fold": 5,
+      "index": 29,
+      "line": 31,
+      "text": "Government scheme for free tablets to all college students. Register by paying Rs 350 delivery charge.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob": [
+        0.5088003613113108,
+        0.4911996386886892
+      ],
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "fold": 5,
+      "index": 77,
+      "line": 79,
+      "text": "Please note that government organizations never ask for money or gift cards to process employment offers.",
+      "true_label": "benign",
+      "pred_label": "suspicious",
+      "prob": [
+        0.4846305776786479,
+        0.5153694223213521
+      ],
+      "scam_type": "n/a",
+      "language": "English"
+    }
+  ],
+  "top_15_examples": [
+    {
+      "index": 29,
+      "line": 31,
+      "text": "Government scheme for free tablets to all college students. Register by paying Rs 350 delivery charge.",
+      "true_label": "suspicious",
+      "pred_label": "benign",
+      "prob_suspicious": 0.4911996386886892,
+      "prob_benign": 0.5088003613113108,
+      "is_error": true,
+      "uncertainty": 0.00880036131131079,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "index": 77,
+      "line": 79,
+      "text": "Please note that government organizations never ask for money or gift cards to process employment offers.",
+      "true_label": "benign",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5153694223213521,
+      "prob_benign": 0.4846305776786479,
+      "is_error": true,
+      "uncertainty": 0.015369422321352078,
+      "scam_type": "n/a",
+      "language": "English"
+    },
+    {
+      "index": 8,
+      "line": 10,
+      "text": "Congratulations! Your resume was shortlisted for Remote Operations Assistant. Pay Rs 3500 for background verification.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5181693674568593,
+      "prob_benign": 0.48183063254314074,
+      "is_error": false,
+      "uncertainty": 0.018169367456859264,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "index": 10,
+      "line": 12,
+      "text": "Dear Candidate, Offer Letter enclosed for Business Development Associate. Submit Rs 2500 laptop security bond to hr@paytm.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5638577480849581,
+      "prob_benign": 0.43614225191504186,
+      "is_error": false,
+      "uncertainty": 0.06385774808495814,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "index": 41,
+      "line": 43,
+      "text": "Student financial aid grant released. Send Rs 1800 clearance charge to Ministry of Education agent UPI.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5963978201494224,
+      "prob_benign": 0.40360217985057756,
+      "is_error": false,
+      "uncertainty": 0.09639782014942244,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "index": 7,
+      "line": 9,
+      "text": "Rent your bank account or ATM card to our trading firm. Earn 10% commission weekly on all deposits.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.5965743502537058,
+      "prob_benign": 0.40342564974629425,
+      "is_error": false,
+      "uncertainty": 0.09657435025370575,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "index": 56,
+      "line": 58,
+      "text": "Dear Candidate, congratulations on completing your internship at TCS. Your completion certificate has been emailed.",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.4023573029729095,
+      "prob_benign": 0.5976426970270905,
+      "is_error": false,
+      "uncertainty": 0.0976426970270905,
+      "scam_type": "n/a",
+      "language": "English"
+    },
+    {
+      "index": 13,
+      "line": 15,
+      "text": "Part time online review tasks available. Complete 3 tasks and withdraw Rs 800 immediately. Contact @task_admin on Telegram.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.6035280805420322,
+      "prob_benign": 0.3964719194579678,
+      "is_error": false,
+      "uncertainty": 0.10352808054203222,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "index": 67,
+      "line": 69,
+      "text": "Join our open source workshop on machine learning fundamentals. Registration is free and open to all university students.",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.39528940578847305,
+      "prob_benign": 0.604710594211527,
+      "is_error": false,
+      "uncertainty": 0.10471059421152695,
+      "scam_type": "n/a",
+      "language": "English"
+    },
+    {
+      "index": 15,
+      "line": 17,
+      "text": "Earn money by sharing OTP and renting your current bank account for business transactions. Zero risk daily income.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.6050804629944413,
+      "prob_benign": 0.3949195370055587,
+      "is_error": false,
+      "uncertainty": 0.10508046299444129,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "index": 3,
+      "line": 5,
+      "text": "You are hired as Junior Data Analyst at TechCorp. Please transfer Rs 2000 for laptop delivery insurance fee.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.605756580714263,
+      "prob_benign": 0.39424341928573703,
+      "is_error": false,
+      "uncertainty": 0.10575658071426297,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "index": 60,
+      "line": 62,
+      "text": "Official advisory: Beware of unauthorized websites offering scholarships. Verify all schemes only on official portals ending in .gov.in.",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.39380195635119186,
+      "prob_benign": 0.6061980436488081,
+      "is_error": false,
+      "uncertainty": 0.10619804364880814,
+      "scam_type": "n/a",
+      "language": "English"
+    },
+    {
+      "index": 14,
+      "line": 16,
+      "text": "You won a laptop in our student lucky draw contest! Transfer courier charges of Rs 650 to claim your prize.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.6075857870215391,
+      "prob_benign": 0.3924142129784609,
+      "is_error": false,
+      "uncertainty": 0.10758578702153909,
+      "scam_type": "fake_competition",
+      "language": "English"
+    },
+    {
+      "index": 52,
+      "line": 54,
+      "text": "The library book borrowed on 5th October is due for return by Monday. Please return it to avoid late fines.",
+      "true_label": "benign",
+      "pred_label": "benign",
+      "prob_suspicious": 0.3906711091135815,
+      "prob_benign": 0.6093288908864185,
+      "is_error": false,
+      "uncertainty": 0.1093288908864185,
+      "scam_type": "n/a",
+      "language": "English"
+    },
+    {
+      "index": 0,
+      "line": 2,
+      "text": "Congratulations! You have been selected for the National Merit Scholarship. To claim your award of Rs 50000, please pay a refundable registration fee of Rs 1500 immediately to upi scholarship@okaxis.",
+      "true_label": "suspicious",
+      "pred_label": "suspicious",
+      "prob_suspicious": 0.609789677360839,
+      "prob_benign": 0.390210322639161,
+      "is_error": false,
+      "uncertainty": 0.109789677360839,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    }
+  ],
+  "parsed_samples": [
+    {
+      "line": 2,
+      "text": "Congratulations! You have been selected for the National Merit Scholarship. To claim your award of Rs 50000, please pay a refundable registration fee of Rs 1500 immediately to upi scholarship@okaxis.",
+      "label": "suspicious",
+      "char_len": 199,
+      "word_len": 30,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "line": 3,
+      "text": "Dear Student, your profile matched our Work from Home HR Intern role. Earn Rs 2500 per day by rating products on Telegram. Send security deposit to start.",
+      "label": "suspicious",
+      "char_len": 154,
+      "word_len": 27,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 4,
+      "text": "Urgent: Win Rs 100000 in National Coding Contest. Pay entry fee of Rs 500 to account before slots fill up.",
+      "label": "suspicious",
+      "char_len": 106,
+      "word_len": 20,
+      "scam_type": "fake_competition",
+      "language": "English"
+    },
+    {
+      "line": 5,
+      "text": "You are hired as Junior Data Analyst at TechCorp. Please transfer Rs 2000 for laptop delivery insurance fee.",
+      "label": "suspicious",
+      "char_len": 108,
+      "word_len": 18,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 6,
+      "text": "Immediate requirement: Telegram task job. Like YouTube videos and earn Rs 50 per task. Join our VIP group now.",
+      "label": "suspicious",
+      "char_len": 110,
+      "word_len": 19,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "line": 7,
+      "text": "Selected for PM Youth Scholarship 2026. Forward Rs 1200 processing fee via GooglePay to activate grant.",
+      "label": "suspicious",
+      "char_len": 103,
+      "word_len": 16,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "line": 8,
+      "text": "Work from home part-time typing job. Daily payout guaranteed. Pay Rs 850 registration charges to receive assignment.",
+      "label": "suspicious",
+      "char_len": 116,
+      "word_len": 17,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 9,
+      "text": "Rent your bank account or ATM card to our trading firm. Earn 10% commission weekly on all deposits.",
+      "label": "suspicious",
+      "char_len": 99,
+      "word_len": 18,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "line": 10,
+      "text": "Congratulations! Your resume was shortlisted for Remote Operations Assistant. Pay Rs 3500 for background verification.",
+      "label": "suspicious",
+      "char_len": 118,
+      "word_len": 15,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 11,
+      "text": "Earn Rs 5000 daily with simple crypto trading tasks. Deposit minimum Rs 1000 to double your earnings in 2 hours.",
+      "label": "suspicious",
+      "char_len": 112,
+      "word_len": 20,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "line": 12,
+      "text": "Dear Candidate, Offer Letter enclosed for Business Development Associate. Submit Rs 2500 laptop security bond to hr@paytm.",
+      "label": "suspicious",
+      "char_len": 122,
+      "word_len": 17,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 13,
+      "text": "Government approved internship training program with guaranteed stipend. Enrollment fee Rs 4000 required.",
+      "label": "suspicious",
+      "char_len": 105,
+      "word_len": 13,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 14,
+      "text": "Selected for Tata Motors Apprenticeship. Pay gate pass and uniform fee of Rs 1850 through phonepe.",
+      "label": "suspicious",
+      "char_len": 98,
+      "word_len": 16,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 15,
+      "text": "Part time online review tasks available. Complete 3 tasks and withdraw Rs 800 immediately. Contact @task_admin on Telegram.",
+      "label": "suspicious",
+      "char_len": 123,
+      "word_len": 18,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "line": 16,
+      "text": "You won a laptop in our student lucky draw contest! Transfer courier charges of Rs 650 to claim your prize.",
+      "label": "suspicious",
+      "char_len": 107,
+      "word_len": 20,
+      "scam_type": "fake_competition",
+      "language": "English"
+    },
+    {
+      "line": 17,
+      "text": "Earn money by sharing OTP and renting your current bank account for business transactions. Zero risk daily income.",
+      "label": "suspicious",
+      "char_len": 114,
+      "word_len": 18,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "line": 18,
+      "text": "Selected for Google Remote Internship. Send registration fee of Rs 2000 to coordinator UPI.",
+      "label": "suspicious",
+      "char_len": 91,
+      "word_len": 14,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 19,
+      "text": "Quick loan approved for students without documents. Transfer file processing fee of Rs 999 to disburse Rs 20000.",
+      "label": "suspicious",
+      "char_len": 112,
+      "word_len": 18,
+      "scam_type": "fake_loan",
+      "language": "English"
+    },
+    {
+      "line": 20,
+      "text": "Online data entry jobs. Earn Rs 15000 per month. Pay software license fee Rs 1200 to start.",
+      "label": "suspicious",
+      "char_len": 91,
+      "word_len": 17,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 21,
+      "text": "Immediate hiring for Amazon product reviewer. Earn daily commissions. Deposit Rs 1500 in merchant wallet to unlock high-value tasks.",
+      "label": "suspicious",
+      "char_len": 132,
+      "word_len": 19,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "line": 22,
+      "text": "Direct selection without interview for Railway Group D post. Pay Rs 5000 joining fee to official agent.",
+      "label": "suspicious",
+      "char_len": 103,
+      "word_len": 17,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 23,
+      "text": "Student Emergency Loan of Rs 30000 approved. Pay verification fee Rs 1499 to release funds.",
+      "label": "suspicious",
+      "char_len": 91,
+      "word_len": 15,
+      "scam_type": "fake_loan",
+      "language": "English"
+    },
+    {
+      "line": 24,
+      "text": "Congratulations! Selected for Reliance Foundation Scholarship. Deposit document verification charge Rs 2200.",
+      "label": "suspicious",
+      "char_len": 108,
+      "word_len": 12,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "line": 25,
+      "text": "Provide your bank account details and ATM card for overseas transactions. Earn Rs 10000 per week effortlessly.",
+      "label": "suspicious",
+      "char_len": 110,
+      "word_len": 17,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "line": 26,
+      "text": "Work from home watching advertisements. Earn Rs 500 per hour. Pay portal activation charge Rs 799.",
+      "label": "suspicious",
+      "char_len": 98,
+      "word_len": 16,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 27,
+      "text": "Shortlisted for Flipkart warehouse supervisor role. Pay safety shoes and medical checkup fee Rs 1650.",
+      "label": "suspicious",
+      "char_len": 101,
+      "word_len": 15,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 28,
+      "text": "Earn Rs 3000 daily by following Instagram accounts. Initial deposit of Rs 500 required for VIP task tier.",
+      "label": "suspicious",
+      "char_len": 105,
+      "word_len": 18,
+      "scam_type": "task_job",
+      "language": "English"
+    },
+    {
+      "line": 29,
+      "text": "Offer Letter: Software Trainee at Microsoft India. Transfer laptop dispatch fee Rs 4500 to logistics account.",
+      "label": "suspicious",
+      "char_len": 109,
+      "word_len": 16,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 30,
+      "text": "Urgent hire: YouTube comment evaluator. Earn Rs 80 per comment. Pay software registration fee Rs 900.",
+      "label": "suspicious",
+      "char_len": 101,
+      "word_len": 16,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 31,
+      "text": "Government scheme for free tablets to all college students. Register by paying Rs 350 delivery charge.",
+      "label": "suspicious",
+      "char_len": 102,
+      "word_len": 16,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 32,
+      "text": "Selected for Wipro Campus Placement drive. Deposit Rs 3000 interview security amount before round.",
+      "label": "suspicious",
+      "char_len": 98,
+      "word_len": 14,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 33,
+      "text": "Rent your phone number and SIM card for international SMS forwarding. Weekly payment Rs 4000 guaranteed.",
+      "label": "suspicious",
+      "char_len": 104,
+      "word_len": 16,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 34,
+      "text": "Earn money completing paid surveys. Pay one-time membership charge Rs 600 to receive high paying surveys.",
+      "label": "suspicious",
+      "char_len": 105,
+      "word_len": 16,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 35,
+      "text": "Selected for Air India ground staff internship. Transfer training security deposit of Rs 5500 to recruiter UPI.",
+      "label": "suspicious",
+      "char_len": 111,
+      "word_len": 17,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 36,
+      "text": "Instant student credit line sanctioned. Pay GST and insurance fee of Rs 1250 to bank UPI before loan credit.",
+      "label": "suspicious",
+      "char_len": 108,
+      "word_len": 19,
+      "scam_type": "fake_loan",
+      "language": "English"
+    },
+    {
+      "line": 37,
+      "text": "Part time hotel booking review job. Earn Rs 2000 per day. Recharge your wallet with Rs 1000 to unlock orders.",
+      "label": "suspicious",
+      "char_len": 109,
+      "word_len": 20,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 38,
+      "text": "Congratulations! You won Rs 50000 in National Scholarship Olympiad. Send Rs 1500 processing charge to claim.",
+      "label": "suspicious",
+      "char_len": 108,
+      "word_len": 16,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "line": 39,
+      "text": "Job offer: Social Media Executive. Deposit Rs 2000 for training kit and certificate fees.",
+      "label": "suspicious",
+      "char_len": 89,
+      "word_len": 14,
+      "scam_type": "fake_competition",
+      "language": "English"
+    },
+    {
+      "line": 40,
+      "text": "Rent your bank account for corporate payment gateway testing. Earn Rs 15000 monthly commission.",
+      "label": "suspicious",
+      "char_len": 95,
+      "word_len": 14,
+      "scam_type": "money_mule",
+      "language": "English"
+    },
+    {
+      "line": 41,
+      "text": "Earn Rs 4000 every day by testing mobile apps. Pay Rs 750 server maintenance fee to begin.",
+      "label": "suspicious",
+      "char_len": 90,
+      "word_len": 17,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 42,
+      "text": "Selected for Infosys remote internship. Pay Rs 2500 training infrastructure fee to coordinator.",
+      "label": "suspicious",
+      "char_len": 95,
+      "word_len": 13,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 43,
+      "text": "Student financial aid grant released. Send Rs 1800 clearance charge to Ministry of Education agent UPI.",
+      "label": "suspicious",
+      "char_len": 103,
+      "word_len": 16,
+      "scam_type": "fake_scholarship",
+      "language": "English"
+    },
+    {
+      "line": 44,
+      "text": "Online proofreading job: Rs 500 per page. Pay security deposit Rs 1000 to receive first document batch.",
+      "label": "suspicious",
+      "char_len": 103,
+      "word_len": 17,
+      "scam_type": "fake_internship_job",
+      "language": "English"
+    },
+    {
+      "line": 45,
+      "text": "Earn commissions by booking movie tickets. Deposit Rs 2000 into trading account to start earning today.",
+      "label": "suspicious",
+      "char_len": 103,
+      "word_len": 16,
+      "scam_type": "unclassified_scam",
+      "language": "English"
+    },
+    {
+      "line": 46,
+      "text": "We are pleased to inform you that your application for the National Scholarship Portal has been verified. Check official website scholarships.gov.in for merit lists.",
+      "label": "benign",
+      "char_len": 165,
+      "word_len": 24,
+      "language": "English"
+    },
+    {
+      "line": 47,
+      "text": "Thank you for attending the campus interview at Infosys. Your technical assessment is scheduled for Friday. No fee is required at any stage of recruitment.",
+      "label": "benign",
+      "char_len": 155,
+      "word_len": 25,
+      "language": "English"
+    },
+    {
+      "line": 48,
+      "text": "Your application for Google Summer of Code has been received. Please review the program timeline and contribution guidelines on the official portal.",
+      "label": "benign",
+      "char_len": 148,
+      "word_len": 22,
+      "language": "English"
+    },
+    {
+      "line": 49,
+      "text": "Dear Student, your semester examination hall ticket is now available for download on the university student portal.",
+      "label": "benign",
+      "char_len": 115,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 50,
+      "text": "We invite you to participate in the Smart India Hackathon 2026. Registration is completely free for all recognized college teams.",
+      "label": "benign",
+      "char_len": 129,
+      "word_len": 20,
+      "language": "English"
+    },
+    {
+      "line": 51,
+      "text": "Your internship application for Research Assistant at IIT Bombay is under review by the faculty committee.",
+      "label": "benign",
+      "char_len": 106,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 52,
+      "text": "Official notification: UGC NET June session registration forms are open on ugcnet.nta.nic.in.",
+      "label": "benign",
+      "char_len": 93,
+      "word_len": 12,
+      "language": "English"
+    },
+    {
+      "line": 53,
+      "text": "Thank you for applying to the Microsoft Learn Student Ambassadors program. Shortlisted candidates will receive email invitations.",
+      "label": "benign",
+      "char_len": 129,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 54,
+      "text": "The library book borrowed on 5th October is due for return by Monday. Please return it to avoid late fines.",
+      "label": "benign",
+      "char_len": 107,
+      "word_len": 20,
+      "language": "English"
+    },
+    {
+      "line": 55,
+      "text": "Your resume was received for the Junior Frontend Developer position at Zeta. Our HR team will reach out if there is a match.",
+      "label": "benign",
+      "char_len": 124,
+      "word_len": 23,
+      "language": "English"
+    },
+    {
+      "line": 56,
+      "text": "Notification from AICTE: Prime Minister Special Scholarship Scheme merit list has been published on aicte-india.org.",
+      "label": "benign",
+      "char_len": 116,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 57,
+      "text": "Your submission for the open source contribution challenge has been accepted. View project leaderboard on GitHub.",
+      "label": "benign",
+      "char_len": 113,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 58,
+      "text": "Dear Candidate, congratulations on completing your internship at TCS. Your completion certificate has been emailed.",
+      "label": "benign",
+      "char_len": 115,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 59,
+      "text": "Reminder: The campus placement orientation session will be held in the main auditorium tomorrow at 10 AM.",
+      "label": "benign",
+      "char_len": 105,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 60,
+      "text": "Thank you for your inquiry regarding the Data Science workshop. The session is free of cost and open to all registered attendees.",
+      "label": "benign",
+      "char_len": 129,
+      "word_len": 22,
+      "language": "English"
+    },
+    {
+      "line": 61,
+      "text": "Your application for the Summer Undergraduate Research Fellowship at IISc Bangalore has been forwarded to the department.",
+      "label": "benign",
+      "char_len": 121,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 62,
+      "text": "Official advisory: Beware of unauthorized websites offering scholarships. Verify all schemes only on official portals ending in .gov.in.",
+      "label": "benign",
+      "char_len": 136,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 63,
+      "text": "Your IEEE student branch membership renewal has been confirmed. Welcome to another year of technical activities.",
+      "label": "benign",
+      "char_len": 112,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 64,
+      "text": "Dear Student, the fee payment receipt for academic year 2026-27 has been generated and sent to your registered college email.",
+      "label": "benign",
+      "char_len": 125,
+      "word_len": 20,
+      "language": "English"
+    },
+    {
+      "line": 65,
+      "text": "The robotics club annual hackathon will commence on Saturday. Teams must check in at the innovation center desk.",
+      "label": "benign",
+      "char_len": 112,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 66,
+      "text": "Thank you for applying to the software engineering internship at Zerodha. We do not charge any fees for recruitment.",
+      "label": "benign",
+      "char_len": 116,
+      "word_len": 19,
+      "language": "English"
+    },
+    {
+      "line": 67,
+      "text": "The National Testing Agency has announced the JEE Main results. Candidates may check scores at jeemain.nta.nic.in.",
+      "label": "benign",
+      "char_len": 114,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 68,
+      "text": "Dear Student, your college email address has been activated. Access your university portal using your student ID.",
+      "label": "benign",
+      "char_len": 113,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 69,
+      "text": "Join our open source workshop on machine learning fundamentals. Registration is free and open to all university students.",
+      "label": "benign",
+      "char_len": 121,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 70,
+      "text": "Your application for the merit-cum-means scholarship has been forwarded to the district social welfare office.",
+      "label": "benign",
+      "char_len": 110,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 71,
+      "text": "The placement cell is conducting a mock interview drive this weekend. Register on the campus placement intranet portal.",
+      "label": "benign",
+      "char_len": 119,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 72,
+      "text": "Official circular: College will remain closed on Friday on account of the state public holiday.",
+      "label": "benign",
+      "char_len": 95,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 73,
+      "text": "We received your application for the open source software grant. Results will be announced on the project repository.",
+      "label": "benign",
+      "char_len": 117,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 74,
+      "text": "Congratulations on passing your comprehensive semester project viva. Please submit the signed hard copies to the department office.",
+      "label": "benign",
+      "char_len": 131,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 75,
+      "text": "Dear Student, the schedule for end-term laboratory practical examinations has been uploaded to the student notice board.",
+      "label": "benign",
+      "char_len": 120,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 76,
+      "text": "Your application for the campus ambassador program has been approved. Welcome to the student leadership team.",
+      "label": "benign",
+      "char_len": 109,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 77,
+      "text": "Thank you for applying for the technical writer internship at Red Hat. Selected candidates will be contacted for an interview.",
+      "label": "benign",
+      "char_len": 126,
+      "word_len": 20,
+      "language": "English"
+    },
+    {
+      "line": 78,
+      "text": "The annual inter-college coding competition registration is now live on our official computer society website.",
+      "label": "benign",
+      "char_len": 110,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 79,
+      "text": "Please note that government organizations never ask for money or gift cards to process employment offers.",
+      "label": "benign",
+      "char_len": 105,
+      "word_len": 16,
+      "language": "English"
+    },
+    {
+      "line": 80,
+      "text": "Your registration for the Python and Web Development webinar has been successful. The Zoom joining link is attached.",
+      "label": "benign",
+      "char_len": 116,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 81,
+      "text": "The Department of Science and Technology invites applications for INSPIRE scholarship for higher education.",
+      "label": "benign",
+      "char_len": 107,
+      "word_len": 14,
+      "language": "English"
+    },
+    {
+      "line": 82,
+      "text": "Your appointment for the student visa counseling session at the education center is confirmed for 2 PM.",
+      "label": "benign",
+      "char_len": 103,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 83,
+      "text": "Dear Applicant, your test scores for the graduate aptitude test in engineering have been published on the official GATE portal.",
+      "label": "benign",
+      "char_len": 127,
+      "word_len": 20,
+      "language": "English"
+    },
+    {
+      "line": 84,
+      "text": "Campus recruitment drive for Cognizant begins next month. Eligible candidates must verify their academic percentages with the placement officer.",
+      "label": "benign",
+      "char_len": 144,
+      "word_len": 19,
+      "language": "English"
+    },
+    {
+      "line": 85,
+      "text": "Your application for the summer research internship at CSIR laboratory has been accepted by the screening committee.",
+      "label": "benign",
+      "char_len": 116,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 86,
+      "text": "Reminder from College Administration: All scholarship forms must be submitted through the National Scholarship Portal before the deadline.",
+      "label": "benign",
+      "char_len": 138,
+      "word_len": 18,
+      "language": "English"
+    },
+    {
+      "line": 87,
+      "text": "Thank you for attending the cyber security awareness seminar organized by the state police cyber crime department.",
+      "label": "benign",
+      "char_len": 114,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 88,
+      "text": "Your submission for the national essay contest on renewable energy has been received by the evaluation panel.",
+      "label": "benign",
+      "char_len": 109,
+      "word_len": 17,
+      "language": "English"
+    },
+    {
+      "line": 89,
+      "text": "Dear Student, your request for an official transcript has been processed by the university registrar.",
+      "label": "benign",
+      "char_len": 101,
+      "word_len": 15,
+      "language": "English"
+    },
+    {
+      "line": 90,
+      "text": "We are pleased to invite your college team to the ACM ICPC regional programming contest. Entry is free for qualified teams.",
+      "label": "benign",
+      "char_len": 123,
+      "word_len": 21,
+      "language": "English"
+    }
+  ]
+}

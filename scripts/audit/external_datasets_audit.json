@@ -1,0 +1,1984 @@
+{
+  "dataset.csv": {
+    "file_name": "dataset.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/dataset.csv",
+    "file_size_bytes": 11205,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 89,
+      "cols": 2
+    },
+    "columns": [
+      "text",
+      "label"
+    ],
+    "column_types": {
+      "text": "string",
+      "label": "string"
+    },
+    "missing_values": {
+      "text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "label": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "text": "Congratulations! You have been selected for the National Merit Scholarship. To claim your award of Rs 50000, please pay a refundable registration fee of Rs 1500 immediately to upi [UPI_MASKED].",
+        "label": "suspicious"
+      },
+      {
+        "text": "Dear Student, your profile matched our Work from Home HR Intern role. Earn Rs 2500 per day by rating products on Telegram. Send security deposit to start.",
+        "label": "suspicious"
+      },
+      {
+        "text": "Urgent: Win Rs 100000 in National Coding Contest. Pay entry fee of Rs 500 to account before slots fill up.",
+        "label": "suspicious"
+      }
+    ],
+    "type": "free-text messages",
+    "usable_text_column": "text",
+    "label_column": "label",
+    "label_counts": {
+      "suspicious": 44,
+      "benign": 45
+    },
+    "label_mapping": {
+      "suspicious": "suspicious",
+      "benign": "benign"
+    },
+    "label_mapping_note": "Direct 1:1 mapping to our labels (suspicious, benign).",
+    "ambiguity_note": "None. Native labels match system ontology.",
+    "text_stats": {
+      "char_min": 89,
+      "char_max": 199,
+      "char_mean": 113.79775280898876,
+      "char_median": 110.0,
+      "char_std": 17.180587278082072,
+      "word_min": 12,
+      "word_max": 30,
+      "word_mean": 17.46067415730337,
+      "word_median": 17.0,
+      "word_std": 2.9224284951999895
+    },
+    "language_distribution": {
+      "english": {
+        "count": 89,
+        "pct": 100.0
+      }
+    },
+    "student_relevance_counts": {
+      "scholarship": 13,
+      "bank_otp_upi_alert": 6,
+      "internship": 11,
+      "task_job": 9,
+      "competition": 7,
+      "job": 14,
+      "overseas_agent": 4
+    },
+    "within_file_exact_duplicates": 0,
+    "overlap_with_maindataset_exact": 0,
+    "overlap_with_real_test_exact": 0,
+    "provenance": "unknown, check the Kaggle page",
+    "license": "unknown, check the Kaggle page",
+    "pii_counts": {
+      "upis": 2
+    },
+    "masked_pii_examples": {
+      "upis": [
+        "sc***@okaxis",
+        "hr***@paytm"
+      ]
+    },
+    "within_file_near_duplicates_pairs": 0,
+    "overlap_with_maindataset_near_dupes": 0,
+    "overlap_with_real_test_near_dupes": 0
+  },
+  "dataset_beasiswa_mahasiswa.csv": {
+    "file_name": "dataset_beasiswa_mahasiswa.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/dataset_beasiswa_mahasiswa.csv",
+    "file_size_bytes": 820,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 15,
+      "cols": 7
+    },
+    "columns": [
+      "NIM",
+      "Nama",
+      "IPK",
+      "Penghasilan_Ortu_Rp",
+      "Jumlah_Tanggungan",
+      "Prestasi_text",
+      "Jarak_km"
+    ],
+    "column_types": {
+      "NIM": "integer",
+      "Nama": "string",
+      "IPK": "float",
+      "Penghasilan_Ortu_Rp": "integer",
+      "Jumlah_Tanggungan": "integer",
+      "Prestasi_text": "string",
+      "Jarak_km": "integer"
+    },
+    "missing_values": {
+      "NIM": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Nama": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "IPK": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Penghasilan_Ortu_Rp": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Jumlah_Tanggungan": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Prestasi_text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Jarak_km": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "NIM": "2025001",
+        "Nama": "[NAME_MASKED]",
+        "IPK": "3.88",
+        "Penghasilan_Ortu_Rp": "2500000",
+        "Jumlah_Tanggungan": "2",
+        "Prestasi_text": "Internasional",
+        "Jarak_km": "95"
+      },
+      {
+        "NIM": "2025002",
+        "Nama": "[NAME_MASKED]",
+        "IPK": "3.75",
+        "Penghasilan_Ortu_Rp": "4500000",
+        "Jumlah_Tanggungan": "3",
+        "Prestasi_text": "Nasional",
+        "Jarak_km": "80"
+      },
+      {
+        "NIM": "2025003",
+        "Nama": "[NAME_MASKED]",
+        "IPK": "3.3",
+        "Penghasilan_Ortu_Rp": "7000000",
+        "Jumlah_Tanggungan": "1",
+        "Prestasi_text": "Provinsi",
+        "Jarak_km": "60"
+      }
+    ],
+    "type": "tabular/numeric",
+    "usable_text_column": null,
+    "classifier_status": "UNUSABLE",
+    "unusable_reason": "Tabular Indonesian student academic records (NIM, IPK, income, dependents); no free-text message column and no label column.",
+    "label_column": null,
+    "label_counts": {},
+    "label_mapping_note": "No label column present.",
+    "language_mix": "Indonesian (column names and achievements: Internasional, Nasional, Provinsi, Kabupaten)",
+    "student_relevance": "None for Indian students (Indonesian university GPA and parent income dataset).",
+    "provenance_license": "unknown, check the Kaggle page"
+  },
+  "dataset_combined.xlsx": {
+    "file_name": "dataset_combined.xlsx",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/dataset_combined.xlsx",
+    "file_size_bytes": 8969991,
+    "encoding": "zip/xml (binary)",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 245760,
+      "cols": 12
+    },
+    "columns": [
+      "Name",
+      "Education Qualification",
+      "Gender",
+      "Community",
+      "Religion",
+      "Exservice-men",
+      "Disability",
+      "Sports",
+      "Annual-Percentage",
+      "Income",
+      "India",
+      "Outcome"
+    ],
+    "column_types": {
+      "Name": "string",
+      "Education Qualification": "string",
+      "Gender": "string",
+      "Community": "string",
+      "Religion": "string",
+      "Exservice-men": "boolean",
+      "Disability": "boolean",
+      "Sports": "boolean",
+      "Annual-Percentage": "string",
+      "Income": "string",
+      "India": "string",
+      "Outcome": "float"
+    },
+    "missing_values": {
+      "Name": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Education Qualification": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Gender": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Community": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Religion": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Exservice-men": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Disability": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Sports": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Annual-Percentage": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Income": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "India": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Outcome": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "Name": "INSPIRE Scholarship 2022-23 ? Scholarship for Higher Education (SHE)",
+        "Education Qualification": "Undergraduate",
+        "Gender": "Male",
+        "Community": "General",
+        "Religion": "Hindu",
+        "Exservice-men": "Yes",
+        "Disability": "Yes",
+        "Sports": "Yes",
+        "Annual-Percentage": "90-100",
+        "Income": "Upto 1.5L",
+        "India": "In",
+        "Outcome": "1.0"
+      },
+      {
+        "Name": "INSPIRE Scholarship 2022-23 ? Scholarship for Higher Education (SHE)",
+        "Education Qualification": "Undergraduate",
+        "Gender": "Male",
+        "Community": "General",
+        "Religion": "Hindu",
+        "Exservice-men": "Yes",
+        "Disability": "Yes",
+        "Sports": "No",
+        "Annual-Percentage": "90-100",
+        "Income": "Upto 1.5L",
+        "India": "In",
+        "Outcome": "1.0"
+      },
+      {
+        "Name": "INSPIRE Scholarship 2022-23 ? Scholarship for Higher Education (SHE)",
+        "Education Qualification": "Undergraduate",
+        "Gender": "Male",
+        "Community": "General",
+        "Religion": "Muslim",
+        "Exservice-men": "Yes",
+        "Disability": "Yes",
+        "Sports": "Yes",
+        "Annual-Percentage": "90-100",
+        "Income": "Upto 1.5L",
+        "India": "In",
+        "Outcome": "1.0"
+      }
+    ],
+    "type": "tabular/numeric",
+    "usable_text_column": null,
+    "classifier_status": "UNUSABLE",
+    "unusable_reason": "Tabular demographic data for scholarship quota eligibility criteria; contains no message text column.",
+    "label_column": "Outcome",
+    "label_counts": {
+      "1.0": 32768,
+      "0.0": 212992
+    },
+    "label_mapping_note": "Binary demographic outcome (1.0 = eligible/admitted, 0.0 = not eligible). Does not represent scam/suspicious messages; represents scholarship applicant selection.",
+    "ambiguity_note": "Not a communication dataset. Label indicates scholarship eligibility algorithm decision, completely orthogonal to student fraud detection.",
+    "language_mix": "English categories / Indian demographic tabular attributes",
+    "student_relevance": "Contains Indian scholarship scheme names in 'Name' column (e.g. INSPIRE, Pragati, Dr. Ambedkar post matric) and demographic features (caste, religion, income), but no communication text.",
+    "provenance_license": "unknown, check the Kaggle page (appears to be an Indian scholarship eligibility rule-engine table)"
+  },
+  "Fraud Detection Dataset.csv": {
+    "file_name": "Fraud Detection Dataset.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/Fraud Detection Dataset.csv",
+    "file_size_bytes": 3692523,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 51000,
+      "cols": 12
+    },
+    "columns": [
+      "Transaction_ID",
+      "User_ID",
+      "Transaction_Amount",
+      "Transaction_Type",
+      "Time_of_Transaction",
+      "Device_Used",
+      "Location",
+      "Previous_Fraudulent_Transactions",
+      "Account_Age",
+      "Number_of_Transactions_Last_24H",
+      "Payment_Method",
+      "Fraudulent"
+    ],
+    "column_types": {
+      "Transaction_ID": "string",
+      "User_ID": "integer",
+      "Transaction_Amount": "float",
+      "Transaction_Type": "string",
+      "Time_of_Transaction": "float",
+      "Device_Used": "string",
+      "Location": "string",
+      "Previous_Fraudulent_Transactions": "integer",
+      "Account_Age": "integer",
+      "Number_of_Transactions_Last_24H": "integer",
+      "Payment_Method": "string",
+      "Fraudulent": "integer"
+    },
+    "missing_values": {
+      "Transaction_ID": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "User_ID": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Transaction_Amount": {
+        "count": 2520,
+        "pct": 4.941176470588235
+      },
+      "Transaction_Type": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Time_of_Transaction": {
+        "count": 2552,
+        "pct": 5.003921568627451
+      },
+      "Device_Used": {
+        "count": 2473,
+        "pct": 4.849019607843137
+      },
+      "Location": {
+        "count": 2547,
+        "pct": 4.9941176470588236
+      },
+      "Previous_Fraudulent_Transactions": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Account_Age": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Number_of_Transactions_Last_24H": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "Payment_Method": {
+        "count": 2469,
+        "pct": 4.841176470588236
+      },
+      "Fraudulent": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "Transaction_ID": "T1",
+        "User_ID": "4174",
+        "Transaction_Amount": "1292.76",
+        "Transaction_Type": "ATM Withdrawal",
+        "Time_of_Transaction": "16.0",
+        "Device_Used": "Tablet",
+        "Location": "San Francisco",
+        "Previous_Fraudulent_Transactions": "0",
+        "Account_Age": "119",
+        "Number_of_Transactions_Last_24H": "13",
+        "Payment_Method": "Debit Card",
+        "Fraudulent": "0"
+      },
+      {
+        "Transaction_ID": "T2",
+        "User_ID": "4507",
+        "Transaction_Amount": "1554.58",
+        "Transaction_Type": "ATM Withdrawal",
+        "Time_of_Transaction": "13.0",
+        "Device_Used": "Mobile",
+        "Location": "New York",
+        "Previous_Fraudulent_Transactions": "4",
+        "Account_Age": "79",
+        "Number_of_Transactions_Last_24H": "3",
+        "Payment_Method": "Credit Card",
+        "Fraudulent": "0"
+      },
+      {
+        "Transaction_ID": "T3",
+        "User_ID": "1860",
+        "Transaction_Amount": "2395.02",
+        "Transaction_Type": "ATM Withdrawal",
+        "Time_of_Transaction": "",
+        "Device_Used": "Mobile",
+        "Location": "",
+        "Previous_Fraudulent_Transactions": "3",
+        "Account_Age": "115",
+        "Number_of_Transactions_Last_24H": "9",
+        "Payment_Method": "",
+        "Fraudulent": "0"
+      }
+    ],
+    "type": "tabular/numeric",
+    "usable_text_column": null,
+    "classifier_status": "UNUSABLE",
+    "unusable_reason": "Tabular financial transaction logs (amounts, device, location, payment method); no free-text message column.",
+    "label_column": "Fraudulent",
+    "label_counts": {
+      "0": 48490,
+      "1": 2510
+    },
+    "label_mapping_note": "Binary financial fraud label (0 = normal transaction, 1 = fraudulent transaction). Represents credit card/ATM transaction anomaly, not social engineering messages.",
+    "ambiguity_note": "Ambiguous 'fraud' concept: financial transaction fraud (amounts, locations, velocity) vs deceptive opportunity communication.",
+    "language_mix": "English categorical values (ATM Withdrawal, Mobile, Chicago, Debit Card, etc.)",
+    "student_relevance": "Contains payment methods (UPI, Debit Card) and transaction logs, but zero opportunity text.",
+    "provenance_license": "unknown, check the Kaggle page"
+  },
+  "india_fraud_detection_FINAL.csv": {
+    "file_name": "india_fraud_detection_FINAL.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/india_fraud_detection_FINAL.csv",
+    "file_size_bytes": 698836,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 3200,
+      "cols": 8
+    },
+    "columns": [
+      "message_text",
+      "category",
+      "subcategory",
+      "platform_found",
+      "source_url",
+      "language",
+      "label",
+      "is_synthetic"
+    ],
+    "column_types": {
+      "message_text": "string",
+      "category": "string",
+      "subcategory": "string",
+      "platform_found": "string",
+      "source_url": "string",
+      "language": "string",
+      "label": "integer",
+      "is_synthetic": "boolean"
+    },
+    "missing_values": {
+      "message_text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "category": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "subcategory": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "platform_found": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "source_url": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "language": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "label": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "is_synthetic": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "message_text": "Your vehicle was caught overspeeding by a traffic camera. Pay your pending challan of Rs 500 now at: https://echallaom.vip/in",
+        "category": "Echallan_Scam",
+        "subcategory": "Overspeeding",
+        "platform_found": "SMS",
+        "source_url": "https://www.ampcuscyber.com/shadowopsintel/the-rise-of-browser-based-e-challan-scams-in-india/",
+        "language": "English",
+        "label": "1",
+        "is_synthetic": "False"
+      },
+      {
+        "message_text": "Dear Consumer, your Smart Meter balance for Acc 500123456 is low (Rs 2,100). Please recharge soon to avoid automatic disconnection. -TPDDL For queries, call our helpline.",
+        "category": "Electricity_Legitimate",
+        "subcategory": "Smart_Meter_Notification",
+        "platform_found": "SMS",
+        "source_url": "synthetic",
+        "language": "English",
+        "label": "0",
+        "is_synthetic": "True"
+      },
+      {
+        "message_text": "ACTION REQUIRED: Dear User, your number won the first prize in our annual lucky draw. Pay Rs 2,500 tax to receive Rs 299.",
+        "category": "Lottery_Scam",
+        "subcategory": "Tax_Fee",
+        "platform_found": "Telegram",
+        "source_url": "synthetic",
+        "language": "English",
+        "label": "1",
+        "is_synthetic": "True"
+      }
+    ],
+    "type": "free-text messages",
+    "usable_text_column": "message_text",
+    "label_column": "label",
+    "label_counts": {
+      "1": 1600,
+      "0": 1600
+    },
+    "label_mapping": {
+      "1": "suspicious",
+      "0": "benign"
+    },
+    "label_mapping_note": "Binary integer labels: '1' maps directly to suspicious (scam), '0' maps directly to benign (legitimate notification).",
+    "ambiguity_note": "Category scope includes broader Indian citizen scams (Echallan, Electricity disconnection, Courier, KYC) alongside Job scams.",
+    "text_stats": {
+      "char_min": 63,
+      "char_max": 258,
+      "char_mean": 126.2959375,
+      "char_median": 123.0,
+      "char_std": 29.778194345797626,
+      "word_min": 10,
+      "word_max": 37,
+      "word_mean": 20.4534375,
+      "word_median": 20.0,
+      "word_std": 4.846166725732179
+    },
+    "language_distribution": {
+      "english": {
+        "count": 3193,
+        "pct": 99.78125
+      },
+      "hinglish": {
+        "count": 7,
+        "pct": 0.21875000000000003
+      }
+    },
+    "student_relevance_counts": {
+      "bank_otp_upi_alert": 1031,
+      "competition": 117,
+      "task_job": 74,
+      "job": 282,
+      "overseas_agent": 27,
+      "internship": 10
+    },
+    "within_file_exact_duplicates": 0,
+    "overlap_with_maindataset_exact": 0,
+    "overlap_with_real_test_exact": 0,
+    "provenance": {},
+    "license": {},
+    "pii_counts": {
+      "phones": 244,
+      "account_numbers": 292,
+      "upis": 43
+    },
+    "masked_pii_examples": {
+      "phones": [
+        "180XXXX61",
+        "123XXXX90",
+        "012XXXX89"
+      ],
+      "account_numbers": [
+        "XXXXXXX6161",
+        "XXXXXX7890",
+        "XXXXXX6789"
+      ],
+      "upis": [
+        "ai***@upi",
+        "an***@okicici",
+        "ai***@upi"
+      ]
+    },
+    "within_file_near_duplicates_pairs": 3106,
+    "overlap_with_maindataset_near_dupes": 0,
+    "overlap_with_real_test_near_dupes": 0
+  },
+  "internet_scams_archive.csv": {
+    "file_name": "internet_scams_archive.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/internet_scams_archive.csv",
+    "file_size_bytes": 18285089,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 24000,
+      "cols": 37
+    },
+    "columns": [
+      "scam_id",
+      "category",
+      "scam_pattern",
+      "platform",
+      "message_text",
+      "subject",
+      "language",
+      "country_region",
+      "date",
+      "scam_tactics",
+      "manipulation_techniques",
+      "urgency_level",
+      "emotion_targeted",
+      "contains_link",
+      "contains_phone_number",
+      "contains_email_address",
+      "contains_crypto_address",
+      "contains_qr_code",
+      "requests_otp",
+      "requests_password",
+      "requests_bank_details",
+      "requests_payment",
+      "requests_personal_info",
+      "requests_remote_access",
+      "target_audience",
+      "difficulty_to_detect",
+      "risk_score",
+      "estimated_financial_loss_range_usd",
+      "label",
+      "is_synthetic",
+      "source",
+      "source_license",
+      "word_count",
+      "char_count",
+      "generation_template_id",
+      "split",
+      "notes"
+    ],
+    "column_types": {
+      "scam_id": "string",
+      "category": "string",
+      "scam_pattern": "string",
+      "platform": "string",
+      "message_text": "string",
+      "subject": "string",
+      "language": "string",
+      "country_region": "string",
+      "date": "string",
+      "scam_tactics": "string",
+      "manipulation_techniques": "string",
+      "urgency_level": "string",
+      "emotion_targeted": "string",
+      "contains_link": "boolean",
+      "contains_phone_number": "boolean",
+      "contains_email_address": "boolean",
+      "contains_crypto_address": "boolean",
+      "contains_qr_code": "boolean",
+      "requests_otp": "boolean",
+      "requests_password": "boolean",
+      "requests_bank_details": "boolean",
+      "requests_payment": "boolean",
+      "requests_personal_info": "boolean",
+      "requests_remote_access": "boolean",
+      "target_audience": "string",
+      "difficulty_to_detect": "string",
+      "risk_score": "integer",
+      "estimated_financial_loss_range_usd": "string",
+      "label": "string",
+      "is_synthetic": "boolean",
+      "source": "string",
+      "source_license": "string",
+      "word_count": "integer",
+      "char_count": "integer",
+      "generation_template_id": "string",
+      "split": "string",
+      "notes": "string"
+    },
+    "missing_values": {
+      "scam_id": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "category": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "scam_pattern": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "platform": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "message_text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "subject": {
+        "count": 15710,
+        "pct": 65.45833333333333
+      },
+      "language": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "country_region": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "date": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "scam_tactics": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "manipulation_techniques": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "urgency_level": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "emotion_targeted": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "contains_link": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "contains_phone_number": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "contains_email_address": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "contains_crypto_address": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "contains_qr_code": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_otp": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_password": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_bank_details": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_payment": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_personal_info": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "requests_remote_access": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "target_audience": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "difficulty_to_detect": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "risk_score": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "estimated_financial_loss_range_usd": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "label": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "is_synthetic": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "source": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "source_license": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "word_count": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "char_count": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "generation_template_id": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "split": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "notes": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "scam_id": "SCA-000001",
+        "category": "WhatsApp Scam",
+        "scam_pattern": "family_emergency",
+        "platform": "Facebook",
+        "message_text": "Hey it's me, please don't call this number yet, I can only text right now. I'm in a really difficult situation and need help with a phone repair. Please, I wouldn't ask if it wasn't serious \u2014 I need this by end of day. Can you send $900 to this account: [PHONE_MASKED]? I'll pay you back.",
+        "subject": "",
+        "language": "English",
+        "country_region": "Canada",
+        "date": "2024-05-20",
+        "scam_tactics": "impersonation;emotional_manipulation",
+        "manipulation_techniques": "urgency;trust_exploitation",
+        "urgency_level": "High",
+        "emotion_targeted": "fear",
+        "contains_link": "False",
+        "contains_phone_number": "True",
+        "contains_email_address": "False",
+        "contains_crypto_address": "False",
+        "contains_qr_code": "False",
+        "requests_otp": "False",
+        "requests_password": "False",
+        "requests_bank_details": "False",
+        "requests_payment": "True",
+        "requests_personal_info": "True",
+        "requests_remote_access": "False",
+        "target_audience": "Elderly/Seniors",
+        "difficulty_to_detect": "Easy",
+        "risk_score": "52",
+        "estimated_financial_loss_range_usd": "$1\u2013$100",
+        "label": "Scam",
+        "is_synthetic": "True",
+        "source": "Synthetic - Compositional Template Pipeline v1",
+        "source_license": "Original / CC-BY-4.0 (proposed)",
+        "word_count": "56",
+        "char_count": "284",
+        "generation_template_id": "family_emergency::801c124226",
+        "split": "train",
+        "notes": "Synthetic example illustrating the 'family emergency' pattern."
+      },
+      {
+        "scam_id": "SCA-000002",
+        "category": "WhatsApp Scam",
+        "scam_pattern": "family_emergency",
+        "platform": "Instagram",
+        "message_text": "Salut, c'est ton fils, j'ai perdu mon t\u00e9l\u00e9phone donc voici mon nouveau num\u00e9ro. J'ai besoin de CFA150 de toute urgence pour des frais de visa. Peux-tu l'envoyer sur ce compte : [PHONE_MASKED] ? Je t'expliquerai tout bient\u00f4t.",
+        "subject": "",
+        "language": "French",
+        "country_region": "Senegal",
+        "date": "2025-12-16",
+        "scam_tactics": "impersonation;emotional_manipulation",
+        "manipulation_techniques": "urgency;trust_exploitation",
+        "urgency_level": "High",
+        "emotion_targeted": "fear",
+        "contains_link": "False",
+        "contains_phone_number": "True",
+        "contains_email_address": "False",
+        "contains_crypto_address": "False",
+        "contains_qr_code": "False",
+        "requests_otp": "False",
+        "requests_password": "False",
+        "requests_bank_details": "False",
+        "requests_payment": "True",
+        "requests_personal_info": "True",
+        "requests_remote_access": "False",
+        "target_audience": "Elderly/Seniors",
+        "difficulty_to_detect": "Easy",
+        "risk_score": "58",
+        "estimated_financial_loss_range_usd": "$1\u2013$100",
+        "label": "Scam",
+        "is_synthetic": "True",
+        "source": "Synthetic - Compositional Template Pipeline v1",
+        "source_license": "Original / CC-BY-4.0 (proposed)",
+        "word_count": "37",
+        "char_count": "219",
+        "generation_template_id": "family_emergency::1eba9e852b",
+        "split": "train",
+        "notes": "Synthetic example illustrating the 'family emergency' pattern."
+      },
+      {
+        "scam_id": "SCA-000003",
+        "category": "WhatsApp Scam",
+        "scam_pattern": "family_emergency",
+        "platform": "Facebook",
+        "message_text": "Salut, c'est ton meilleur ami, j'ai perdu mon t\u00e9l\u00e9phone donc voici mon nouveau num\u00e9ro. J'ai besoin de $500 de toute urgence pour une r\u00e9paration de voiture. Peux-tu l'envoyer sur ce compte : [PHONE_MASKED] ? Je t'expliquerai tout bient\u00f4t.",
+        "subject": "",
+        "language": "French",
+        "country_region": "Canada",
+        "date": "2026-01-12",
+        "scam_tactics": "impersonation;emotional_manipulation",
+        "manipulation_techniques": "urgency;trust_exploitation",
+        "urgency_level": "Medium",
+        "emotion_targeted": "fear",
+        "contains_link": "False",
+        "contains_phone_number": "True",
+        "contains_email_address": "False",
+        "contains_crypto_address": "False",
+        "contains_qr_code": "False",
+        "requests_otp": "False",
+        "requests_password": "False",
+        "requests_bank_details": "False",
+        "requests_payment": "True",
+        "requests_personal_info": "True",
+        "requests_remote_access": "False",
+        "target_audience": "General Public",
+        "difficulty_to_detect": "Easy",
+        "risk_score": "43",
+        "estimated_financial_loss_range_usd": "$100\u2013$1,000",
+        "label": "Scam",
+        "is_synthetic": "True",
+        "source": "Synthetic - Compositional Template Pipeline v1",
+        "source_license": "Original / CC-BY-4.0 (proposed)",
+        "word_count": "38",
+        "char_count": "233",
+        "generation_template_id": "family_emergency::1eba9e852b",
+        "split": "train",
+        "notes": "Synthetic example illustrating the 'family emergency' pattern."
+      }
+    ],
+    "type": "free-text messages",
+    "usable_text_column": "message_text",
+    "label_column": "label",
+    "label_counts": {
+      "Scam": 17920,
+      "Benign": 6080
+    },
+    "label_mapping": {
+      "Scam": "suspicious",
+      "Benign": "benign"
+    },
+    "label_mapping_note": "'Scam' maps to suspicious, 'Benign' maps to benign.",
+    "ambiguity_note": "Heavy global scam distribution (crypto, romance, family emergency, BEC wire transfer) with low Indian student context.",
+    "text_stats": {
+      "char_min": 114,
+      "char_max": 472,
+      "char_mean": 285.29816666666665,
+      "char_median": 288.0,
+      "char_std": 69.4256365711223,
+      "word_min": 19,
+      "word_max": 79,
+      "word_mean": 45.3325,
+      "word_median": 45.0,
+      "word_std": 12.662672588491473
+    },
+    "language_distribution": {
+      "english": {
+        "count": 22775,
+        "pct": 94.89583333333333
+      },
+      "spanish": {
+        "count": 550,
+        "pct": 2.2916666666666665
+      },
+      "french": {
+        "count": 256,
+        "pct": 1.0666666666666667
+      },
+      "hindi": {
+        "count": 210,
+        "pct": 0.8750000000000001
+      },
+      "hinglish": {
+        "count": 125,
+        "pct": 0.5208333333333333
+      },
+      "indonesian": {
+        "count": 84,
+        "pct": 0.35000000000000003
+      }
+    },
+    "student_relevance_counts": {
+      "overseas_agent": 416,
+      "bank_otp_upi_alert": 729,
+      "competition": 2823,
+      "job": 2144,
+      "task_job": 411
+    },
+    "within_file_exact_duplicates": 0,
+    "overlap_with_maindataset_exact": 0,
+    "overlap_with_real_test_exact": 0,
+    "provenance": {
+      "Synthetic - Compositional Template Pipeline v1": 24000
+    },
+    "license": {
+      "Original / CC-BY-4.0 (proposed)": 24000
+    },
+    "pii_counts": {
+      "phones": 5786,
+      "account_numbers": 6144,
+      "emails": 478,
+      "upis": 478
+    },
+    "masked_pii_examples": {
+      "phones": [
+        "001XXXX83",
+        "269XXXX84",
+        "315XXXX30"
+      ],
+      "account_numbers": [
+        "XXXXXX9083",
+        "XXXXXX9784",
+        "XXXXXX3930"
+      ],
+      "emails": [
+        "no***@customer-portal-myservice.example",
+        "he***@rewards-update.invalid",
+        "al***@rewards-alert.example"
+      ],
+      "upis": [
+        "no***@customer-portal-myservice",
+        "he***@rewards-update",
+        "al***@rewards-alert"
+      ]
+    },
+    "within_file_near_duplicates_pairs": 118245,
+    "overlap_with_maindataset_near_dupes": 0,
+    "overlap_with_real_test_near_dupes": 0
+  },
+  "normalized_dataset.csv": {
+    "file_name": "normalized_dataset.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/normalized_dataset.csv",
+    "file_size_bytes": 321161,
+    "encoding": "utf-8",
+    "is_valid_utf8": true,
+    "encoding_issues": [],
+    "shape": {
+      "rows": 600,
+      "cols": 11
+    },
+    "columns": [
+      "id",
+      "text",
+      "normalized_text",
+      "label",
+      "scam_type",
+      "language",
+      "channel",
+      "source_type",
+      "group_id",
+      "pair_id",
+      "super_group"
+    ],
+    "column_types": {
+      "id": "string",
+      "text": "string",
+      "normalized_text": "string",
+      "label": "string",
+      "scam_type": "string",
+      "language": "string",
+      "channel": "string",
+      "source_type": "string",
+      "group_id": "string",
+      "pair_id": "string",
+      "super_group": "string"
+    },
+    "missing_values": {
+      "id": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "normalized_text": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "label": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "scam_type": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "language": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "channel": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "source_type": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "group_id": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "pair_id": {
+        "count": 348,
+        "pct": 57.99999999999999
+      },
+      "super_group": {
+        "count": 0,
+        "pct": 0.0
+      }
+    },
+    "sample_rows": [
+      {
+        "id": "DATA-001",
+        "text": "Apex Education Foundation alert: Rs 25,000 scholarship requires immediate verification. Submit details at https://apex-foundation.example/grant before midnight.",
+        "normalized_text": "Apex Education Foundation alert: <AMT> scholarship requires immediate verification. Submit details at <URL> before midnight.",
+        "label": "suspicious",
+        "scam_type": "scholarship",
+        "language": "en",
+        "channel": "sms",
+        "source_type": "synthetic",
+        "group_id": "GRP-B01-01",
+        "pair_id": "P001",
+        "super_group": "SUPERGRP_301"
+      },
+      {
+        "id": "DATA-002",
+        "text": "National Talent Trust: Immediate action required. Confirm your bank account login credentials at https://talent-trust.invalid/verify before Thursday 5 PM to prevent scholarship cancellation.",
+        "normalized_text": "National Talent Trust: Immediate action required. Confirm your bank account login credentials at <URL> before Thursday 5 PM to prevent scholarship cancellation.",
+        "label": "suspicious",
+        "scam_type": "scholarship",
+        "language": "en",
+        "channel": "sms",
+        "source_type": "synthetic",
+        "group_id": "GRP-B01-01",
+        "pair_id": "P002",
+        "super_group": "SUPERGRP_301"
+      },
+      {
+        "id": "DATA-003",
+        "text": "Horizon Academic Council alert: Rs 18,000 scholarship lene ke liye visit https://horizon-council.test/sanction before midnight.",
+        "normalized_text": "Horizon Academic Council alert: <AMT> scholarship lene ke liye visit <URL> before midnight.",
+        "label": "suspicious",
+        "scam_type": "scholarship",
+        "language": "hinglish",
+        "channel": "sms",
+        "source_type": "synthetic",
+        "group_id": "GRP-B01-02",
+        "pair_id": "P003",
+        "super_group": "SUPERGRP_306"
+      }
+    ],
+    "type": "free-text messages",
+    "usable_text_column": "text",
+    "label_column": "label",
+    "label_counts": {
+      "suspicious": 300,
+      "benign": 300
+    },
+    "label_mapping": {
+      "suspicious": "suspicious",
+      "benign": "benign"
+    },
+    "label_mapping_note": "Direct 1:1 mapping to our labels (suspicious, benign).",
+    "ambiguity_note": "None. Native labels match system ontology.",
+    "text_stats": {
+      "char_min": 82,
+      "char_max": 515,
+      "char_mean": 198.12166666666667,
+      "char_median": 165.0,
+      "char_std": 94.12976962978054,
+      "word_min": 12,
+      "word_max": 66,
+      "word_mean": 26.38,
+      "word_median": 22.0,
+      "word_std": 12.445973913947702
+    },
+    "language_distribution": {
+      "english": {
+        "count": 339,
+        "pct": 56.49999999999999
+      },
+      "hinglish": {
+        "count": 168,
+        "pct": 28.000000000000004
+      },
+      "hindi": {
+        "count": 93,
+        "pct": 15.5
+      }
+    },
+    "student_relevance_counts": {
+      "scholarship": 117,
+      "task_job": 52,
+      "bank_otp_upi_alert": 71,
+      "internship": 71,
+      "job": 36,
+      "competition": 73,
+      "overseas_agent": 57,
+      "mule_account": 3
+    },
+    "within_file_exact_duplicates": 0,
+    "overlap_with_maindataset_exact": 600,
+    "overlap_with_real_test_exact": 0,
+    "provenance": "unknown, check the Kaggle page",
+    "license": "unknown, check the Kaggle page",
+    "pii_counts": {
+      "upis": 143,
+      "emails": 19
+    },
+    "masked_pii_examples": {
+      "upis": [
+        "bt***@fakebank",
+        "ze***@fakebank",
+        "fu***@fakebank"
+      ],
+      "emails": [
+        "in***@sterling-aid.example",
+        "pr***@central-board.example",
+        "ac***@student-aid.example"
+      ]
+    },
+    "within_file_near_duplicates_pairs": 0,
+    "overlap_with_maindataset_near_dupes": 600,
+    "overlap_with_real_test_near_dupes": 0
+  },
+  "spam.csv": {
+    "file_name": "spam.csv",
+    "file_path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/spam.csv",
+    "file_size_bytes": 503663,
+    "encoding": "windows-1252 / latin-1",
+    "is_valid_utf8": false,
+    "encoding_issues": [
+      "'utf-8' codec can't decode bytes in position 606-607: invalid continuation byte"
+    ],
+    "shape": {
+      "rows": 5572,
+      "cols": 5
+    },
+    "columns": [
+      "v1",
+      "v2",
+      "unnamed_2",
+      "unnamed_3",
+      "unnamed_4"
+    ],
+    "column_types": {
+      "v1": "string",
+      "v2": "string",
+      "unnamed_2": "string",
+      "unnamed_3": "string",
+      "unnamed_4": "string"
+    },
+    "missing_values": {
+      "v1": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "v2": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "unnamed_2": {
+        "count": 5522,
+        "pct": 99.10265613783201
+      },
+      "unnamed_3": {
+        "count": 5560,
+        "pct": 99.78463747307968
+      },
+      "unnamed_4": {
+        "count": 5566,
+        "pct": 99.89231873653985
+      }
+    },
+    "sample_rows": [
+      {
+        "v1": "ham",
+        "v2": "Go until jurong point, crazy.. Available only in bugis n great world la e buffet... Cine there got amore wat...",
+        "unnamed_2": "",
+        "unnamed_3": "",
+        "unnamed_4": ""
+      },
+      {
+        "v1": "ham",
+        "v2": "Ok lar... Joking wif u oni...",
+        "unnamed_2": "",
+        "unnamed_3": "",
+        "unnamed_4": ""
+      },
+      {
+        "v1": "spam",
+        "v2": "Free entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. Text FA to 87121 to receive entry question(std txt rate)T&C's apply 08452810075over18's",
+        "unnamed_2": "",
+        "unnamed_3": "",
+        "unnamed_4": ""
+      }
+    ],
+    "type": "free-text messages",
+    "usable_text_column": "v2",
+    "label_column": "v1",
+    "label_counts": {
+      "ham": 4825,
+      "spam": 747
+    },
+    "label_mapping": {
+      "ham": "benign",
+      "spam": "AMBIGUOUS / suspicious (marketing spam vs fraud scam)"
+    },
+    "label_mapping_note": "'ham' maps cleanly to benign background mobile messages. 'spam' maps ambiguously: mostly commercial advertisements, ringtones, and marketing spam rather than advance-fee student scams.",
+    "ambiguity_note": "CRITICAL AMBIGUITY: 'spam' != 'scam'. Filtering marketing spam is not identical to detecting opportunity fraud.",
+    "text_stats": {
+      "char_min": 2,
+      "char_max": 910,
+      "char_mean": 80.65739411342426,
+      "char_median": 62.0,
+      "char_std": 59.9959363384634,
+      "word_min": 1,
+      "word_max": 171,
+      "word_mean": 15.596195262024407,
+      "word_median": 12.0,
+      "word_std": 11.394821931878383
+    },
+    "language_distribution": {
+      "english": {
+        "count": 5570,
+        "pct": 99.96410624551328
+      },
+      "hinglish": {
+        "count": 2,
+        "pct": 0.03589375448671931
+      }
+    },
+    "student_relevance_counts": {
+      "competition": 154,
+      "task_job": 9,
+      "job": 57,
+      "bank_otp_upi_alert": 13,
+      "overseas_agent": 3
+    },
+    "within_file_exact_duplicates": 414,
+    "overlap_with_maindataset_exact": 0,
+    "overlap_with_real_test_exact": 0,
+    "provenance": "unknown, check the Kaggle page",
+    "license": "unknown, check the Kaggle page",
+    "pii_counts": {
+      "phones": 405,
+      "account_numbers": 441,
+      "upis": 18,
+      "emails": 7
+    },
+    "masked_pii_examples": {
+      "phones": [
+        "090XXXX61",
+        "080XXXX30",
+        "077XXXX51"
+      ],
+      "account_numbers": [
+        "XXXXXXX1461",
+        "XXXXXXX6030",
+        "XXXXXXX4351"
+      ],
+      "upis": [
+        "31***@150p",
+        "yi***@hotmail",
+        "re***@thirtyeight"
+      ],
+      "emails": [
+        "yi***@hotmail.com",
+        "in***@ringtoneking.co.uk",
+        "td***@emc1.co.uk"
+      ]
+    },
+    "within_file_near_duplicates_pairs": 1357,
+    "overlap_with_maindataset_near_dupes": 0,
+    "overlap_with_real_test_near_dupes": 0
+  },
+  "cross_file_overlap": {
+    "dataset.csv <-> india_fraud_detection_FINAL.csv": {
+      "file1": "dataset.csv",
+      "file2": "india_fraud_detection_FINAL.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "dataset.csv <-> internet_scams_archive.csv": {
+      "file1": "dataset.csv",
+      "file2": "internet_scams_archive.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "dataset.csv <-> normalized_dataset.csv": {
+      "file1": "dataset.csv",
+      "file2": "normalized_dataset.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "dataset.csv <-> spam.csv": {
+      "file1": "dataset.csv",
+      "file2": "spam.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "india_fraud_detection_FINAL.csv <-> internet_scams_archive.csv": {
+      "file1": "india_fraud_detection_FINAL.csv",
+      "file2": "internet_scams_archive.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "india_fraud_detection_FINAL.csv <-> normalized_dataset.csv": {
+      "file1": "india_fraud_detection_FINAL.csv",
+      "file2": "normalized_dataset.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "india_fraud_detection_FINAL.csv <-> spam.csv": {
+      "file1": "india_fraud_detection_FINAL.csv",
+      "file2": "spam.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "internet_scams_archive.csv <-> normalized_dataset.csv": {
+      "file1": "internet_scams_archive.csv",
+      "file2": "normalized_dataset.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "internet_scams_archive.csv <-> spam.csv": {
+      "file1": "internet_scams_archive.csv",
+      "file2": "spam.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    },
+    "normalized_dataset.csv <-> spam.csv": {
+      "file1": "normalized_dataset.csv",
+      "file2": "spam.csv",
+      "exact_shared": 0,
+      "near_shared_cosine_gt_0.9": 0
+    }
+  },
+  "shortcut_analysis": {
+    "dataset.csv": {
+      "top_positive_features (suspicious/scam/spam)": [
+        [
+          "rs",
+          1.6743468749619321
+        ],
+        [
+          "pay",
+          0.7285314385692435
+        ],
+        [
+          "earn",
+          0.6944842624861883
+        ],
+        [
+          "fee",
+          0.6863249329467852
+        ],
+        [
+          "of rs",
+          0.5648882821209328
+        ],
+        [
+          "deposit",
+          0.5441682489941627
+        ],
+        [
+          "selected for",
+          0.49653386895031976
+        ],
+        [
+          "earn rs",
+          0.49373623188747273
+        ],
+        [
+          "selected",
+          0.4341914690899891
+        ],
+        [
+          "fee rs",
+          0.40286040167486276
+        ]
+      ],
+      "top_negative_features (benign/ham)": [
+        [
+          "the",
+          -1.678456103393689
+        ],
+        [
+          "is",
+          -0.7523557494373029
+        ],
+        [
+          "on",
+          -0.7226439892203532
+        ],
+        [
+          "has",
+          -0.7002206324391083
+        ],
+        [
+          "has been",
+          -0.6727321146810198
+        ],
+        [
+          "been",
+          -0.6444696108825289
+        ],
+        [
+          "official",
+          -0.47355972695981485
+        ],
+        [
+          "for the",
+          -0.47177757000989823
+        ],
+        [
+          "at",
+          -0.47156621491034906
+        ],
+        [
+          "your",
+          -0.43791416986330056
+        ]
+      ],
+      "mean_len_positive": 108.38636363636364,
+      "mean_len_negative": 119.08888888888889,
+      "len_disparity_ratio": 0.9101299428319395
+    },
+    "india_fraud_detection_FINAL.csv": {
+      "top_positive_features (suspicious/scam/spam)": [
+        [
+          "link",
+          3.0478537150037557
+        ],
+        [
+          "notice",
+          2.627142283612727
+        ],
+        [
+          "yoyour",
+          2.5768880947777406
+        ],
+        [
+          "update",
+          2.3961700073416803
+        ],
+        [
+          "here",
+          2.327384269768829
+        ],
+        [
+          "to",
+          2.221070673563196
+        ],
+        [
+          "pay",
+          2.0038064321634024
+        ],
+        [
+          "contact",
+          1.734421380411562
+        ],
+        [
+          "urgent",
+          1.6864618681585208
+        ],
+        [
+          "dear customer",
+          1.6816502995646223
+        ]
+      ],
+      "top_negative_features (benign/ham)": [
+        [
+          "for",
+          -5.334347495783926
+        ],
+        [
+          "with",
+          -2.4929164543813394
+        ],
+        [
+          "00",
+          -2.3131306051502896
+        ],
+        [
+          "no",
+          -2.178405385010141
+        ],
+        [
+          "you for",
+          -2.1203719688104594
+        ],
+        [
+          "2026",
+          -2.1174189080066483
+        ],
+        [
+          "thank",
+          -2.0199023662142035
+        ],
+        [
+          "thank you",
+          -2.0199023662142035
+        ],
+        [
+          "26",
+          -1.9132238405695343
+        ],
+        [
+          "dept",
+          -1.837662003103719
+        ]
+      ],
+      "mean_len_positive": 115.51125,
+      "mean_len_negative": 137.080625,
+      "len_disparity_ratio": 0.8426519064966329
+    },
+    "internet_scams_archive.csv": {
+      "top_positive_features (suspicious/scam/spam)": [
+        [
+          "https",
+          2.4423550997183625
+        ],
+        [
+          "to",
+          2.4240856074459565
+        ],
+        [
+          "confirm",
+          2.260680423887458
+        ],
+        [
+          "de",
+          2.0191826802033876
+        ],
+        [
+          "we",
+          2.007749039125344
+        ],
+        [
+          "now",
+          1.9307791649696266
+        ],
+        [
+          "verify",
+          1.9253337541344453
+        ],
+        [
+          "need",
+          1.8414172291334479
+        ],
+        [
+          "please",
+          1.7218587151410598
+        ],
+        [
+          "before",
+          1.5636357962312237
+        ]
+      ],
+      "top_negative_features (benign/ham)": [
+        [
+          "any",
+          -3.7808672258802223
+        ],
+        [
+          "any time",
+          -3.712784598097616
+        ],
+        [
+          "view",
+          -3.6932631122284807
+        ],
+        [
+          "on",
+          -3.069875585242577
+        ],
+        [
+          "no",
+          -2.915428372293061
+        ],
+        [
+          "to view",
+          -2.832156657810594
+        ],
+        [
+          "apply",
+          -2.8261026938904394
+        ],
+        [
+          "questions",
+          -2.8009931910033967
+        ],
+        [
+          "app",
+          -2.790717631360249
+        ],
+        [
+          "open",
+          -2.4755067452647816
+        ]
+      ],
+      "mean_len_positive": 308.33487723214284,
+      "mean_len_negative": 217.40049342105263,
+      "len_disparity_ratio": 1.418280484924991
+    },
+    "normalized_dataset.csv": {
+      "top_positive_features (suspicious/scam/spam)": [
+        [
+          "rs",
+          2.5934255860875237
+        ],
+        [
+          "fakebank",
+          2.128672585734365
+        ],
+        [
+          "000",
+          1.7188977631770692
+        ],
+        [
+          "transfer",
+          1.3446102692202209
+        ],
+        [
+          "to",
+          1.2965069949524022
+        ],
+        [
+          "daily",
+          1.158484251816146
+        ],
+        [
+          "candidate",
+          1.1344466229189198
+        ],
+        [
+          "task",
+          1.0313786108349678
+        ],
+        [
+          "login",
+          0.9954795745146818
+        ],
+        [
+          "fee rs",
+          0.9753181832828912
+        ]
+      ],
+      "top_negative_features (benign/ham)": [
+        [
+          "the",
+          -1.467317253953266
+        ],
+        [
+          "\u0932\u092f",
+          -1.0540415539210262
+        ],
+        [
+          "notice",
+          -1.0348150429412795
+        ],
+        [
+          "office",
+          -0.9774466150010962
+        ],
+        [
+          "work study",
+          -0.8958305054861776
+        ],
+        [
+          "guidelines",
+          -0.89565238569708
+        ],
+        [
+          "department",
+          -0.8561462641491924
+        ],
+        [
+          "to the",
+          -0.8337460335605074
+        ],
+        [
+          "campus",
+          -0.824165714708206
+        ],
+        [
+          "students",
+          -0.814864417640554
+        ]
+      ],
+      "mean_len_positive": 191.40666666666667,
+      "mean_len_negative": 204.83666666666667,
+      "len_disparity_ratio": 0.9344355665489577
+    },
+    "spam.csv": {
+      "top_positive_features (suspicious/scam/spam)": [
+        [
+          "call",
+          4.987287008201641
+        ],
+        [
+          "txt",
+          4.6585996824297276
+        ],
+        [
+          "free",
+          3.8879622058110797
+        ],
+        [
+          "text",
+          3.6999984383398306
+        ],
+        [
+          "to",
+          3.3686589064505075
+        ],
+        [
+          "mobile",
+          3.1160381841464324
+        ],
+        [
+          "stop",
+          3.013147602576094
+        ],
+        [
+          "reply",
+          2.9734022684992465
+        ],
+        [
+          "www",
+          2.926381054248316
+        ],
+        [
+          "claim",
+          2.8545392868754664
+        ]
+      ],
+      "top_negative_features (benign/ham)": [
+        [
+          "my",
+          -2.3266744645432285
+        ],
+        [
+          "me",
+          -2.2733711056802806
+        ],
+        [
+          "ok",
+          -1.8022098635574175
+        ],
+        [
+          "that",
+          -1.7413770241809232
+        ],
+        [
+          "it",
+          -1.6656853805077598
+        ],
+        [
+          "but",
+          -1.3950969857205198
+        ],
+        [
+          "gt",
+          -1.3844881198829182
+        ],
+        [
+          "lt",
+          -1.374674599403909
+        ],
+        [
+          "ll",
+          -1.3565515484104498
+        ],
+        [
+          "come",
+          -1.3181480649466997
+        ]
+      ],
+      "mean_len_positive": 139.1164658634538,
+      "mean_len_negative": 71.60683937823835,
+      "len_disparity_ratio": 1.9427818218399393
+    }
+  }
+}
