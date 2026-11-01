@@ -1118,13 +1118,28 @@ The crawler service provides an informational, read-only shallow crawl of verifi
    - `CRAWLER_UNAVAILABLE`: HTTP 503 Service Unavailable when the crawler service cannot be reached.
    - `CRAWL_NOT_ALLOWED`: HTTP 400 Bad Request when the check has no eligible domain or the entity violates safety policies.
 
-6. **Database Table (`crawl_results`)**:
+6. **Database Table (`crawl_results` - Migrations 012 & 013)**:
    - `id`: TEXT PRIMARY KEY (UUID).
    - `check_id`: TEXT NOT NULL REFERENCES `checks(id)` ON DELETE CASCADE.
    - `entity_id`: TEXT NOT NULL.
-   - `result_json`: TEXT NOT NULL.
-   - `status`: TEXT NOT NULL ("pending", "completed", "failed").
+   - `status`: TEXT NOT NULL CHECK (`status` IN ('running', 'done', 'failed')).
+   - `result_json`: TEXT (nullable while running).
+   - `error_code`: TEXT (nullable, set on failure).
+   - `started_at`: TEXT NOT NULL (ISO 8601).
+   - `finished_at`: TEXT (nullable).
    - `created_at`: TEXT NOT NULL (ISO 8601).
    - `updated_at`: TEXT NOT NULL (ISO 8601).
+   - Constraints: `UNIQUE(check_id, entity_id)`.
    - Indices: `idx_crawl_results_check_id` ON `crawl_results(check_id)`, `idx_crawl_results_entity_id` ON `crawl_results(entity_id)`.
+
+7. **API Request & Response Contracts**:
+   - `POST /api/checks/:id/crawl`:
+     - Request body: `{ entityId: string }`
+     - Response (accepted/running): `{ status: "running", checkId: string, entityId: string }` (HTTP 202 or 200 on replay)
+     - Response (already completed): `{ status: "done", checkId: string, entityId: string, result: CrawlResult }` (HTTP 200)
+   - `GET /api/checks/:id/crawl?entityId=...`:
+     - Response: `{ status: "not_started" | "running" | "done" | "failed", result?: CrawlResult, errorCode?: string }`
+   - Progress model: Not sent through SSE/TraceEvent; polled via `GET /api/checks/:id/crawl`.
+   - Known limit: Target domain sees egress server IP and runs arbitrary scripts within sandboxed browser; forward proxy enforces network and protocol boundaries.
+   - Stale threshold: Crawls in `running` status exceeding 5 minutes are transitioned to `failed` (`server_restart`) by maintenance cleanup.
 

@@ -94,12 +94,18 @@
 ---
 
 ## Part 4: Client, DB, API Route
-- [ ] Implement `lib/crawler.js` (NOT VERIFIED).
-- [ ] Repository functions in `lib/db/` (NOT VERIFIED).
-- [ ] Implement `POST /api/checks/:id/crawl` with entity check, SSRF guard, idempotency, rate limit (NOT VERIFIED).
-- [ ] Implement `GET /api/checks/:id/crawl` (NOT VERIFIED).
-- [ ] Integration tests (NOT VERIFIED).
-- [ ] Create `scripts/crawler-live.js` (NOT VERIFIED).
+- [x] Read `services/crawler/src/routes/crawl.js` and document exact microservice routes and shapes:
+  - `GET /api/health` (or `/health`): Returns 200 `{ status: 'ok', service: 'crawler', chromium: true, uptime: number, timestamp: string }` or 503 if Chromium fails to launch.
+  - `POST /api/crawl`: Headers: `x-api-key: <key>`, `Content-Type: application/json`. Body: `{ url: string, maxDepth?: number, maxPages?: number, concurrency?: number, maxScrolls?: number, scrollPage?: boolean, sameHostOnly?: boolean, timeoutMs?: number }`. Returns 202 `{ message: 'Crawl job queued', jobId: string, status: 'queued' | 'running' }` (or 400 on invalid URL/caps, 401 on missing/wrong API key).
+  - `GET /api/crawl/:jobId`: Headers: `x-api-key: <key>`. Returns 200 `{ jobId: string, status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled', pagesVisited: number, pending: number, failed: number, startedAt: string | null, finishedAt: string | null, errors: string[], result: CrawlResult | null }`. Returns 404 if job expired or not found.
+  - `GET /api/crawl/:jobId/result`: Headers: `x-api-key: <key>`. Returns 200 with completed `CrawlResult` object; 409 if still queued/running; 404 if not found; 500 if failed.
+  - `DELETE /api/crawl/:jobId`: Headers: `x-api-key: <key>`. Returns 200 `{ message: 'Job cancellation requested', jobId: string, status: 'cancelled' }`.
+- [x] Implement `lib/crawler.js` (POST to `/api/crawl`, poll 1s, DELETE on timeout, `CrawlResultSchema` validation, `x-api-key`, typed errors).
+- [x] Repository functions in `lib/db/` (`createCrawl`, `markCrawlDone`, `markCrawlFailed`, `getCrawl`, `markStaleCrawlsFailed` wired into `runCleanup`).
+- [x] Implement `POST /api/checks/:id/crawl` with entity check, SSRF guard, idempotency, retry, rate limit, concurrency saturation 503.
+- [x] Implement `GET /api/checks/:id/crawl` returning `not_started`, `running`, `done`, `failed`.
+- [x] Integration tests in `tests/crawler-integration.test.js` covering 19 requirements offline with mocked fetch and SQLite DB.
+- [x] Create and verify `scripts/crawler-live.js` against running crawler service (example.com exactly 1 page; quotes.toscrape.com depth 1 observations; non-zero exit on errors).
 
 ---
 

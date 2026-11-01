@@ -119,12 +119,12 @@ All routes are JSON unless stated. Base path `/api`.
 | `POST /checks/:id/fraud-summary` | Pre-filled complaint summary | optional amount, date, paymentMethod | text |
 | `POST /fraud-summary` | Standalone complaint summary (no check ID) | optional amount, date, paymentMethod, language | title, narrative, victimSteps, reportingChannels |
 | `GET /guides/:type` | Guide content | none | guide content |
-| `POST /checks/:id/crawl` | Trigger read-only shallow crawl for confirmed domain (user-initiated) | optional entityId | 202 Accepted { jobId, status } or 200 OK |
-| `GET /checks/:id/crawl` | Retrieve stored crawl result | none | CrawlResult object |
+| `POST /checks/:id/crawl` | Trigger read-only shallow crawl for confirmed domain (user-initiated) | `{ entityId }` | `{ status: "running" | "done", ... }` |
+| `GET /checks/:id/crawl` | Retrieve stored crawl result | query `?entityId=...` | `{ status: "not_started" | "running" | "done" | "failed", result?, errorCode? }` |
 
 Internal service (not public): `POST classifier/classify` takes the message text and returns a label, a probability and the top contributing terms.
 
-Conventions: every check has an id, expires after 24 hours, and can be fetched only with its id. Errors return an error message and code with user-safe wording. Confirming a check is idempotent: replays while `investigating`, `scoring`, or `report_ready` return HTTP 200 with the check's current status and never launch duplicate investigations. The coordinator runs asynchronously via a bounded background job runner. Stale checks stuck in `investigating` or `scoring` longer than 10 minutes are swept by the maintenance cleanup job, moved to `failed` with failure reason `coordinator_pipeline_error`, and emit a `check_event`.
+Conventions: every check has an id, expires after 24 hours, and can be fetched only with its id. Errors return an error message and code with user-safe wording. Confirming a check is idempotent: replays while `investigating`, `scoring`, or `report_ready` return HTTP 200 with the check's current status and never launch duplicate investigations. The coordinator runs asynchronously via a bounded background job runner. Stale checks stuck in `investigating` or `scoring` longer than 10 minutes are swept by the maintenance cleanup job, moved to `failed` with failure reason `coordinator_pipeline_error`, and emit a `check_event`. Crawl progress is not sent through Server-Sent Events or `TraceEvent` (the SSE stream finishes on `complete` and the check is already `report_ready`); the frontend UI polls `GET /api/checks/:id/crawl`. Known operational limit: the target domain observes our server egress IP and executes its own client JavaScript in Chromium; the local proxy controls network boundaries rather than page script logic. Stale crawls in `running` status longer than 5 minutes are swept to `failed` with `server_restart`.
 
 ## 7. Processing pipeline: what runs, when, and which model
 
