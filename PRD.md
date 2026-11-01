@@ -80,13 +80,17 @@ At least one of text, image or link is required. All other fields are optional. 
 | `/` | Landing page: what the tool does, example scams, a "Check an offer" button |
 | `/check` | New check form: text box, image upload, optional fields (link, UPI ID, company, handle, phone), language selector, consent checkbox |
 | `/check/[id]` | One page with three states: extraction confirmation, live progress, final report |
+| `/history` | Device and server-side check history (merged for signed-in users; localStorage for anonymous users) |
 | `/guides` | List of scam types |
 | `/guides/[type]` | Guide for one scam type (how it works, red flags, what to do) |
 | `/report-fraud` | "I already paid or shared details" help: steps and complaint summary generator |
 | `/about` | How it works, data sources, limits, privacy |
 | `/feedback` | Optional page or modal for "this was right / wrong" |
+| `/auth/google` | OAuth 2.0 PKCE initiation route redirecting to Google Consent Screen |
+| `/auth/google/callback` | OAuth 2.0 PKCE callback verifying state, exchanging token, establishing session |
+| `/auth/logout` | Same-origin session termination clearing auth cookies and revoking session row |
 
-Shared UI components: input form, extracted-entities editor, progress timeline, risk badge, flag card (title, explanation, evidence links), checklist, action buttons, disclaimer footer.
+Shared UI components: input form, extracted-entities editor, progress timeline, risk badge, flag card (title, explanation, evidence links), checklist, action buttons, disclaimer footer, user profile menu with optional Google sign-in.
 
 ## 5. End-to-end user flow
 
@@ -121,6 +125,12 @@ All routes are JSON unless stated. Base path `/api`.
 | `GET /guides/:type` | Guide content | none | guide content |
 | `POST /checks/:id/crawl` | Trigger read-only shallow crawl for confirmed domain (user-initiated) | `{ entityId }` | `{ status: "running" | "done", ... }` |
 | `GET /checks/:id/crawl` | Retrieve stored crawl result | query `?entityId=...` | `{ status: "not_started" | "running" | "done" | "failed", result?, errorCode? }` |
+| `GET /auth/google` | Initiate Google OAuth PKCE flow | query `?returnTo=/...` | 302 Redirect to Google Consent |
+| `GET /auth/google/callback` | OAuth PKCE callback | query `?code=...&state=...` | 302 Redirect to safe returnTo (or `/?auth_error=...`) |
+| `POST /auth/logout` | Revoke session and clear cookie | none (requires same-origin) | `{ ok: true }` |
+| `GET /api/auth/me` | Current authenticated user profile | none | `{ user: { id, name, email, avatarUrl } }` or `{ user: null }` |
+| `GET /api/me/checks` | Authenticated user's non-expired checks | none | `{ checks: Array<{ id, status, riskLevel, score, createdAt, expiresAt }> }` |
+| `DELETE /api/me` | Delete user account and linked sessions | none | `{ ok: true }` |
 
 Internal service (not public): `POST classifier/classify` takes the message text and returns a label, a probability and the top contributing terms.
 
@@ -379,18 +389,20 @@ For `medium` risk results, the report writer must use neutral, objective wording
 
 | Table | Key fields |
 |---|---|
-| `checks` | id (UUID), status, current_round (default 0), language, risk_level, score (int 0..100), confidence, failure_reason, created_at, updated_at, expires_at |
+| `checks` | id (UUID), user_id (text UUID, nullable, links to users), status, current_round (default 0), language, risk_level, score (int 0..100), confidence, failure_reason, created_at, updated_at, expires_at |
 | `check_inputs` | id (int), check_id, type (text, image, url, upi, company, handle, phone, youtube_url), value, file_path, mime_type, size_bytes, created_at |
 | `entities` | id (int), check_id, kind, value, source (extracted, user-added or discovered), discovered_by, round, confirmed, evidence_json |
 | `agent_results` | id (int), check_id, agent, round, kind, status (ok, skipped, could_not_check), reason, flags_json, new_entities_json, processed_json, unchecked_json, manual_checks_json, duration_ms |
 | `check_events` | id (int), check_id, seq (int), round, type (including activity), agent, status, summary, payload_json, created_at |
 | `reports` | check_id, report_json, created_at |
+| `users` | id (UUID text), google_sub (unique text), email (text), name (text), avatar_url (text nullable), created_at (ISO text), last_login_at (ISO text) |
+| `sessions` | id (text pk), user_id (text fk REFERENCES users(id) ON DELETE CASCADE), expires_at (ISO text), created_at (ISO text) |
 | `graph_nodes` | id (int), kind, value, first_seen, last_seen, report_count |
 | `graph_edges` | id (int), node_a, node_b, check_ref (opaque string), created_at |
 | `feedback` | id (int), check_id (cleared when the check is deleted), verdict ("right" \| "wrong"), risk_level_shown, comment, created_at |
 | `lookup_cache` | key, result_json, fetched_at (int epoch seconds), ttl_seconds |
 
-Retention: checks, inputs and reports are deleted after 24 hours. Uploaded images are deleted right after extraction. Only graph rows and anonymous feedback persist.
+Retention: checks, inputs and reports are deleted after 24 hours regardless of whether created anonymously or by a signed-in user. Anonymous checks remain supported with `user_id = NULL`. Signing in associates checks with `user_id` so the user can review their non-expired check history across devices. Uploaded images are deleted right after extraction. Users can delete their account and active sessions at any time via `DELETE /api/me`, which unlinks their historical checks (`user_id = NULL`). Only graph rows and anonymous feedback persist.
 
 ## 14. External services
 
@@ -420,6 +432,7 @@ All limits and terms must be re-checked before the demo, since free tiers change
 - No tracing or identification of individuals. Phone numbers get validation, report search and graph matching only.
 - Users are told to crop out other people's private details before uploading screenshots.
 - Images are deleted after extraction. Checks expire after 24 hours. Saving to the graph needs explicit consent.
+- **Optional Google Authentication:** Sign-in is entirely optional; students may use all verification tools anonymously. For users choosing to sign in, the system enforces strict data minimization: only the Google `sub` (subject identifier), email, display name, and avatar URL are stored. Access tokens and refresh tokens are discarded immediately after verifying the OpenID Connect ID token. Active sessions are tracked in SQLite via cryptographic tokens and can be revoked on logout or fully purged via account deletion (`DELETE /api/me`).
 - Design with India's Digital Personal Data Protection Act, 2023 in mind: collect the minimum, state the purpose, and allow deletion. Get proper legal advice before any public launch.
 - Provide a "report an error" route and a visible disclaimer on every report.
 - Accessibility: readable on low-end phones, simple language, Hindi output.

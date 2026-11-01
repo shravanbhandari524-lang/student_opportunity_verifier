@@ -221,6 +221,8 @@ External: LLM provider, search API, RDAP/DNS/crt.sh/Wayback,
 | Component | Responsibility | Location |
 |---|---|---|
 | UI | Forms, confirmation editor, progress timeline, report, guides | `app/` |
+| Auth & Sessions | Google OAuth PKCE, JWT session verification, revocation, user data deletion | `lib/auth/` |
+| Auth & Me Routes | Google login initiation, callback, logout, current user profile, user check history | `app/auth/`, `app/api/auth/`, `app/api/me/` |
 | API routes | Validation, state transitions, SSE, actions | `app/api/` |
 | Extraction | Regex entities, vision-LLM screenshot reading | `lib/extract.js` |
 | Coordinator (main agent) | Owns the case file, runs the round loop, merges validated results, calls scoring and the report writer | `lib/coordinator.js` |
@@ -334,12 +336,14 @@ Sequence:
 
 | Table | Columns |
 |---|---|
-| `checks` | id (text, pk, UUID), status, current_round (integer, default 0), language, risk_level, score (integer, CHECK 0..100), confidence, failure_reason (text, nullable), created_at (text, ISO), updated_at (text, ISO), expires_at (text, ISO) |
+| `checks` | id (text, pk, UUID), user_id (text, fk REFERENCES users(id) ON DELETE SET NULL, nullable), status, current_round (integer, default 0), language, risk_level, score (integer, CHECK 0..100), confidence, failure_reason (text, nullable), created_at (text, ISO), updated_at (text, ISO), expires_at (text, ISO) |
 | `check_inputs` | id (integer, pk, autoincrement), check_id (text, fk), type (text, image, url, upi, company, handle, phone, youtube_url), value, file_path (nullable, temporary), mime_type (text, nullable), size_bytes (integer, nullable), created_at (text, ISO) |
 | `entities` | id (integer, pk, autoincrement), check_id (text, fk), kind, value, source (extracted, user or discovered), platform (nullable), org_type (nullable), purpose (nullable, for amount), direction (nullable, for amount: to_candidate, from_candidate, unclear), discovered_by (agent, nullable), round, confirmed (bool), evidence_json (nullable), UNIQUE(check_id, kind, value) |
 | `agent_results` | id (integer, pk, autoincrement), check_id (text, fk), agent, round, kind (check, llm_call or agent), status (ok, skipped, could_not_check), reason, flags_json, verified_json, new_entities_json, processed_json, unchecked_json, manual_checks_json, trace_json, notes, duration_ms, summary, activity_json, entity_status_json, UNIQUE(check_id, agent, round) |
 | `check_events` | id (integer, pk, autoincrement), check_id (text, fk), seq (integer, not null), round (integer), type (text), agent (text, nullable), status (text, nullable), summary (text, nullable), payload_json (text, not null), created_at (text, ISO), UNIQUE(check_id, seq) |
 | `reports` | check_id (text, pk, fk), report_json, created_at |
+| `users` | id (text, pk, UUID), google_sub (text, unique, not null), email (text, not null), name (text, not null), avatar_url (text, nullable), created_at (text, ISO), last_login_at (text, ISO) |
+| `sessions` | id (text, pk), user_id (text, fk REFERENCES users(id) ON DELETE CASCADE, not null), expires_at (text, ISO, not null), created_at (text, ISO, not null) |
 | `graph_nodes` | id (integer, pk, autoincrement), kind, value (unique with kind), first_seen, last_seen (not null), report_count |
 | `graph_edges` | id (integer, pk, autoincrement), node_a (integer, fk), node_b (integer, fk), check_ref (text, not null, deliberately not a foreign key), created_at |
 | `feedback` | id (integer, pk, autoincrement), check_id (text, nullable, set to null when check is deleted), verdict ("right" \| "wrong"), risk_level_shown, comment (max 500 characters), created_at |
@@ -369,6 +373,22 @@ To support granular live trace observation and lossless replay:
 - **Database Schema Migration:** `crawl_results` stores full `CrawlResult` JSON objects linked to checks with `FOREIGN KEY (check_id) REFERENCES checks(id) ON DELETE CASCADE`.
 - **Indices:** `idx_crawl_results_check_id` on `crawl_results(check_id)` and `idx_crawl_results_entity_id` on `crawl_results(entity_id)`.
 - **Lifecycle & Cleanup:** When a check is deleted (by 24-hour expiration or test teardown), SQLite foreign key cascades automatically delete all associated `crawl_results` rows.
+
+### 9.4 User and Session Storage (Migration 014)
+
+- **Database Schema Migration:**
+  - `users`: stores `id` (UUID text pk), `google_sub` (unique text), `email` (text), `name` (text), `avatar_url` (text nullable), `created_at` (ISO text), `last_login_at` (ISO text).
+  - `sessions`: stores `id` (text pk), `user_id` (text fk REFERENCES users(id) ON DELETE CASCADE), `expires_at` (ISO text), `created_at` (ISO text).
+  - `checks`: adds column `user_id` (text, nullable, REFERENCES users(id) ON DELETE SET NULL).
+- **Indices:** `idx_users_google_sub` on `users(google_sub)`, `idx_sessions_user_id` on `sessions(user_id)`, `idx_sessions_expires_at` on `sessions(expires_at)`, and `idx_checks_user_id` on `checks(user_id)`.
+- **Repository Methods (`lib/db/index.js`):**
+  - `upsertUser({ googleSub, email, name, avatarUrl }, db)`: Creates or updates user record by `google_sub`, updates `last_login_at`, returns user record.
+  - `getUserById(id, db)`: Retrieves user by primary key.
+  - `createSession({ id, userId, expiresAt }, db)`: Inserts new active session row.
+  - `getSession(id, db)`: Retrieves session joined with user data; rejects expired sessions.
+  - `deleteSession(id, db)`: Deletes session row on logout.
+  - `deleteUser(id, db)`: Deletes user, cascaded sessions, and sets `user_id = NULL` on linked checks.
+  - `getUserChecks(userId, db)`: Retrieves non-expired checks belonging to the user ordered by `created_at DESC`.
 
 ## 10. LLM layer
 
@@ -843,6 +863,13 @@ The routes and payloads are defined in PRD.md section 6. Technical notes:
   - **Known Operational Limits:** The target site sees our server's egress IP address and runs its own JavaScript within our headless browser context; the forward proxy limits where network traffic can go, but cannot control client-side DOM execution inside the page.
   - `POST /api/checks/:id/crawl`: Triggers a background crawl job for the check's target domain/URL entity. Accepts `{ entityId }` only. Enforces that the check is in `report_ready` state, the entity is confirmed and valid domain/url, and passes SSRF checks. Idempotent: returns 200 with current status if already running or done. If previous crawl failed, resets row and retries. Bounded by `CRAWL_MAX_CONCURRENT` (default 1) returning 503 with `Retry-After: 10` when saturated.
   - `GET /api/checks/:id/crawl?entityId=...`: Retrieves stored or in-progress crawl status: `{ status: 'not_started' | 'running' | 'done' | 'failed', result?, errorCode? }`.
+- **Google OAuth & Authentication Endpoints:**
+  - `GET /auth/google`: Initiates Google OAuth 2.0 PKCE flow. Generates a cryptographically random `state` (32 bytes) and PKCE code verifier, stores them along with sanitized `returnTo` in a signed/secure short-lived (10 minutes) httpOnly cookie (`ov_oauth_state`), and redirects to Google Consent Screen (`openid`, `email`, `profile` scopes).
+  - `GET /auth/google/callback`: Verifies `state` against cookie. Exchanges auth code using PKCE code verifier, verifies the OpenID Connect ID token (issuer, audience, expiry), requires `email_verified = true`. Upserts user record in SQLite, creates session row, issues signed JWT session cookie (`session`: httpOnly, SameSite=Lax, Path=/, 7-day max-age, Secure when running over HTTPS), clears oauth cookie, and redirects to safe `returnTo`. Any validation failure redirects to `/?auth_error=<code>` without revealing internal errors.
+  - `POST /auth/logout`: Revokes active session. Requires same-origin verification (`Origin` header matching server host). Deletes session from SQLite and clears `session` cookie.
+  - `GET /api/auth/me`: Reads session from cookie, verifies JWT against `JWT_SECRET` and queries SQLite session row to ensure it has not been revoked. Returns `{ user: { id, name, email, avatarUrl } }` or `{ user: null }`.
+  - `GET /api/me/checks`: Returns active (non-expired) checks associated with the authenticated user (`{ checks: [...] }`). Returns 401 when unauthenticated.
+  - `DELETE /api/me`: Deletes authenticated user record, revoking all active sessions and disassociating their historical checks (`checks.user_id = NULL`). Requires authenticated session and same-origin request.
   - **Stale Crawl Sweep:** Periodic maintenance cleanup (`lib/cleanup.js`) transitions crawl rows stuck in `running` for more than 5 minutes to `failed` with error code `server_restart`.
 - Rate limiting:
   - If `TRUST_PROXY=false` (default): all client-supplied proxy and IP headers are ignored, and `request.ip` is not used. All clients share a single `"unknown"` bucket. Rate limits are configurable via env vars: `RATE_LIMIT_WINDOW_MS` (default 900000ms), `RATE_LIMIT_CREATE_MAX` (default 10), `RATE_LIMIT_CONFIRM_MAX` (default 10), `RATE_LIMIT_READ_MAX` (default 60), `RATE_LIMIT_STREAM_MAX` (default 10), `RATE_LIMIT_ACTION_MAX` (default 15), and `RATE_LIMIT_GUIDE_MAX` (default 60).
@@ -879,6 +906,10 @@ The routes and payloads are defined in PRD.md section 6. Technical notes:
 | XSS | Untrusted text rendered as text, framework escaping, no raw HTML injection |
 | Defamation risk | Output is a risk assessment with sources, never a statement that a named person is a scammer |
 | Misuse for tracking people | No tracing of individuals, phone numbers only validated, searched and matched in our own graph |
+| OAuth CSRF / State tampering | Cryptographically random `state` and PKCE code verifier stored in a short-lived (10m) httpOnly cookie; state mismatch rejects authentication |
+| Open Redirects via OAuth `returnTo` | Strict relative path validation allowlist: must start with a single `/`, rejects `//`, `\`, absolute URLs, protocols, and `javascript:` |
+| Token / Session hijacking | HS256 JWT stored in httpOnly, SameSite=Lax, Path=/ cookie; server-side session tracking in SQLite enables immediate revocation on logout; same-origin enforced on logout and account deletion |
+| Excessive OAuth data retention | Data minimization: store only Google `sub`, email, name, avatar URL; never persist Google access or refresh tokens |
 
 The design takes India's Digital Personal Data Protection Act, 2023 into account (minimum data, stated purpose, deletion). Get proper legal advice before any public launch.
 
@@ -914,6 +945,12 @@ The design takes India's Digital Personal Data Protection Act, 2023 into account
 | `URLSCAN_API_KEY` | optional | urlscan.io search of existing public scans |
 | `CLASSIFIER_URL` | later | Python classifier service address |
 | `DB_PATH` | optional | SQLite file, default `./data/app.db` |
+| `PORT` | optional | HTTP listening port, default `3000` |
+| `CLIENT_URL` | optional | Application base origin, default `http://localhost:3000` |
+| `GOOGLE_CLIENT_ID` | optional | Google OAuth 2.0 Web Client ID |
+| `GOOGLE_CLIENT_SECRET` | optional | Google OAuth 2.0 Client Secret |
+| `GOOGLE_CALLBACK_URL` | optional | Google OAuth redirect URI, default `http://localhost:3000/auth/google/callback` |
+| `JWT_SECRET` | conditional | Secret for HS256 session token signing (min 32 characters; required if Google OAuth configured) |
 
 ## 23. Extension points
 
