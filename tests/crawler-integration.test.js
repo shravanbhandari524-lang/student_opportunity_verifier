@@ -427,3 +427,108 @@ test('Cleanup: stale sweep transitions running crawls > 5 min to failed with ser
   const crawlRows = db.prepare('SELECT * FROM crawl_results WHERE check_id = ?').all(checkId);
   assert.equal(crawlRows.length, 0, 'Foreign key cascade must delete all crawl_results rows');
 });
+
+test('rate limit: POST /api/checks/:id/crawl rejects excessive requests with 429 RATE_LIMITED', async () => {
+  const db = setupTestDb();
+  const rateLimiters = {
+    actionCheck: createRateLimiter({ windowMs: 60000, max: 1 }),
+  };
+  const crawlJobRunner = createJobRunner({ maxConcurrent: 1 });
+  const runtime = { db, rateLimiters, crawlJobRunner, logger: { info: () => {}, warn: () => {}, error: () => {} } };
+
+  const check = createCheck({ language: 'en' }, db);
+  setReportReady(check.id, db);
+  addEntities(check.id, [{ kind: 'domain', value: 'rate-limit-target.com', source: 'user', confirmed: true }], db);
+  const ent = db.prepare('SELECT * FROM entities WHERE check_id = ?').get(check.id);
+
+  const makeReq = () =>
+    new Request(`http://localhost/api/checks/${check.id}/crawl`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entityId: String(ent.id) })
+    });
+
+  const res1 = await POST(makeReq(), {
+    params: Promise.resolve({ id: check.id }),
+    runtime,
+    dnsResolver: async () => ['93.184.216.34'],
+    crawlerOptions: { apiKey: 'k', fetchFn: async () => new Response(JSON.stringify({ jobId: 'j' }), { status: 202 }) }
+  });
+  assert.equal(res1.status, 202);
+
+  const res2 = await POST(makeReq(), {
+    params: Promise.resolve({ id: check.id }),
+    runtime,
+    dnsResolver: async () => ['93.184.216.34'],
+    crawlerOptions: { apiKey: 'k', fetchFn: async () => new Response(JSON.stringify({ jobId: 'j' }), { status: 202 }) }
+  });
+  assert.equal(res2.status, 429);
+  const body2 = await res2.json();
+  assert.equal(body2.code, 'RATE_LIMITED');
+});
+
+test('unconfirmed entity: POST /api/checks/:id/crawl rejects unconfirmed entity with 400 CRAWL_NOT_ALLOWED', async () => {
+  const db = setupTestDb();
+  const runtime = createTestRuntime(db);
+
+  const check = createCheck({ language: 'en' }, db);
+  setReportReady(check.id, db);
+  addEntities(check.id, [{ kind: 'domain', value: 'unconfirmed-link.com', source: 'extracted', confirmed: false }], db);
+  const ent = db.prepare('SELECT * FROM entities WHERE check_id = ?').get(check.id);
+
+  const req = new Request(`http://localhost/api/checks/${check.id}/crawl`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entityId: String(ent.id) })
+  });
+  const res = await POST(req, { params: Promise.resolve({ id: check.id }), runtime });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.code, 'CRAWL_NOT_ALLOWED');
+  assert.match(body.message, /not confirmed/);
+});
+
+test('private-IP entity: POST /api/checks/:id/crawl blocks private IP target with 400 CRAWL_NOT_ALLOWED', async () => {
+  const db = setupTestDb();
+  const runtime = createTestRuntime(db);
+
+  const check = createCheck({ language: 'en' }, db);
+  setReportReady(check.id, db);
+  addEntities(check.id, [{ kind: 'url', value: 'http://127.0.0.1:8080/internal', source: 'user', confirmed: true }], db);
+  const ent = db.prepare('SELECT * FROM entities WHERE check_id = ?').get(check.id);
+
+  const req = new Request(`http://localhost/api/checks/${check.id}/crawl`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entityId: String(ent.id) })
+  });
+  const res = await POST(req, { params: Promise.resolve({ id: check.id }), runtime });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.code, 'CRAWL_NOT_ALLOWED');
+  assert.match(body.message, /violates safety policies/);
+});
+
+test('invalid service response: lib/crawler.js returns CRAWLER_UNAVAILABLE with reason invalid_response', async () => {
+  const resInvalid = await runCrawl('https://example.com', {
+    apiKey: 'valid_key',
+    sleepFn: () => Promise.resolve(),
+    fetchFn: async (url, opts) => {
+      if (opts.method === 'POST') {
+        return new Response(JSON.stringify({ jobId: 'job_invalid_test' }), { status: 202 });
+      }
+      return new Response(
+        JSON.stringify({
+          jobId: 'job_invalid_test',
+          status: 'completed',
+          result: { notAValidCrawlResult: true }
+        }),
+        { status: 200 }
+      );
+    }
+  });
+
+  assert.equal(resInvalid.ok, false);
+  assert.equal(resInvalid.code, 'CRAWLER_UNAVAILABLE');
+  assert.equal(resInvalid.reason, 'invalid_response');
+});

@@ -453,6 +453,12 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
       }
     }
 
+    if (pages.length >= maxPages) {
+      stopReason = 'maxPages';
+      truncated = true;
+      return;
+    }
+
     pages.push({
       url: current.url,
       finalUrl,
@@ -466,6 +472,11 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
       parentUrl: current.parentUrl,
       errors: pageErrors
     });
+
+    if (pages.length >= maxPages) {
+      stopReason = 'maxPages';
+      truncated = true;
+    }
 
     onProgress?.({
       pagesVisited: pages.length,
@@ -491,6 +502,14 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
         stopReason = 'maxPages';
         truncated = true;
         break;
+      }
+      if (pages.length + activeWorkers >= maxPages) {
+        if (activeWorkers === 0) break;
+        await new Promise((resolve) => {
+          wakeWaiters.push(resolve);
+          setTimeout(resolve, 50);
+        });
+        continue;
       }
       if (totalBytesReceived >= maxTotalBytes) {
         stopReason = 'byteLimit';
@@ -532,6 +551,11 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
   }
 
   const durationMs = Date.now() - startTime;
+  if (pages.length > maxPages) {
+    pages = pages.slice(0, maxPages);
+    stopReason = 'maxPages';
+    truncated = true;
+  }
   const tree = buildTree(pages, normalizedStart);
 
   return {

@@ -168,3 +168,41 @@ test('Security: crawl() integrates proxy byte counter into total byte limit and 
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test('Limits: site with 20 linked pages and maxPages=5 must return exactly 5 pages', async () => {
+  // Server hosting 20 linked pages
+  const server = http.createServer((req, res) => {
+    const match = req.url.match(/^\/page\/(\d+)$/);
+    const id = match ? parseInt(match[1], 10) : 0;
+    
+    // Generate links to next pages to trigger multiple discoveries and concurrent worker fetches
+    const links = [];
+    for (let i = 1; i < 20; i++) {
+      links.push(`<a href="/page/${i}">Page ${i}</a>`);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`<html><body><h1>Page ${id}</h1>${links.join(' ')}</body></html>`);
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const serverPort = server.address().port;
+
+  try {
+    const result = await crawl({
+      url: 'http://multipage.test/page/0',
+      maxPages: 5,
+      concurrency: 2,
+      maxDepth: 2,
+      navigationTimeoutMs: 5000,
+      resolver: async () => [{ address: '93.184.216.34', family: 4 }],
+      connector: (opts, cb) => net.createConnection({ host: '127.0.0.1', port: serverPort }, cb)
+    });
+
+    assert.equal(result.pages.length, 5, `Expected exactly 5 pages, but received ${result.pages.length}`);
+    assert.equal(result.truncated, true, 'Result must be marked truncated when maxPages is hit');
+    assert.equal(result.summary.stopReason, 'maxPages');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
