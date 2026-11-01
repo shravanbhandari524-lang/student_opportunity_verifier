@@ -9,6 +9,7 @@ import FlagCard from "../../../components/FlagCard.js";
 import Checklist from "../../../components/Checklist.js";
 import CoverageCard from "../../../components/CoverageCard.js";
 import EntitiesEditor from "../../../components/EntitiesEditor.js";
+import LinkExtractionCard from "../../../components/LinkExtractionCard.js";
 import { CollegeEmailModal, FeedbackModal } from "../../../components/ActionModals.js";
 
 export default function CheckDetailPage({ params }) {
@@ -467,6 +468,27 @@ export default function CheckDetailPage({ params }) {
             coverage={report.coverage}
             improveCheck={report.improveCheck}
           />
+
+          {/* Optional Link Content Extraction (PRD §8 / PART 5) */}
+          {entities.filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain")).length > 0 && (
+            <section aria-labelledby="link-extraction-heading" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div className="panel-header" style={{ border: "none", marginBottom: 0, paddingBottom: 0 }}>
+                <h2 id="link-extraction-heading" style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+                  {summaryLang === "hi" ? "वैकल्पिक लिंक सामग्री निष्कर्षण" : "Optional Link Content Extraction"}
+                </h2>
+              </div>
+              {entities
+                .filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain"))
+                .map((ent) => (
+                  <LinkExtractionCard
+                    key={ent.id}
+                    checkId={checkId}
+                    entity={ent}
+                    lang={summaryLang}
+                  />
+                ))}
+            </section>
+          )}
 
           {/* Red-Flag Cards */}
           <section aria-labelledby="flags-heading">

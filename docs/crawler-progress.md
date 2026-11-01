@@ -110,8 +110,34 @@
 ---
 
 ## Part 5: UI Button
-- [ ] Audit and list reused elements from `deferred/ui/` (NOT VERIFIED).
-- [ ] Add extraction card in `/check/[id]` report view (NOT VERIFIED).
-- [ ] Bilingual support (en/hi) and accessible design tokens (NOT VERIFIED).
-- [ ] Plain text rendering of results (NOT VERIFIED).
-- [ ] UI tests or manual testing verification in this file (NOT VERIFIED).
+- [x] Audit and list reused elements:
+  - Live page is `app/check/[id]/page.js` (not `deferred/ui/`).
+  - Reused global design tokens (`--bg-primary`, `--text-primary`, `--border-primary`, `--status-*`, `--radius-md`).
+  - Reused standard classes: `.panel`, `.panel-header`, `.panel-subtle`, `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-sm`, `.badge`, `.status-dot`.
+- [x] Add extraction card in `/check/[id]` report view (`components/LinkExtractionCard.js` mounted in `app/check/[id]/page.js` for each confirmed domain/url entity).
+- [x] Host only displayed, never full URL (path, credentials, and query parameters stripped).
+- [x] Read-only initial fetch on mount (`GET /api/checks/:id/crawl?entityId=...`), nothing runs until "Yes, extract" is clicked.
+- [x] Polling every 2s, stopping on done or failed, unmount cleanup, and 3-minute timeout ("taking longer than expected").
+- [x] "No, skip" collapses to skipped state with "Extract anyway" link, sending no network requests.
+- [x] Plain text rendering of results (pages list, form highlights with text labels + colors, external domains, truncated note, mandatory PRD information-only disclaimer).
+- [x] All states handled: running (polite aria-live), failed with Retry button, busy (503), unavailable (`CRAWLER_UNAVAILABLE`), not allowed (`CRAWL_NOT_ALLOWED`), expired (`CHECK_EXPIRED`).
+- [x] Bilingual support (en/hi) through `EXTRACTION_STRINGS` responding to `summaryLang` toggle.
+- [x] Accessible 44px touch targets, mobile-first responsive layout, zero layout shift.
+- [x] Component unit tests in `tests/ui-components.test.js` (card states, security escaping, host sanitization).
+
+### Interactive Browser Manual Verification Script:
+1. Start crawler API server: `npm run server --prefix services/crawler` (port 3001).
+2. Start dev server: `npm run dev` (port 3000).
+3. Open `http://localhost:3000/check` and submit a test offer containing a link, e.g.:
+   "PM Scholarship Scheme: Apply at https://example.com/apply for Rs 50,000 grant."
+4. Confirm extracted entities.
+5. In the final report view, verify the card appears:
+   - Header shows "example.com" (not full URL).
+   - "Do you want to extract the content of this link?"
+   - Mandatory note: "We open the link from our server, read the pages, and delete the result after 24 hours. Nothing is saved to the scam graph."
+   - Test "No, skip": Card collapses to "Link content extraction skipped for example.com." with "Extract anyway".
+   - Click "Extract anyway": Card returns to initial prompt.
+   - Click "Yes, extract": State changes to running with live status dot.
+   - On completion: Results show inspected pages, text excerpt toggle, form highlights, and "This is information only. It does not change the risk level."
+   - Toggle English / हिंदी in Assessment Summary: Verify extraction card text switches to Hindi seamlessly.
+   - Refresh page: Verify state remains displayed without restarting or losing results.
