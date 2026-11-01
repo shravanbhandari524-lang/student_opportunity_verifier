@@ -814,7 +814,7 @@ Flag IDs and severities are strictly fixed. Agents must emit exact IDs, and flag
 | `qr_code_payment_request` | `high` | Message Analyst | Sending a QR code to "receive" funds (reverse UPI collection fraud). Evidence: quoted message text. |
 | `lookalike_domain` | `high` | Website Forensics | Domain visually or phonetically impersonating a legitimate institution. Evidence: verification URL or quoted domain identifier. |
 | `non_gov_domain_claiming_gov` | `high` | Official Verifier / Website Forensics | Claiming to be an official Indian government scheme on a non-`.gov.in` domain. Evidence: quoted domain identifier or official portal URL. |
-| `personal_payment_id` | `high` | Payment & Entity | Payment requested to a personal UPI handle or individual bank account. Evidence: quoted payment identifier. |
+| `personal_payment_id` | `high` | Payment & Entity / Message Analyst | Payment requested to a personal UPI handle or individual bank account. Evidence: quoted payment identifier. |
 | `official_warning_found` | `high` | Official Verifier / Reputation | PIB Fact Check or institution advisory warning against this specific offer. Evidence: official source URL. |
 | `scam_reports_found` | `high` | Reputation / OSINT / Payment & Entity | Multiple corroborated public scam complaints on forums, Reddit, or consumer sites. Evidence: complaint source URL. |
 | `graph_match` | `high` | Payment & Entity | Identifier matches known scam entity in the scam intelligence graph. Evidence: quoted identifier matching graph node. (Hard rule) |
@@ -824,7 +824,7 @@ Flag IDs and severities are strictly fixed. Agents must emit exact IDs, and flag
 | `chat_only_interview` | `medium` | Message Analyst | Hiring interview conducted entirely via Telegram, WhatsApp, or text chat. Evidence: quoted message text. |
 | `pay_too_high` | `medium` | Message Analyst | Compensation disproportionately high relative to unskilled or basic task complexity. Evidence: quoted message text. |
 | `guaranteed_income` | `medium` | Message Analyst | Unrealistic promises of guaranteed daily/weekly earnings for minimal effort. Evidence: quoted message text. |
-| `free_email_recruiter` | `medium` | Payment & Entity | Recruiter contacting from free webmail (gmail/yahoo/outlook) claiming enterprise identity. Evidence: quoted email identifier. |
+| `free_email_recruiter` | `medium` | Payment & Entity / Message Analyst | Recruiter contacting from free webmail (gmail/yahoo/outlook) claiming enterprise identity. Evidence: quoted email identifier. |
 | `domain_new` | `medium` | Website Forensics | Website domain registered fewer than 30 days ago. Evidence: RDAP lookup URL or quoted domain identifier. |
 | `raw_ip_opportunity_link` | `medium` | Website Forensics | Opportunity, application, or portal link uses a raw IP address instead of a registered domain. Evidence: quoted IP URL or link identifier. |
 | `not_on_official_portal` | `medium` | Official Verifier | Claimed scholarship or program absent from official portal (e.g. NSP). Evidence: official registry search URL. |
