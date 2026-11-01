@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { generate, wrapUntrusted } from "../lib/llm/generate.js";
+import { generate, wrapUntrusted, LlmLimiter, getGlobalLlmLimiter } from "../lib/llm/generate.js";
 
 const customEnv = {
   LLM_PROVIDER: "gemini",
@@ -410,4 +410,182 @@ test("LLM generate: retry reason is logged on retry attempts", async (t) => {
   assert.equal(attempt, 2);
   assert.equal(res.data.greeting, "recovered after 503");
 });
+
+test("LlmLimiter: with maxConcurrent=1, N parallel calls never overlap", async () => {
+  let virtualTime = 1000;
+  const limiter = new LlmLimiter({
+    maxConcurrent: 1,
+    minSpacingMs: 0,
+    nowFn: () => virtualTime,
+    sleepFn: async (ms) => { virtualTime += ms; },
+  });
+
+  let maxObservedActive = 0;
+  let currentlyActive = 0;
+  const executionOrder = [];
+
+  const runTask = async (id, durationMs) => {
+    await limiter.acquire();
+    currentlyActive++;
+    maxObservedActive = Math.max(maxObservedActive, currentlyActive);
+    executionOrder.push(`start_${id}`);
+
+    try {
+      virtualTime += durationMs;
+      await new Promise((r) => setImmediate(r));
+    } finally {
+      executionOrder.push(`end_${id}`);
+      currentlyActive--;
+      limiter.release();
+    }
+  };
+
+  await Promise.all([runTask(1, 50), runTask(2, 50), runTask(3, 50)]);
+
+  assert.equal(maxObservedActive, 1, "Active count must never exceed maxConcurrent (1)");
+  assert.deepEqual(executionOrder, [
+    "start_1", "end_1",
+    "start_2", "end_2",
+    "start_3", "end_3"
+  ], "Tasks must execute sequentially in FIFO order");
+});
+
+test("LlmLimiter: minimum spacing is respected with injected clock", async () => {
+  let virtualTime = 10000;
+  const sleeps = [];
+  const limiter = new LlmLimiter({
+    maxConcurrent: 1,
+    minSpacingMs: 4000,
+    nowFn: () => virtualTime,
+    sleepFn: async (ms) => {
+      sleeps.push(ms);
+      virtualTime += ms;
+    },
+  });
+
+  const startTimes = [];
+
+  // Call 1
+  await limiter.acquire();
+  startTimes.push(virtualTime);
+  limiter.release();
+
+  // Call 2 immediately (elapsed = 0, should sleep 4000)
+  await limiter.acquire();
+  startTimes.push(virtualTime);
+  limiter.release();
+
+  // Advance virtual time by 1500ms and call 3 (elapsed = 1500, should sleep 2500)
+  virtualTime += 1500;
+  await limiter.acquire();
+  startTimes.push(virtualTime);
+  limiter.release();
+
+  assert.deepEqual(sleeps, [4000, 2500], "Must sleep for remaining spacing difference");
+  assert.equal(startTimes[1] - startTimes[0], 4000);
+  assert.equal(startTimes[2] - startTimes[1], 4000);
+});
+
+test("LlmLimiter: thrown call releases slot immediately without leakage", async () => {
+  const limiter = new LlmLimiter({
+    maxConcurrent: 1,
+    minSpacingMs: 0,
+  });
+
+  await limiter.acquire();
+  assert.equal(limiter.activeCount, 1);
+
+  try {
+    throw new Error("Simulated provider failure");
+  } catch (_e) {
+    // Expected error during operation
+  } finally {
+    limiter.release();
+  }
+
+  assert.equal(limiter.activeCount, 0, "Slot must be released even when task throws");
+
+  // Next call should acquire slot immediately
+  let acquiredNext = false;
+  await limiter.acquire();
+  acquiredNext = true;
+  limiter.release();
+  assert.equal(acquiredNext, true);
+});
+
+test("LlmLimiter: queue wait does not consume request timeoutMs budget", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const limiter = new LlmLimiter({
+    maxConcurrent: 1,
+    minSpacingMs: 0,
+  });
+
+  // Hold slot 1 for 100ms
+  await limiter.acquire();
+
+  // Task 2 has a timeout of only 60ms, but waits 100ms in queue before acquiring slot
+  let task2Started = false;
+  const task2Promise = generate({
+    prompt: "Say hello",
+    schema: SimpleSchema,
+    timeoutMs: 80,
+    limiter,
+    customEnv,
+  });
+
+  // Simulate slow call 1
+  globalThis.fetch = async () => {
+    task2Started = true;
+    return new Response(
+      JSON.stringify({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({ greeting: "fast", score: 99 }) }] } }],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  };
+
+  // Wait 100ms then release slot 1
+  await new Promise((r) => setTimeout(r, 100));
+  limiter.release();
+
+  const res2 = await task2Promise;
+  assert.equal(task2Started, true);
+  assert.equal(res2.ok, true, "Task 2 should succeed because timeout timer started upon slot acquisition");
+  assert.equal(res2.data.greeting, "fast");
+});
+
+test("LlmLimiter: wall-clock budget expiry while queued rejects with TIMEOUT error shape", async () => {
+  const limiter = new LlmLimiter({
+    maxConcurrent: 1,
+    minSpacingMs: 0,
+  });
+
+  // Hold slot
+  await limiter.acquire();
+
+  let isExpiredCalled = false;
+  const isExpired = () => {
+    isExpiredCalled = true;
+    return true; // Already expired
+  };
+
+  const res = await generate({
+    prompt: "Say hello",
+    schema: SimpleSchema,
+    timeoutMs: 5000,
+    limiter,
+    isExpired,
+    customEnv,
+  });
+
+  assert.equal(isExpiredCalled, true);
+  assert.equal(res.ok, false);
+  assert.equal(res.error.code, "TIMEOUT");
+  assert.ok(res.error.message.includes("budget expired"));
+
+  limiter.release();
+});
+
 
