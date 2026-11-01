@@ -8,6 +8,7 @@
     "dev:all": "node scripts/dev-all.js",
     "classifier:train": "services/classifier/.venv/bin/python services/classifier/train.py",
     "classifier:dev": "services/classifier/.venv/bin/python -m uvicorn services.classifier.app:app --host 127.0.0.1 --port 8000",
+    "crawler:dev": "node services/crawler/src/server.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.mjs",
