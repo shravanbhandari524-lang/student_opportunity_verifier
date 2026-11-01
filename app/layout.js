@@ -1,6 +1,12 @@
+import { cookies } from "next/headers";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import Header from "../components/Header.js";
 import Footer from "../components/Footer.js";
+import { AuthProvider } from "../components/AuthContext.js";
+import AuthErrorToast from "../components/AuthErrorToast.js";
+import { getAuthSession, isGoogleAuthConfigured } from "../lib/auth.js";
+import { getDb } from "../lib/db/index.js";
+import { env } from "../lib/env.js";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,7 +44,25 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  let initialUser = null;
+  const authConfigured = isGoogleAuthConfigured(env);
+
+  if (authConfigured) {
+    try {
+      const cookieStore = await cookies();
+      const auth = await getAuthSession({ cookies: cookieStore }, getDb(), env);
+      if (auth?.user) {
+        initialUser = {
+          id: auth.user.id,
+          name: auth.user.name,
+          email: auth.user.email,
+          avatarUrl: auth.user.avatarUrl || auth.user.avatar_url || null,
+        };
+      }
+    } catch {}
+  }
+
   return (
     <html lang="en" className={`${geistSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
@@ -51,11 +75,14 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-white dark:bg-[#0A0A0C] text-[#111827] dark:text-[#F9FAFB] font-sans antialiased min-h-screen flex flex-col" suppressHydrationWarning>
-        <Header />
-        <main id="main-content" className="flex-1 flex flex-col w-full">
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider initialUser={initialUser} authConfigured={authConfigured}>
+          <Header />
+          <main id="main-content" className="flex-1 flex flex-col w-full">
+            {children}
+          </main>
+          <Footer />
+          <AuthErrorToast />
+        </AuthProvider>
       </body>
     </html>
   );
