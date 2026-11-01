@@ -345,10 +345,10 @@ test("coordinator: round 1 runs eligible agents and records skipped for ineligib
   const report = await runInvestigation(check.id, mockDeps);
   assert.ok(report);
 
-  // Check check status
+  // Check check status (thin coverage with text-only yields cannot_verify per Rule 4)
   const updatedCheck = getCheck(check.id, db);
   assert.equal(updatedCheck.status, "report_ready");
-  assert.equal(updatedCheck.riskLevel, "low");
+  assert.equal(updatedCheck.riskLevel, "cannot_verify");
 
   // Check agent results
   const results = getAgentResults(check.id, db);
@@ -1913,12 +1913,21 @@ test("coordinator [phase5b]: screenshot-only input runs message_analyst and agen
 test("coordinator [phase5b]: failed agent lowers confidence; skipped agent does not", async () => {
   const db = resetDb();
 
-  // Case 1: Skipped agent does NOT lower confidence (high confidence achieved with external payment_entity ok)
+  // Case 1: Skipped agent does NOT lower confidence (high confidence achieved with 4 signal types ok)
   const check1 = createCheck({ status: "awaiting_confirmation" }, db);
-  saveInputs(check1.id, [{ type: "text", value: "Pay fee to test@okhdfcbank" }], db);
+  saveInputs(check1.id, [
+    { type: "text", value: "Applications open at Example Corp. Details at https://scholarships.gov.in/apply, fee to test@okhdfcbank" },
+    { type: "url", value: "https://scholarships.gov.in/apply" },
+    { type: "company", value: "Example Corp" },
+  ], db);
   replaceEntities(
     check1.id,
-    [{ kind: "upi", value: "test@okhdfcbank", source: "user", round: 0, confirmed: true }],
+    [
+      { kind: "upi", value: "test@okhdfcbank", source: "user", round: 0, confirmed: true },
+      { kind: "url", value: "https://scholarships.gov.in/apply", source: "user", round: 0, confirmed: true },
+      { kind: "domain", value: "scholarships.gov.in", source: "user", round: 0, confirmed: true },
+      { kind: "company", value: "Example Corp", source: "user", round: 0, confirmed: true },
+    ],
     db
   );
 
@@ -1939,35 +1948,68 @@ test("coordinator [phase5b]: failed agent lowers confidence; skipped agent does 
       return { ok: true, data: { findings: [] } };
     },
     classify: async () => ({ ok: true, data: { probability: 0.05, label: "benign" } }),
-    search: async () => ({ ok: true, data: { results: [] } }),
-    readPage: async () => ({ ok: true, data: { title: "", description: "", text: "", links: [] } }),
+    search: async () => ({ ok: true, data: { results: [{ position: 1, title: "Official Notice", snippet: "Applications open at Example Corp", url: "https://scholarships.gov.in/apply" }] } }),
+    readPage: async () => ({ ok: true, data: { title: "Portal", description: "", text: "Applications open at Example Corp", links: [] } }),
+    rdapLookup: async (d) => ({ ok: true, data: { domain: d, found: true, registrationDate: "2015-01-01T00:00:00.000Z", ageDays: 3000, status: ["active"], evidenceUrl: `https://rdap.org/${d}` } }),
+    dnsRecords: async (d) => ({ ok: true, data: { domain: d, a: ["93.184.216.34"], mx: [], txt: [] } }),
+    sslInfo: async (d) => ({ ok: true, data: { domain: d, valid: true, issuer: "Trusted CA", daysRemaining: 180 } }),
+    waybackFirstSeen: async (d) => ({ ok: true, data: { domain: d, firstSeen: "2016-01-01T00:00:00.000Z", totalSnapshots: 50 } }),
+    lookalikeCheck: (d) => ({ domain: d, isLookalike: false, targetDomain: null, similarityScore: 0 }),
+    urlhaus: async () => ({ ok: true, data: { query_status: "no_results", listed: false } }),
+    urlscanSearch: async () => ({ ok: true, data: { total: 0, results: [] } }),
     graphLookup: () => ({ matched: false }),
     now: () => Date.now(),
   };
 
   const report1 = await runInvestigation(check1.id, mockDepsSuccess);
-  // message_analyst, classifier_client, payment_entity succeeded; website_forensics & official_verifier skipped
-  // Confidence is high because skipped agents do not count toward eligibleCount
+  // 4 signal types checked (message, payee, website, official sources) -> confidence high
   assert.equal(report1.confidence, "high");
 
   // Case 2: Failed agent (could_not_check) lowers confidence from high to medium
   const check2 = createCheck({ status: "awaiting_confirmation" }, db);
-  saveInputs(check2.id, [{ type: "text", value: "Pay fee to test@okhdfcbank" }], db);
+  saveInputs(check2.id, [
+    { type: "text", value: "Applications open at Example Corp. Details at https://scholarships.gov.in/apply, fee to test@okhdfcbank" },
+    { type: "url", value: "https://scholarships.gov.in/apply" },
+    { type: "company", value: "Example Corp" },
+  ], db);
   replaceEntities(
     check2.id,
-    [{ kind: "upi", value: "test@okhdfcbank", source: "user", round: 0, confirmed: true }],
+    [
+      { kind: "upi", value: "test@okhdfcbank", source: "user", round: 0, confirmed: true },
+      { kind: "url", value: "https://scholarships.gov.in/apply", source: "user", round: 0, confirmed: true },
+      { kind: "domain", value: "scholarships.gov.in", source: "user", round: 0, confirmed: true },
+      { kind: "company", value: "Example Corp", source: "user", round: 0, confirmed: true },
+    ],
     db
   );
 
   const mockDepsFailure = {
     ...mockDepsSuccess,
-    classify: async () => {
-      throw new Error("CLASSIFIER_FATAL_CRASH");
+    rdapLookup: async () => {
+      throw new Error("RDAP_FATAL_CRASH");
+    },
+    dnsRecords: async () => {
+      throw new Error("DNS_FATAL_CRASH");
+    },
+    sslInfo: async () => {
+      throw new Error("SSL_FATAL_CRASH");
+    },
+    readPage: async () => {
+      throw new Error("PAGE_FATAL_CRASH");
+    },
+    waybackFirstSeen: async () => {
+      throw new Error("WAYBACK_FATAL_CRASH");
+    },
+    urlhaus: async () => {
+      throw new Error("URLHAUS_FATAL_CRASH");
+    },
+    urlscanSearch: async () => {
+      throw new Error("URLSCAN_FATAL_CRASH");
     },
   };
 
   const report2 = await runInvestigation(check2.id, mockDepsFailure);
-  // classifier_client failed -> completionRatio drops to 2/3 (< 0.70) -> confidence drops to medium
+  // website_forensics failed -> confidence drops to medium
   assert.equal(report2.confidence, "medium");
 });
 
@@ -2092,5 +2134,114 @@ test("coordinator [phase5b]: 6 discovered entities capped to 5, drops 6th with n
   assert.equal(sanitized.newEntities.length, 5);
   assert.ok(sanitized.notes.includes("dropped 1 entity candidate(s)"));
 });
+
+test("coordinator: emits warning trace event on entity verification gap", async () => {
+  const events = [];
+  const db = resetDb();
+  const check = createCheck({ status: "awaiting_confirmation" }, db);
+  saveInputs(check.id, [{ type: "text", value: "Opportunity text with ₹500 fee" }], db);
+  replaceEntities(
+    check.id,
+    [{ kind: "amount", value: "500", source: "user", round: 0, confirmed: true }],
+    db
+  );
+
+  const customAgent = {
+    name: "message_analyst",
+    kind: "llm_call",
+    canRun: () => true,
+    run: async () => ({
+      checkId: check.id,
+      agent: "message_analyst",
+      kind: "llm_call",
+      round: 1,
+      status: "ok",
+      flags: [],
+      verified: [],
+      newEntities: [],
+      processedEntities: [],
+      unchecked: [],
+      manualChecks: [],
+      trace: [],
+      notes: "",
+      entityStatus: [], // Missing entityStatus for the confirmed amount entity!
+    }),
+  };
+
+  await runInvestigation(check.id, {
+    db,
+    agents: [customAgent],
+    onEvent: (evt) => events.push(evt),
+    generateReport: async () => ({
+      summary: "Summary",
+      scamTypeGuess: "unknown",
+      flagExplanations: [],
+      extraChecklist: [],
+    }),
+  });
+
+  const gapWarning = events.find(
+    (e) => e.type === "note" && e.text.includes("gap on entity amount:500")
+  );
+  assert.ok(gapWarning, "Coordinator must emit note event warning about entity verification gap");
+});
+
+test("coordinator: evidence_transfer emitted only for real transfers", async () => {
+  const db = resetDb();
+  const check = createCheck({ status: "awaiting_confirmation" }, db);
+
+  const events = [];
+  const customAgent = {
+    name: "message_analyst",
+    canRun: () => true,
+    run: async () => ({
+      checkId: check.id,
+      agent: "message_analyst",
+      kind: "llm_call",
+      round: 1,
+      status: "ok",
+      flags: [
+        {
+          id: "refundable_fee_offer",
+          title: "Fee demand",
+          severity: "high",
+          explanation: "Fee demanded",
+          evidence: [{ type: "quote", value: "pay 799" }],
+        },
+      ],
+      verified: [],
+      newEntities: [],
+      processedEntities: [],
+      unchecked: [],
+      manualChecks: [],
+      trace: [],
+      notes: "",
+      entityStatus: [],
+    }),
+  };
+
+  await runInvestigation(check.id, {
+    db,
+    agents: [customAgent],
+    onEvent: (evt) => events.push(evt),
+    generateReport: async () => ({
+      summary: "Summary text",
+      scamTypeGuess: "unknown",
+      flagExplanations: [],
+      extraChecklist: [],
+    }),
+  });
+
+  // 1. Report ledger transfer MUST be emitted because ledger entries were handed to report writer
+  const reportTransfer = events.find((e) => e.type === "evidence_transfer" && e.transferType === "report_ledger");
+  assert.ok(reportTransfer, "Must emit evidence_transfer for report_ledger handover");
+  assert.equal(reportTransfer.toAgent, "report_writer");
+  assert.ok(reportTransfer.evidenceIds.length > 0);
+
+  // 2. Round entities transfer must NOT be emitted because no entities were transferred
+  const roundTransfer = events.find((e) => e.type === "evidence_transfer" && e.transferType === "round_entities");
+  assert.equal(roundTransfer, undefined, "No round_entities transfer event should be emitted when nothing was transferred");
+});
+
 
 

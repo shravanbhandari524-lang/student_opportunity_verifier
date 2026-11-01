@@ -265,6 +265,58 @@ test("report: extra keys in LLM output cannot tamper with score or riskLevel", a
   assert.equal(report.score, 100);
 });
 
+test("report: LLMReportOutputSchema normalizes aliases and accepts string checklist items", () => {
+  const rawWithAliases = {
+    summary: "Suspicious internship offer demanding upfront application fee.",
+    scamTypeGuess: "internship_opportunity",
+    flagExplanations: [
+      {
+        flag_id: "upfront_fee_required",
+        explanation: "Candidate was asked to pay Rs 500 before the interview.",
+      },
+    ],
+    extraChecklist: [
+      "Contact the company directly using official careers portal.",
+      {
+        id: "brand_handle_lookalike",
+        action: "Verify social media handles against official website.",
+      },
+    ],
+  };
+
+  const parsed = LLMReportOutputSchema.safeParse(rawWithAliases);
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.scamTypeGuess, "internship");
+  assert.equal(parsed.data.flagExplanations[0].flagId, "upfront_fee_required");
+  assert.equal(parsed.data.flagExplanations[0].text, "Candidate was asked to pay Rs 500 before the interview.");
+  assert.equal(parsed.data.extraChecklist.length, 2);
+  assert.equal(parsed.data.extraChecklist[0].step, "Contact the company directly using official careers portal.");
+  assert.equal(parsed.data.extraChecklist[1].step, "Verify social media handles against official website.");
+});
+
+test("report: LLMReportOutputSchema normalizes snake_case top-level aliases", () => {
+  const rawSnake = {
+    report_summary: "Suspicious internship offer demanding upfront application fee.",
+    scam_type_guess: "internship_opportunity",
+    flag_explanations: [
+      {
+        flag_id: "fee_demand",
+        explanation: "Candidate was asked to pay Rs 500 before the interview.",
+      },
+    ],
+    extra_checklist: [
+      "Contact the company directly using official careers portal.",
+    ],
+  };
+
+  const parsed = LLMReportOutputSchema.safeParse(rawSnake);
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.summary, "Suspicious internship offer demanding upfront application fee.");
+  assert.equal(parsed.data.scamTypeGuess, "internship");
+  assert.equal(parsed.data.flagExplanations[0].flagId, "fee_demand");
+  assert.equal(parsed.data.extraChecklist[0].step, "Contact the company directly using official careers portal.");
+});
+
 // -------------------------------------------------------------
 // Test 6: Post-validation rejects safety claims and falls back
 // -------------------------------------------------------------
@@ -1355,5 +1407,177 @@ test("report: manual items and registry links appear in checklist for medium ris
   assert.ok(checklistTexts.some((t) => t.includes("campus placement cell")));
   // reddit search
   assert.ok(checklistUrls.some((u) => u.includes("reddit.com/search")));
+});
+
+test("report: coverage and improveCheck are populated in English and Hindi", () => {
+  const scoreResult = {
+    level: "cannot_verify",
+    score: 0,
+    confidence: "low",
+    flagPoints: [],
+    rulesFired: ["thin_coverage"],
+    coverage: {
+      checked: ["message"],
+      notChecked: ["payee", "website", "official sources", "reputation"],
+    },
+  };
+
+  const findings = [
+    {
+      agent: "message_analyst",
+      kind: "agent",
+      round: 1,
+      status: "ok",
+      flags: [],
+      verified: [],
+      newEntities: [],
+    },
+  ];
+
+  const packEn = buildEvidencePack(findings, scoreResult, { language: "en" });
+  const reportEn = buildFallbackReport(packEn, "en");
+
+  assert.deepEqual(reportEn.coverage.checked, ["message"]);
+  assert.deepEqual(reportEn.coverage.notChecked, ["payee", "website", "official sources", "reputation"]);
+  assert.ok(reportEn.improveCheck.length >= 4);
+  assert.ok(reportEn.improveCheck.some((item) => item.includes("UPI ID") || item.includes("payment request")));
+  assert.ok(reportEn.improveCheck.some((item) => item.includes("website URL") || item.includes("opportunity link")));
+
+  const packHi = buildEvidencePack(findings, scoreResult, { language: "hi" });
+  const reportHi = buildFallbackReport(packHi, "hi");
+
+  assert.deepEqual(reportHi.coverage.checked, ["message"]);
+  assert.ok(reportHi.improveCheck.some((item) => item.includes("यूपीआई आईडी") || item.includes("भुगतान")));
+});
+
+test("report: checklist deduplicates manual checks, groups entity failures, and caps at 10 items with moreChecks", () => {
+  const findings = [
+    {
+      agent: "website_forensics",
+      kind: "agent",
+      round: 1,
+      status: "ok",
+      flags: [],
+      verified: [],
+      newEntities: [],
+      unchecked: [
+        "domain:failing-corp.example: dns lookup failed",
+        "domain:failing-corp.example: ssl lookup timeout",
+        "domain:failing-corp.example: rdap lookup failed",
+        "domain:failing-corp.example: wayback lookup failed",
+      ],
+      manualChecks: [
+        { label: "MCA Search", url: "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do" },
+      ],
+      trace: [
+        { type: "dns", domain: "failing-corp.example", ok: false, code: "ENOTFOUND" },
+        { type: "ssl", domain: "failing-corp.example", ok: false, code: "TIMEOUT" },
+      ],
+    },
+    {
+      agent: "official_verifier",
+      kind: "agent",
+      round: 1,
+      status: "ok",
+      flags: [],
+      verified: [],
+      newEntities: [],
+      manualChecks: [
+        { label: "MCA Search", url: "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do" },
+        { label: "PIB Fact Check", url: "https://factcheck.pib.gov.in" },
+      ],
+    },
+    {
+      agent: "reputation_osint",
+      kind: "agent",
+      round: 1,
+      status: "could_not_check",
+      reason: "search_failed",
+      flags: [],
+      verified: [],
+      newEntities: [],
+      unchecked: ["company:FailingCorp: search failed"],
+    },
+  ];
+
+  const scoreResult = {
+    level: "medium",
+    score: 45,
+    confidence: "low",
+    flagPoints: [],
+    rulesFired: [],
+    coverage: { checked: ["website", "official sources"], notChecked: ["message", "payee", "reputation"] },
+  };
+
+  const pack = buildEvidencePack(findings, scoreResult, { language: "en" });
+  const report = buildFallbackReport(pack, "en");
+
+  // 1. Grouped entity failure: DNS, SSL, RDAP, Wayback for failing-corp.example collapsed into 1 actionable step
+  const domainActionSteps = report.checklist.filter((item) =>
+    item.text.includes("failing-corp.example")
+  );
+  assert.equal(domainActionSteps.length, 1, "Multiple domain lookups must collapse into a single actionable checklist step");
+  assert.ok(domainActionSteps[0].text.includes("Could not check domain failing-corp.example automatically"));
+  assert.ok(domainActionSteps[0].text.includes("registration date, certificate, archive history"));
+
+  // 2. Manual checks deduplicated: MCA Search appears once
+  const mcaSteps = report.checklist.filter((item) =>
+    item.url === "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do"
+  );
+  assert.equal(mcaSteps.length, 1, "Manual check URLs must be deduplicated across agents");
+
+  // 3. Checklist cap: report.checklist must have at most 10 items
+  assert.ok(report.checklist.length <= 10, `Checklist capped at 10 items, got ${report.checklist.length}`);
+
+  // 4. Any overflow appears in moreChecks
+  assert.ok(Array.isArray(report.moreChecks));
+});
+
+test("report: summary must not claim 'no reports found' when search failed", async () => {
+  const findings = [
+    {
+      agent: "reputation_osint",
+      kind: "agent",
+      round: 1,
+      status: "could_not_check",
+      reason: "search_failed",
+      flags: [],
+      verified: [],
+      newEntities: [],
+    },
+  ];
+
+  const scoreResult = {
+    level: "cannot_verify",
+    score: 0,
+    confidence: "low",
+    flagPoints: [],
+    rulesFired: [],
+    coverage: { checked: [], notChecked: ["reputation"] },
+  };
+
+  const fakeGenerate = async () => ({
+    ok: true,
+    data: {
+      summary: "Preliminary checks completed with no reports found in public records.",
+      scamTypeGuess: "unknown",
+      flagExplanations: [],
+      extraChecklist: [],
+    },
+  });
+
+  const report = await generateReport(
+    {
+      checkId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      findings,
+      scoreResult,
+      language: "en",
+    },
+    { generate: fakeGenerate }
+  );
+
+  // Since generate claimed "no reports found" while search failed, it must be rejected and fallback used
+  assert.ok(!report.summary.includes("no reports found"));
+  assert.ok(report.summary.includes("could not verify this offer") || report.summary.includes("insufficient details"));
 });
 

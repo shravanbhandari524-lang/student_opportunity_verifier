@@ -5,7 +5,7 @@ import { toResponse, apiError } from "../../../../../lib/api/errors.js";
 import { getClientKey } from "../../../../../lib/api/rate-limit.js";
 import { applySecurityHeaders, noStoreHeaders } from "../../../../../lib/api/headers.js";
 import { createRequestLogger } from "../../../../../lib/api/log.js";
-import { getCheck, saveConfirmation, updateStatus, transitionStatus, InvalidStateTransitionError } from "../../../../../lib/db/index.js";
+import { getCheck, getInputs, saveConfirmation, updateStatus, transitionStatus, InvalidStateTransitionError } from "../../../../../lib/db/index.js";
 import { runInvestigation } from "../../../../../lib/coordinator.js";
 import { ENTITY_KINDS } from "../../../../../lib/contracts/enums.js";
 import {
@@ -25,13 +25,17 @@ const ConfirmedEntitySchema = z
   .object({
     kind: z.enum(ENTITY_KINDS),
     value: z.string().min(1).max(500),
-    source: z.literal("user").optional().default("user"),
+    source: z.string().optional().default("user"),
+    platform: z.string().nullable().optional(),
+    orgType: z.string().nullable().optional(),
+    purpose: z.string().nullable().optional(),
+    evidence: z.any().optional(),
   })
-  .strict();
+  .passthrough();
 
 const ConfirmationBodySchema = z
   .object({
-    texts: z.array(z.string().max(10000)).max(10).optional().default([]),
+    texts: z.array(z.string().max(10000)).max(10).optional(),
     entities: z.array(ConfirmedEntitySchema).max(30).optional().default([]),
   })
   .strict();
@@ -159,9 +163,21 @@ export async function POST(request, context = {}) {
       value: normalizeConfirmedValue(ent.kind, ent.value),
     }));
 
+    // If texts were not provided in confirmation body, preserve existing text inputs
+    let textsToConfirm = body.texts;
+    if (!textsToConfirm || textsToConfirm.length === 0) {
+      const existingInputs = getInputs(checkId, db);
+      const existingTexts = existingInputs
+        .filter((i) => i.type === "text" && i.value)
+        .map((i) => i.value);
+      if (existingTexts.length > 0) {
+        textsToConfirm = existingTexts;
+      }
+    }
+
     // 5. Atomic saveConfirmation and transition from 'awaiting_confirmation' to 'investigating'
     try {
-      saveConfirmation(checkId, { texts: body.texts, entities: normalizedEntities }, db);
+      saveConfirmation(checkId, { texts: textsToConfirm, entities: normalizedEntities }, db);
       transitionStatus(checkId, "awaiting_confirmation", "investigating", db);
     } catch (err) {
       if (err instanceof InvalidStateTransitionError || err?.code === "INVALID_STATE_TRANSITION") {

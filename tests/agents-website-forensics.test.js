@@ -1533,4 +1533,103 @@ describe("L4 Website Forensics Agent", () => {
       assert.equal(res.unchecked.includes("example-partial.com:dns"), false, "successful dns must NOT be in unchecked");
     });
   });
+
+  describe("Phase 5b: RFC 2606/6761 Reserved Domains & Fixture Domains", () => {
+    test("RFC 2606 reserved domains (.example) skip network lookups, set test_domain entityStatus, and emit lookalike if matching", async () => {
+      const checkId = "22222222-2222-4222-8222-222222222222";
+      const snap = makeSnapshot({
+        entities: [
+          {
+            id: 1,
+            checkId,
+            kind: "domain",
+            value: "careers-microsoft-internships.example",
+            source: "user",
+            round: 0,
+            confirmed: true,
+          },
+        ],
+      });
+
+      let rdapCalled = false;
+      let waybackCalled = false;
+      let sslCalled = false;
+
+      const res = await run(snap, {
+        rdapLookup: async () => { rdapCalled = true; return { ok: true, data: { found: false } }; },
+        waybackFirstSeen: async () => { waybackCalled = true; return { ok: true, data: { found: false } }; },
+        sslInfo: async () => { sslCalled = true; return { ok: true, data: { authorized: true } }; },
+        enforceReservedDomains: true,
+      });
+
+      assert.equal(res.status, "ok");
+      assert.equal(rdapCalled, false, "rdapLookup must not be called on reserved domains");
+      assert.equal(waybackCalled, false, "waybackFirstSeen must not be called on reserved domains");
+      assert.equal(sslCalled, false, "sslInfo must not be called on reserved domains");
+
+      // Must never raise domain_no_history from skipped lookups
+      assert.equal(res.flags.some((f) => f.id === "domain_no_history"), false);
+      assert.equal(res.flags.some((f) => f.id === "domain_new"), false);
+
+      // Lookalike check still runs and catches Microsoft
+      const lookalikeFlag = res.flags.find((f) => f.id === "lookalike_domain");
+      assert.ok(lookalikeFlag, "Lookalike check must still detect microsoft impersonation");
+
+      // Entity status must be test_domain with exact plain note
+      const entityStatus = res.entityStatus.find((es) => es.entityValue === "careers-microsoft-internships.example");
+      assert.ok(entityStatus, "Entity status must be present");
+      assert.equal(entityStatus.status, "test_domain");
+      assert.equal(entityStatus.reason, "This is a reserved test domain and cannot be a real website");
+    });
+
+    test("fixtureDomains allows testing a controlled domain with custom tool results", async () => {
+      const checkId = "33333333-3333-4333-8333-333333333333";
+      const domainVal = "microsoft-careers-india.example";
+      const snap = makeSnapshot({
+        entities: [
+          {
+            id: 1,
+            checkId,
+            kind: "domain",
+            value: domainVal,
+            source: "user",
+            round: 0,
+            confirmed: true,
+          },
+        ],
+      });
+
+      const fixtureDomains = {
+        [domainVal]: {
+          rdap: {
+            ok: true,
+            data: {
+              domain: domainVal,
+              found: true,
+              registrationDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+              ageDays: 3,
+              evidenceUrl: `https://rdap.org/domain/${domainVal}`,
+              registrar: "Controlled Registrar",
+            },
+          },
+          dns: { ok: true, data: { a: ["192.0.2.1"], mx: [] } },
+          ssl: { ok: true, data: { authorized: true, issuer: "Let's Encrypt", validFrom: "2026-10-01", validTo: "2027-01-01", daysRemaining: 60 } },
+          wayback: { ok: true, data: { domain: domainVal, found: false, firstSeen: null } },
+        },
+      };
+
+      const res = await run(snap, {
+        fixtureDomains,
+        enforceReservedDomains: true,
+      });
+
+      assert.equal(res.status, "ok");
+      // Controlled fixture domain: registered 3 days ago -> domain_new
+      assert.ok(res.flags.some((f) => f.id === "domain_new"), "Fixture domain must emit domain_new");
+      // Controlled fixture domain: no archive history -> domain_no_history
+      assert.ok(res.flags.some((f) => f.id === "domain_no_history"), "Fixture domain must emit domain_no_history");
+      // Controlled fixture domain: valid certificate -> verified item
+      assert.ok(res.verified.some((v) => v.includes("Certificate valid")), "Fixture domain must verify SSL certificate");
+    });
+  });
 });

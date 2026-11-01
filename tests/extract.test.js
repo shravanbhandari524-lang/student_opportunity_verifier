@@ -8,6 +8,9 @@ import {
   extractEntitiesFromText,
   runExtraction,
   VisionExtractionSchema,
+  detectOrgType,
+  detectAmountPurpose,
+  detectAmountDirection,
 } from "../lib/extract.js";
 import {
   getDb,
@@ -802,6 +805,115 @@ test("extract: runExtraction cleans up image files on fatal failure", async () =
   const inputsAfter = getInputs(check.id, db);
   const imgInput = inputsAfter.find((i) => i.type === "image");
   assert.equal(imgInput.filePath, null, "DB filePath must be cleared in finally block");
+});
+
+test("extract: detectOrgType accurately categorizes organizations", () => {
+  assert.equal(detectOrgType("Government of India"), "government");
+  assert.equal(detectOrgType("Department of Higher Education"), "government");
+  assert.equal(detectOrgType("Ministry of Education"), "government");
+  assert.equal(detectOrgType("UGC"), "government");
+  assert.equal(detectOrgType("AICTE"), "government");
+  assert.equal(detectOrgType("PIB"), "government");
+  assert.equal(detectOrgType("NSP"), "government");
+  assert.equal(detectOrgType("Delhi University"), "education");
+  assert.equal(detectOrgType("State Bank of India"), "bank");
+  assert.equal(detectOrgType("HDFC"), "bank");
+  assert.equal(detectOrgType("Google"), "company");
+  assert.equal(detectOrgType("Random Unknown Corp", "company"), "company");
+});
+
+test("extract: government scholarship notice extracts orgType government, scheme, and amounts", async () => {
+  const db = resetDb();
+  const check = createCheck({ language: "en" }, db);
+
+  const testText =
+    "Government of India – National Student Digital Empowerment Scholarship 2026. " +
+    "Selected students enrolled in undergraduate programs are eligible for financial assistance of ₹45,000 per academic year. " +
+    "Registration is available through the National Scholarship Verification Portal. " +
+    "Applicants must complete Aadhaar verification and submit their bank account details. " +
+    "A refundable document verification deposit of ₹799 is required to activate the scholarship. " +
+    "Limited to 5000 students nationwide. Last date: 5 November 2026. Issued under the Department of Higher Education.";
+
+  saveInputs(check.id, [{ type: "text", value: testText }], db);
+
+  // Mock LLM entity sweep returning the scheme and companies with quotes
+  const mockGenerate = async ({ purpose }) => {
+    if (purpose === "entity_sweep") {
+      return {
+        ok: true,
+        data: {
+          companies: [
+            { name: "Government of India", quote: "Government of India", orgType: "government" },
+            { name: "Department of Higher Education", quote: "Department of Higher Education", orgType: "government" },
+          ],
+          schemes: [
+            {
+              name: "National Student Digital Empowerment Scholarship 2026",
+              quote: "National Student Digital Empowerment Scholarship 2026",
+            },
+          ],
+          handles: [],
+          amounts: [
+            { amount: "45000", quote: "₹45,000" },
+            { amount: "799", quote: "₹799" },
+          ],
+          paymentIds: [],
+        },
+      };
+    }
+    return { ok: false, error: { code: "UNEXPECTED" } };
+  };
+
+  const res = await runExtraction(check.id, {
+    generate: mockGenerate,
+    db,
+  });
+
+  assert.equal(res.status, "awaiting_confirmation");
+  const entities = getEntities(check.id, db);
+
+  const govEntities = entities.filter((e) => e.kind === "company" && e.orgType === "government");
+  assert.ok(govEntities.length >= 2, "Must extract at least two government companies");
+  assert.ok(govEntities.some((e) => e.value.toLowerCase().includes("government of india")));
+  assert.ok(govEntities.some((e) => e.value.toLowerCase().includes("department of higher education")));
+
+  const schemeEntities = entities.filter((e) => e.kind === "scheme");
+  assert.ok(schemeEntities.length >= 1, "Must extract the scheme entity");
+  assert.ok(
+    schemeEntities.some((e) =>
+      e.value.toLowerCase().includes("national student digital empowerment scholarship 2026")
+    )
+  );
+
+  const amountEntities = entities.filter((e) => e.kind === "amount");
+  assert.ok(amountEntities.some((e) => e.value === "45000" || e.value === "45,000"));
+  const feeEntity = amountEntities.find((e) => e.value === "799");
+  assert.ok(feeEntity, "Must extract 799 amount entity");
+  assert.equal(feeEntity.purpose, "refundable deposit", "Must enrich 799 entity with purpose");
+});
+
+test("extract: detectAmountPurpose detects standard fee and deposit purposes", () => {
+  assert.equal(detectAmountPurpose("A refundable document verification deposit of ₹799"), "refundable deposit");
+  assert.equal(detectAmountPurpose("Pay application fee of Rs 500"), "application fee");
+  assert.equal(detectAmountPurpose("Mandatory registration fee ₹200"), "registration fee");
+  assert.equal(detectAmountPurpose("document verification charges ₹300"), "document verification");
+  assert.equal(detectAmountPurpose("processing charge Rs 100"), "processing charge");
+  assert.equal(detectAmountPurpose("training kit deposit ₹1500"), "training kit");
+  assert.equal(detectAmountPurpose("advance payment of Rs 2000"), "advance payment");
+  assert.equal(detectAmountPurpose("security deposit refundable Rs 5000"), "refundable deposit");
+  assert.equal(detectAmountPurpose("security deposit Rs 5000"), "security deposit");
+  assert.equal(detectAmountPurpose("Stipend: ₹18,000/month"), "stipend/salary");
+  assert.equal(detectAmountPurpose("random text without fee context"), null);
+});
+
+test("extract: detectAmountDirection classifies to_candidate vs from_candidate vs unclear", () => {
+  assert.equal(detectAmountDirection("Stipend: ₹18,000/month"), "to_candidate");
+  assert.equal(detectAmountDirection("Monthly salary Rs 25000"), "to_candidate");
+  assert.equal(detectAmountDirection("You will earn ₹15,000 per month"), "to_candidate");
+  assert.equal(detectAmountDirection("Pay registration fee of ₹500"), "from_candidate");
+  assert.equal(detectAmountDirection("A refundable verification deposit of ₹799"), "from_candidate");
+  assert.equal(detectAmountDirection("Send ₹1,000 upfront"), "from_candidate");
+  assert.equal(detectAmountDirection("Total Rs 500"), "unclear");
 });
 
 

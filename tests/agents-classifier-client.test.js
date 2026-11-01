@@ -585,4 +585,180 @@ describe("L4 Classifier Client Agent", () => {
       assert.equal(scoreResult.score, 0);
     });
   });
+
+  describe("Activity Log & Instrumentation", () => {
+    test("input records text length of main message only (userNotes ignored)", async () => {
+      const mainText = "Pay 1000 deposit to secure student internship";
+      const snap = makeSnapshot({ text: mainText });
+      snap.userNotes = "User was approached via Instagram DM offering 50k per month";
+
+      let capturedText = null;
+      const fakeClassify = async (txt) => {
+        capturedText = txt;
+        return {
+          ok: true,
+          data: {
+            probability: 0.88,
+            label: "suspicious",
+            topTerms: ["deposit", "internship"],
+          },
+        };
+      };
+      const fakeHealth = async () => ({
+        ok: true,
+        data: { data_provenance: "synthetic", real_row_count: 0 },
+      });
+
+      const res = await run(snap, { classify: fakeClassify, classifierHealth: fakeHealth });
+      assert.equal(res.status, "ok");
+      assert.equal(capturedText, mainText, "Classifier must receive main message text only, never userNotes");
+
+      assert.ok(Array.isArray(res.activity));
+      const inputEntry = res.activity.find((a) => a.type === "input");
+      assert.ok(inputEntry, "Activity must contain an input entry");
+      assert.equal(inputEntry.tool, "classifier");
+      assert.ok(inputEntry.detail.includes(`${mainText.length} characters`));
+      assert.ok(inputEntry.detail.includes("Main message text only"));
+    });
+
+    test("down: reports plain reason plus dev start command in dev and production message in prod", async () => {
+      const snap = makeSnapshot({ text: "Offer letter requiring registration fee" });
+      const fakeHealth = async () => ({
+        ok: false,
+        error: { code: "NETWORK", message: "ECONNREFUSED" },
+      });
+
+      // 1. Development mode
+      const oldEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = "development";
+        const resDev = await run(snap, { classifierHealth: fakeHealth });
+        assert.equal(resDev.status, "could_not_check");
+        assert.equal(resDev.reason, "classifier_service_unavailable");
+        assert.ok(Array.isArray(resDev.activity));
+
+        const limitDev = resDev.activity.find((a) => a.type === "limit");
+        assert.ok(limitDev);
+        assert.equal(limitDev.status, "failed");
+        assert.ok(limitDev.detail.includes("npm run dev:all"));
+        assert.ok(resDev.summary.includes("npm run dev:all"));
+
+        // 2. Production mode
+        process.env.NODE_ENV = "production";
+        const resProd = await run(snap, { classifierHealth: fakeHealth });
+        assert.equal(resProd.status, "could_not_check");
+        assert.equal(resProd.reason, "classifier_service_unavailable");
+
+        const limitProd = resProd.activity.find((a) => a.type === "limit");
+        assert.ok(limitProd);
+        assert.equal(limitProd.status, "failed");
+        assert.ok(limitProd.detail.toLowerCase().includes("the classifier was unavailable"));
+        assert.ok(resProd.summary.toLowerCase().includes("the classifier was unavailable"));
+      } finally {
+        process.env.NODE_ENV = oldEnv;
+      }
+    });
+
+    test("slow: handles timeout with failed step, limit and clear summary", async () => {
+      const snap = makeSnapshot({ text: "Suspicious task offer" });
+      const fakeHealth = async () => ({
+        ok: true,
+        data: { data_provenance: "synthetic", real_row_count: 0 },
+      });
+      const fakeClassify = async () => ({
+        ok: false,
+        error: { code: "TIMEOUT", message: "Classifier request timed out" },
+      });
+
+      const res = await run(snap, { classify: fakeClassify, classifierHealth: fakeHealth });
+      assert.equal(res.status, "could_not_check");
+      assert.equal(res.reason, "timeout");
+
+      const limitEntry = res.activity.find((a) => a.type === "limit");
+      assert.ok(limitEntry);
+      assert.equal(limitEntry.status, "failed");
+      assert.ok(limitEntry.title.includes("timed out") || limitEntry.detail.includes("timed out"));
+      assert.ok(res.summary.includes("timed out"));
+    });
+
+    test("bad payload: handles schema validation error gracefully with failed step and limit", async () => {
+      const snap = makeSnapshot({ text: "Suspicious offer with deposit" });
+      const fakeHealth = async () => ({
+        ok: true,
+        data: { data_provenance: "synthetic", real_row_count: 0 },
+      });
+      const fakeClassify = async () => ({
+        ok: true,
+        data: {
+          probability: 9.99, // Invalid probability
+          label: "not_a_valid_label",
+        },
+      });
+
+      const res = await run(snap, { classify: fakeClassify, classifierHealth: fakeHealth });
+      assert.equal(res.status, "could_not_check");
+      assert.equal(res.reason, "invalid_result");
+
+      const limitEntry = res.activity.find((a) => a.type === "limit");
+      assert.ok(limitEntry);
+      assert.equal(limitEntry.status, "failed");
+      assert.ok(limitEntry.detail.includes("schema validation"));
+      assert.ok(res.summary.includes("invalid"));
+    });
+
+    test("success: records step with probability %, label, clean top terms (no <AMT>), info with points and synthetic cap, and standard summary", async () => {
+      const snap = makeSnapshot({ text: "Urgent scholarship registration: pay deposit on telegram now" });
+      const fakeHealth = async () => ({
+        ok: true,
+        data: { data_provenance: "synthetic", real_row_count: 10 },
+      });
+      const fakeClassify = async () => ({
+        ok: true,
+        data: {
+          probability: 0.88,
+          label: "suspicious",
+          topTerms: ["<AMT>", "deposit", "<URL>", "telegram", "amt"],
+        },
+      });
+
+      const res = await run(snap, { classify: fakeClassify, classifierHealth: fakeHealth });
+      assert.equal(res.status, "ok");
+
+      // Verify activity entries
+      const entries = res.activity;
+      assert.ok(entries.length >= 3);
+
+      // 1. Input entry
+      const inputEntry = entries.find((e) => e.type === "input");
+      assert.ok(inputEntry);
+      assert.equal(inputEntry.tool, "classifier");
+      assert.ok(inputEntry.detail.includes("Main message text only"));
+
+      // 2. Classifier evaluation step
+      const stepEntry = entries.find((e) => e.type === "step" && e.title.includes("Classifier evaluation"));
+      assert.ok(stepEntry);
+      assert.equal(stepEntry.status, "ok");
+      assert.equal(stepEntry.tool, "classifier");
+      assert.ok(stepEntry.detail.includes("Service reachable"));
+      assert.ok(stepEntry.detail.includes("88% scam probability"));
+      assert.ok(stepEntry.detail.includes("suspicious"));
+      assert.ok(stepEntry.detail.includes("deposit, telegram"));
+      assert.ok(!stepEntry.detail.includes("<AMT>"), "Placeholder tokens like <AMT> must be filtered out");
+      assert.ok(!stepEntry.detail.includes("amt"), "Placeholder word 'amt' must be filtered out");
+
+      // 3. Info entry for scoring points contribution & synthetic cap rationale
+      const infoEntry = entries.find((e) => e.type === "step" && e.status === "info");
+      assert.ok(infoEntry);
+      assert.equal(infoEntry.tool, "classifier");
+      assert.ok(infoEntry.detail.includes("Adds 8 points to risk score"));
+      assert.ok(infoEntry.detail.includes("capped at 10 points"));
+      assert.ok(infoEntry.detail.includes("trained mostly on synthetic examples; treat as a weak signal, not proof"));
+
+      // 4. Summary format: "Language model says 88% scam-like (weak signal; adds 8 points)."
+      assert.equal(res.summary, "Language model says 88% scam-like (weak signal; adds 8 points).");
+
+      // 5. Check classifierResult attached has clean topTerms
+      assert.deepEqual(res.classifierResult.topTerms, ["deposit", "telegram"]);
+    });
+  });
 });

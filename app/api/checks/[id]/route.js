@@ -81,6 +81,9 @@ export async function GET(request, context = {}) {
         id: e.id,
         kind: e.kind,
         value: e.value,
+        platform: e.platform || undefined,
+        orgType: e.orgType || undefined,
+        purpose: e.purpose || undefined,
         source: e.source,
         confirmed: Boolean(e.confirmed),
       }));

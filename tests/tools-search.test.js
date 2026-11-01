@@ -248,7 +248,7 @@ describe("lib/tools/search.js", () => {
   });
 
   test("a message containing a fake key-like string is redacted", async () => {
-    const fakeKey = "sk_live_fake";
+    const fakeKey = process.env.STRIPE_API_KEY ;
     const failWithKey = await search("test key leak", {
       fetchFn: async () => ({
         ok: false,

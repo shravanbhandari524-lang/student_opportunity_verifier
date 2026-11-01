@@ -104,6 +104,7 @@ The system follows a blackboard pattern. One **case file** holds everything know
 | Inputs | What the user submitted: text, links, payment IDs, company, handle, phone, language, image metadata |
 | Entities | Normalized items: domains, URLs, UPI IDs, emails, phones, companies, handles, amounts. Source is extracted, user or discovered |
 | Findings | One AgentResult per agent per round: status, reason, summary, activity array, flags with evidence, verified items, discovered entities, optional tool trace |
+| Ledger | Evidence ledger entries { id, agent, round, kind, flagId, claimKey, quoteOrUrl, evidenceType, verificationStatus, confidence, supportingSource, timestamp } and reconciliation record |
 | Events | Append-only timeline of what happened and when |
 | Control | Check status, current round, which entities each agent has already processed |
 
@@ -120,11 +121,14 @@ Agents receive a read-only snapshot and return an AgentResult. Only the coordina
 3. Take a snapshot. For each registered agent, evaluate `canRun(snapshot)`.
 4. Run the eligible agents in parallel, each with a 25-second timeout. Record skipped agents with a reason.
 5. Validate each result, merge flags, findings and discovered entities into the case file, and emit events.
-6. If new entities were discovered and the round limit (2) is not reached, go back to step 3. Otherwise continue.
-7. Run the scoring engine (pure code) on the merged findings, then the report writer (LLM) on the evidence only.
-8. Save the report and finish.
+6. If new entities were discovered and the round limit (2) is not reached, emit an `evidence_transfer` event for discovered entities delivered to round 2 agents, then go back to step 3. Otherwise continue.
+7. Build the evidence ledger from sanitized agent results (`lib/evidence/ledger.js`), run pure `reconcile(ledger)` to detect duplicates, corroborations, and contradictions, and persist the ledger with the check.
+8. Emit an `evidence_transfer` event recording ledger transfer to the report writer.
+9. Run the scoring engine (pure code) using the ledger and reconciliation record.
+10. Run the report writer (LLM) on the ledger and reconciliation findings, adding "Where the checks disagreed" when contradictions exist.
+11. Save the report and finish.
 
-The coordinator is plain code. The LLM is used only in extraction (vision), inside agents that need language understanding, and in the report writer. The risk level always comes from the scoring engine.
+The coordinator is plain code. The LLM is used only in extraction (vision), inside agents that need language understanding, and in the report writer. The risk level always comes from the scoring engine. Agents still never call each other and never write to the case file; the coordinator only routes.
 
 ### 3.5 Agent eligibility (`canRun`)
 
@@ -156,7 +160,7 @@ An agent may return `newEntities`, for example a linked domain found by Website 
 Round execution and scoring rules:
 - In round 2, the coordinator runs and records results only for agents that became newly eligible based on newly discovered entities; it writes no skipped rows for the rest.
 - For scoring, each (agent, round) result with status `ok` or `could_not_check` counts once toward eligibility; skipped results are not counted.
-- Website-related agents key their processed lists on the domain entity. A submitted URL creates both a `url` entity and a derived `domain` entity. Fields submitted in the initial form (`upiId`, `company`, `handle`, `phone`, `youtubeUrl`) create entities with source `"user"` and round 0. Entity kinds supported in the case file include `domain`, `url`, `upi`, `email`, `phone`, `company`, `handle`, `amount`, `youtube_url`, and `scheme` (for government and institutional scholarships/schemes).
+- Website-related agents key their processed lists on the domain entity. A submitted URL creates both a `url` entity and a derived `domain` entity. Fields submitted in the initial form (`upiId`, `company`, `handle`, `phone`, `youtubeUrl`) create entities with source `"user"` and round 0. Entity kinds supported in the case file include `domain`, `url`, `upi`, `email`, `phone`, `company`, `handle`, `amount`, `youtube_url`, and `scheme` (for government and institutional scholarships/schemes). Company entities may carry an optional `orgType` (`government`, `education`, `bank`, `company`, `unknown`). Government and education bodies route to Official Verifier government/PIB/NSP checks and are excluded from MCA/Trustpilot; OSINT never executes a standalone query on generic authority names (such as "Government of India").
 
 ### 3.8 Markdown view
 
@@ -177,7 +181,7 @@ To allow users to watch every specialist agent work live (queries sent to search
      5. Broadcast to live SSE subscribers via the in-process `eventBus`.
 3. **Agent Context (`ctx`):** When launching each agent, the coordinator provides a per-agent execution context:
    - `ctx.note(text)`: Plain-language progress note (max 80 chars, e.g. "Reading top 3 search results").
-   - `ctx.verdict(claim, verdict, sources)`: Specific verification claim outcome (`verified` | `unverified` | `contradicted`).
+   - `ctx.verdict(claim, verdict, sources)`: Specific verification claim outcome (`verified` | `contradicted` | `not_found` | `unverified` | `partial`). Absence of results is never `contradicted`.
    - `ctx.tools`: Wrapped tool suite generated by `instrumentTools(tools, emit, agent, round)`.
 4. **Lifecycle and Result Events:** The coordinator emits:
    - `stage` and `round` events when pipeline phases change.
@@ -332,8 +336,8 @@ Sequence:
 |---|---|
 | `checks` | id (text, pk, UUID), status, current_round (integer, default 0), language, risk_level, score (integer, CHECK 0..100), confidence, failure_reason (text, nullable), created_at (text, ISO), updated_at (text, ISO), expires_at (text, ISO) |
 | `check_inputs` | id (integer, pk, autoincrement), check_id (text, fk), type (text, image, url, upi, company, handle, phone, youtube_url), value, file_path (nullable, temporary), mime_type (text, nullable), size_bytes (integer, nullable), created_at (text, ISO) |
-| `entities` | id (integer, pk, autoincrement), check_id (text, fk), kind, value, source (extracted, user or discovered), discovered_by (agent, nullable), round, confirmed (bool), evidence_json (nullable), UNIQUE(check_id, kind, value) |
-| `agent_results` | id (integer, pk, autoincrement), check_id (text, fk), agent, round, kind (check, llm_call or agent), status (ok, skipped, could_not_check), reason, flags_json, verified_json, new_entities_json, processed_json, unchecked_json, manual_checks_json, trace_json, notes, duration_ms, summary, activity_json, UNIQUE(check_id, agent, round) |
+| `entities` | id (integer, pk, autoincrement), check_id (text, fk), kind, value, source (extracted, user or discovered), platform (nullable), org_type (nullable), purpose (nullable, for amount), direction (nullable, for amount: to_candidate, from_candidate, unclear), discovered_by (agent, nullable), round, confirmed (bool), evidence_json (nullable), UNIQUE(check_id, kind, value) |
+| `agent_results` | id (integer, pk, autoincrement), check_id (text, fk), agent, round, kind (check, llm_call or agent), status (ok, skipped, could_not_check), reason, flags_json, verified_json, new_entities_json, processed_json, unchecked_json, manual_checks_json, trace_json, notes, duration_ms, summary, activity_json, entity_status_json, UNIQUE(check_id, agent, round) |
 | `check_events` | id (integer, pk, autoincrement), check_id (text, fk), seq (integer, not null), round (integer), type (text), agent (text, nullable), status (text, nullable), summary (text, nullable), payload_json (text, not null), created_at (text, ISO), UNIQUE(check_id, seq) |
 | `reports` | check_id (text, pk, fk), report_json, created_at |
 | `graph_nodes` | id (integer, pk, autoincrement), kind, value (unique with kind), first_seen, last_seen (not null), report_count |
@@ -476,7 +480,7 @@ Event types:
   - `safeBrowsing` / `urlscan`: `{ verdict: string }`
 - `note`: `{ text: string }` (plain language, max 80 chars, e.g. "Reading the top 3 results")
 - `flag`: `{ flagId: string, title: string, severity: "low" | "medium" | "high", evidence: Array<{ type: "quote" | "url", value: string }> }` (emitted by coordinator only after result is validated and merged)
-- `verdict`: `{ claim: string, verdict: "verified" | "unverified" | "contradicted", sources: string[] }`
+- `verdict`: `{ claim: string, verdict: "verified" | "contradicted" | "not_found" | "unverified" | "partial", sources: string[] }`
 - `entity`: `{ kind: string, value: string, evidence: string }` (a discovered entity)
 - `round`: `{ round: number }`
 - `stage`: `{ stage: string }`
@@ -525,23 +529,105 @@ Each agent outcome in `AgentResult` includes:
 #### Endpoint `GET /api/checks/:id/agents`
 Returns all six cards with current status, durationMs, summary, activity, flags, verified, unchecked, and manualChecks. Works for created, running, and finished checks.
 
-## 13. Scoring
+### 12.4 Entity Verification Records & Coordinator Gap Validation
+Every `AgentResult` returns an `entityStatus` array tracking entity-level outcomes:
+`entityStatus: Array<{ entityKind: string, entityValue: string, status: EntityStatus, reason?: string }>`
+- Allowed statuses: `"verified" | "not_found" | "unverified" | "contradicted" | "partial" | "checked_no_issue" | "skipped" | "could_not_check"`.
+- `reason` is required when status is `"skipped"` or `"could_not_check"`.
+- **Coordinator Gap Validation:** After all agent rounds complete and prior to scoring, the coordinator validates that every confirmed entity in the case file has a status or an explicit skip reason from every agent that was eligible or skipped. Any gaps are recorded as warning events (`type: "note"`, `Warning: unverified entity gap...`).
+- **UI & Report Representation:** An "Entities and what was checked" table is surfaced in both the agent inspection drawer (`components/AgentActivityDrawer.js`) and the final verification report (`app/check/[id]/page.js`), displaying `entity`, `agent`, `status`, and `reason`.
 
-Pure code in `lib/scoring/score.js`, configured by `lib/scoring/config.js` so weights can be tuned against the test set. Scoring is a pure function performing zero file I/O or database queries.
+### 12.5 Official Verification Statuses & Source Link Provenance
+Official registry checks in Official Verifier produce one of five canonical statuses:
+- `VERIFIED`: Direct authoritative evidence from official registries or `.gov.in` portals supports the claim.
+- `CONTRADICTED`: Direct authoritative evidence (such as a PIB Fact Check warning or official advisory) explicitly warns against or debunks the claimed scheme or entity.
+- `NOT_FOUND`: No matching announcement or registry entry was found in the official sources searched. The searched sources must be listed. Absence of results is NEVER `CONTRADICTED`.
+- `UNVERIFIED`: Insufficient evidence to establish a definitive finding through official channels.
+- `PARTIAL`: Some claims verified while others remain unverified or unresolved.
+- `TEST_DOMAIN`: Recognized RFC 2606/6761 reserved test domain (.example, .test, .invalid, .localhost, example.com/org/net).
+
+**Official Source Links Provenance & Relevance Filter:**
+- Every official or manual source link presented to the user must carry provenance metadata: `search_result`, `fetched`, or `curated_list` (with `source_url`).
+- A search-derived link counts as an official source only if its host is authoritative (evaluated via `classifySource`) AND its title or snippet relates directly to the opportunity claim (role, internship, careers, jobs, scholarship, fellowship), not merely mentioning the company name.
+- Unrelated official pages (e.g. general corporate partnerships or agricultural sensors) are dropped or noted as context only. URLs are never constructed from templates or LLM hallucinations.
+
+### 12.6 Payment Demand Analysis & Direction
+- Amount entities are classified with a `direction` (`"to_candidate"`, `"from_candidate"`, or `"unclear"`) and a canonical `purpose` (`"stipend/salary"`, `"refundable deposit"`, `"application fee"`, `"registration charge"`, `"registration fee"`, `"security deposit"`, `"document verification"`, `"processing charge"`, `"training kit"`, `"advance payment"`, `"other"`).
+- **Direction Rules:**
+  - `to_candidate`: Compensation, stipends, allowances, or salaries paid to the applicant ("we will pay you", "you will receive", "monthly stipend"). A stipend or salary is NEVER a payment demand.
+  - `from_candidate`: Fees, deposits, registration charges, or verification payments demanded from the applicant ("pay", "send", "transfer", "refundable deposit"). Only `from_candidate` amounts constitute a payment demand.
+- When a payment demand exists (an amount with `from_candidate` or fee/deposit purpose), Payment Entity executes a "payment demand analysis":
+  - Analyzes the demand amount, purpose, and whether a payee identifier is present.
+  - Generates the manual verification check: `"Ask where the money is to be sent. A scholarship or genuine employer does not charge a deposit."`
+  - Explicitly notes in summary and activity that `"recipient cannot be verified"`.
+  - Does NOT emit fee flags (fee flags are strictly owned by Message Analyst; no flag points are duplicated).
+- Payment recipient details (UPI ID, phone, account) are evaluated separately from the payment demand.
+
+### 12.7 Reserved Domains (RFC 2606 / RFC 6761)
+- Domains under `.example`, `.test`, `.invalid`, `.localhost`, `example.com`, `example.org`, `example.net`, and their subdomains are recognized as reserved test domains.
+- Lookups (RDAP, DNS, SSL, Wayback, fetch) are skipped.
+- Entity status is recorded as `test_domain` with plain reason: `"This is a reserved test domain and cannot be a real website"`.
+- No `domain_no_history` or other lookup flags are raised from the skipped lookups.
+- Lookalike domain detection and brand mismatch checks still run normally.
+- For testing, controlled tool results for fixture domains are supported via injected `fixtureDomains` configuration (never active in production).
+
+### 12.8 OSINT Result States & Privacy Design
+- **Deterministic OSINT States:** Every searched entity in Reputation OSINT terminates in exactly one of five states:
+  1. `no_relevant_results`: Search returned no relevant public mentions after relevance filtering.
+  2. `no_negative_reports_found`: Search returned results but no negative scam/fraud complaints were found.
+  3. `supporting_evidence_found`: Authoritative or official source mentions found (never presented as proof of legitimacy).
+  4. `search_unavailable`: Upstream search tool failed, encountered quota limits, or was unavailable.
+  5. `search_timed_out`: Query or entity evaluation exceeded execution time budget.
+  - States `search_unavailable` and `search_timed_out` are mapped to `unchecked`.
+- **Privacy Design Invariant:** No `Person` entity kind is supported. Person names are never modeled as graph nodes or distinct entity kinds and exist only inside evidence quotes.
+
+## 13. Scoring and evidence ledger
+
+Pure code in `lib/scoring/score.js`, operating on the evidence ledger (`lib/evidence/ledger.js`) and configured by `lib/scoring/config.js` so weights can be tuned against the test set. Scoring is a pure function performing zero file I/O or database queries.
 
 ### 13.1 Scoring Algorithm
 
 #### Exact Order of Operations
-1. **Collect flags:** Collect flags from agents with status `ok`. Deduplicate by flag id across agents and rounds: a flag id is counted once per check. Weight is taken from `config.flagWeights[id]`, falling back to `config.severityWeights[severity]` if missing (populating `fallbackWeightFlags`). Within the `fee` group (`scholarship_fee_demand`, `fee_demand`), only the highest-weight flag counts; others are suppressed (0 points, status `"group_suppressed"`).
-2. **Mutual exclusion:** Within the `fee_equipment` group (`fee_demand`, `equipment_advance`), keep only the highest-weight flag; others are suppressed (0 points, status `"group_suppressed"`), and `rulesFired` records `"exclusion:fee_equipment"` when both are present.
-3. **Correlation caps:** `hiring_process` and `pay` groups are each capped at 20 points; `rulesFired` records `"correlation_cap:<group>"` when a cap reduces points.
-4. **Soft cap:** Total points from `low` and `medium` severity flags combined (after correlation caps) is capped at **45 points**; `rulesFired` records `"soft_flag_cap_applied"` when it reduces points. High-severity flags are not part of this cap.
-5. **Add high-severity flag points:** Add points from counted high-severity flags to the capped soft-flag subtotal.
-6. **Classifier points:** `classifierPoints = Math.round(classifierMaxPoints * Math.max(0, (probability - 0.5) / 0.5))`, where `classifierMaxPoints` is an input parameter (default 25; 10 for synthetic data or real test rows < 60), added after the soft cap. If no `ok` classifier result is present, `classifierPoints = 0`.
-7. **Hard rules force High:** Evaluate rules in `config.hardRules` (`scholarship_fee_demand`, `mule_account_request`, `graph_match`). If any hard rule fires, score floor is raised to `config.thresholds.high` (60), risk level is forced to `high`, rules are recorded in `rulesFired`, and `cannot_verify` is never applied. Note: `scholarship_fee_demand` triggers the hard rule; a non-scholarship `fee_demand` does not by itself.
-8. **No-high-evidence cap:** If there is no high-severity flag, no hard rule, and no graph match, cap the final score (flags plus classifier) at **59**; record `"no_high_evidence_cap"` in `rulesFired` if the raw score exceeded 59.
-9. **Clamp and map thresholds:** Clamp final score to 0–100, map thresholds (below 25 `low`, 25–59 `medium`, 60+ `high`), apply `cannot_verify` (when `completedCount / eligibleCount < 0.40` and score < 60 without hard rule), critical agents rule (when `message_analyst` fails on an eligible check, downgrading would-be Low to cannot_verify), and confidence rules unchanged (confidence capped at medium unless at least one external-evidence agent completed `ok`).
-12. **ScoreResult contract:**
+1. **Reconciliation and claim mapping:** Sanitized agent results are translated into evidence ledger entries. The pure `reconcile(ledger)` function discovers duplicates, corroborations, and contradictions. Each flag is mapped to a normalized `claimKey` or correlated claim group (e.g. `domain_brand_impersonation` for `lookalike_domain` and `domain_company_mismatch`; `fee_demand`, `hiring_process`, `official_standing`). Flags in the same correlated claim group count once at their highest weight, plus the existing small corroboration bonus if corroborated by independent findings. Independent evidence (`domain_age`, `personal_payment_id`, `free_email_recruiter`) stays separate.
+2. **Evidence coverage computation:** Evaluate which of the 5 independent signal types completed with status `"ok"` across all agent results:
+   - `message`: `message_analyst` completed `ok`.
+   - `payee`: `payment_entity` completed `ok` (UPI ID, phone number, or bank details checked).
+   - `website`: `website_forensics` completed `ok` (domain registration, age, DNS, SSL checked).
+   - `official`: `official_verifier` completed `ok` (official registries or government portals checked).
+   - `reputation`: `reputation_osint` completed `ok` (public reports, scam complaints, OSINT search checked).
+   Coverage is computed into `coverage = { checked: string[], notChecked: string[] }`.
+3. **Mutual exclusion:** Within the `fee_equipment` group (`fee_demand`, `equipment_advance`), keep only the highest-weight claim; others are suppressed (0 points, status `"group_suppressed"`), and `rulesFired` records `"exclusion:fee_equipment"` when both are present.
+4. **Correlation caps:** `hiring_process` and `pay` groups are each capped at 20 points; `rulesFired` records `"correlation_cap:<group>"` when a cap reduces points.
+5. **Corroboration bonus:** When independent methods corroborate a claim (e.g. text quote plus search result), a configurable bonus is awarded (`corroborationBonus`, default +5, capped at `maxCorroborationBonus` = 10 across the check), and `rulesFired` records `"corroboration_bonus"`.
+6. **Soft cap:** Total points from `low` and `medium` severity flags combined (after correlation caps and corroboration bonuses) is capped at **45 points**; `rulesFired` records `"soft_flag_cap_applied"` when it reduces points. High-severity flags are not part of this cap.
+7. **Add high-severity flag points:** Add points from counted high-severity flags to the capped soft-flag subtotal.
+8. **Classifier points and non-override invariant:** `classifierPoints = Math.round(classifierMaxPoints * Math.max(0, (probability - 0.5) / 0.5))`, where `classifierMaxPoints` is an input parameter (default 25; 10 for synthetic data or real test rows < 60), added after the soft cap. If no `ok` classifier result is present, `classifierPoints = 0`.
+   - **Invariant:** The classifier NEVER lowers the score and NEVER overrides evidence established by specialist agents or hard rules.
+   - **Contradictions:** Contradictions (e.g. low classifier probability vs an evidence-backed fee demand) do NOT alter the numerical score, but are always recorded and explained in plain language in the reconciliation record and final report.
+9. **Hard rules force High:** Evaluate rules in `config.hardRules` (`scholarship_fee_demand`, `mule_account_request`, `graph_match`). If any hard rule fires, score floor is raised to `config.thresholds.high` (60), risk level is forced to `high`, rules are recorded in `rulesFired`, and `cannot_verify` is never applied. Note: `scholarship_fee_demand` triggers the hard rule; a non-scholarship `fee_demand` does not by itself.
+10. **Claimed Big Brand or Institution without Official Channel:** If a known major brand/institution (from known companies list or scheme entity) is claimed, but no official verification channel is present (no official domain supplied/found, contact is personal UPI, handle, free-mail address, or chat app), the level is forced to at least `medium` (score floor 25 if below), and `rulesFired` records `"Claimed major brand or institution without official channel (at least Medium)"`.
+11. **High and Medium Flag Baselines:**
+    - Any high-severity flag forces the level to at least `medium`.
+    - Any medium-severity flag with no positive verified signal forces the level to at least `medium`, even if numeric score < 25.
+12. **No-high-evidence cap:** If there is no high-severity flag, no hard rule, and no graph match, cap the final score (flags plus classifier) at **59**; record `"no_high_evidence_cap"` in `rulesFired` if the raw score exceeded 59.
+13. **Low Risk Strict Gate (Low allowed ONLY when ALL hold):**
+    A check is classified as `low` only when:
+    - No flag of severity `medium` or `high` is present.
+    - At least 2 independent signal types were checked successfully (`coverage.checked.length >= 2`).
+    - At least one positive verified signal exists (e.g. official domain matched claimed company, valid established domain, known official source) OR at least 3 eligible checks completed with no flags.
+14. **Thin Coverage Rule (Cannot Verify):**
+    If no flags are found but coverage is thin (fewer than 2 signal types checked: `coverage.checked.length < 2`), the level is `cannot_verify` with reason code `"thin_coverage"` and plain-language explanation in `rulesFired`.
+15. **Cannot Verify Completeness Rule:**
+    If fewer than 40% of eligible checks completed (`completedCount / eligibleCount < 0.40`) AND score is below 60 AND no hard rule fired, the risk level is `cannot_verify`.
+16. **Critical agents rule (default: `message_analyst`):**
+    If a critical agent was eligible and has no `ok` result in any round, the level can never be low. A would-be low becomes `cannot_verify` with low confidence and reason code `critical_agent_failed`. A medium or high level is kept. Skipped critical agents (no message text) are not failures.
+17. **Coverage-Based Confidence:**
+    - `high`: At least 4 signal types checked (`coverage.checked.length >= 4`) AND no critical agent failed AND eligible completion ratio `>= 0.80`.
+    - `medium`: 2 to 3 signal types checked (`coverage.checked.length >= 2`) AND eligible completion ratio `>= 0.50`.
+    - `low`: Fewer than 2 signal types checked (`coverage.checked.length < 2`), OR completion ratio `< 0.50`, OR final risk level is `cannot_verify`.
+    - Skipped agents never lower confidence; failed eligible agents lower confidence.
+    - Hard rules yielding High with thin evidence still yield High.
+18. **ScoreResult contract:**
    ```typescript
    type ScoreResult = {
      level: "low" | "medium" | "high" | "cannot_verify";
@@ -559,6 +645,13 @@ Pure code in `lib/scoring/score.js`, configured by `lib/scoring/config.js` so we
        agents: string[];
      }>;
      classifierPoints: number;
+     coverage: {
+       checked: string[];
+       notChecked: string[];
+     };
+     corroborationBonus?: number;
+     contradictions?: string[];
+     corroborations?: string[];
      confidenceCapped: boolean;
      reasonCodes: string[];
      fallbackWeightFlags: string[];
@@ -588,7 +681,7 @@ Pure code in `lib/scoring/score.js`, configured by `lib/scoring/config.js` so we
   - `graph_match`: 40
   - `url_in_threat_feed`: 40
   - `domain_company_mismatch`: 25
-- **Medium flags (14):**
+- **Medium flags (15):**
   - `no_interview_selection`: 15
   - `unsolicited_award`: 15
   - `chat_only_interview`: 15
@@ -603,6 +696,7 @@ Pure code in `lib/scoring/score.js`, configured by `lib/scoring/config.js` so we
   - `data_harvest_redirects`: 15
   - `unpaid_trial_work`: 15
   - `referral_recruitment`: 15
+  - `brand_handle_lookalike`: 15
   - `classifier_high`: 0
 - **Low flags (7):**
   - `candidate_picks_hours`: 10
@@ -627,6 +721,12 @@ Pure code in `lib/scoring/score.js`, configured by `lib/scoring/config.js` so we
 ## 14. Report writer
 
 One `generate()` call. Input: the agents' evidence and the scoring result only. Output (zod-validated): summary in the chosen language, scam type guess, flags with plain-language explanations and sources, verified items, could-not-check items, a step-by-step checklist (including manual registry links), actions and disclaimer. The prompt forbids inventing facts and requires saying so when evidence is thin. For `medium` risk results, the report writer must use neutral, objective wording ("some warning signs, verify these items") and never use accusatory phrases like "likely scam".
+
+### 14.0 Checklist Quality Rules
+- **Deduplication:** Manual checks from multiple agents (same URL or target) are deduplicated into a single entry.
+- **Grouped Failure Guidance:** Multiple raw tool or network errors for a single entity (e.g. DNS failure, SSL timeout, graph unavailable) are synthesized into one human-actionable item per entity (e.g. `"Could not check domain X automatically; verify it manually: registration date, certificate, archive history"`).
+- **Ordering by Importance:** Critical flag guidance and entity-specific verification steps are prioritized first; standard general advice follows.
+- **Item Cap:** The main report checklist is capped at 10 items; any additional items are placed under an expandable `moreChecks` list.
 
 ### 14.1 Report Schema (Contract 3.9)
 ```typescript
@@ -662,6 +762,7 @@ type Report = {
   couldNotCheck: string[];
   notApplicable: string[];
   checklist: ChecklistItem[];
+  moreChecks?: ChecklistItem[];
   actions: ActionItem[];
   disclaimer: string;
   generatedAt: string;

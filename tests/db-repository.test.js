@@ -14,6 +14,7 @@ import {
   saveConfirmation,
   InvalidStateTransitionError,
   saveRoundResults,
+  saveAgentResult,
   DuplicateAgentResultError,
   getAgentResults,
   getEvents,
@@ -415,3 +416,95 @@ test("db-repository: all repository functions reject invalid data via contracts"
     (err) => err.name === "ZodError"
   );
 });
+
+test("db-repository: entities persist and retrieve orgType correctly", () => {
+  const db = setupTestDb();
+  const check = createCheck({ language: "en" }, db);
+
+  addEntities(
+    check.id,
+    [
+      {
+        kind: "company",
+        value: "Department of Higher Education",
+        orgType: "government",
+        source: "extracted",
+        round: 0,
+        confirmed: true,
+      },
+    ],
+    db
+  );
+
+  const ents = getEntities(check.id, db);
+  assert.equal(ents.length, 1);
+  assert.equal(ents[0].kind, "company");
+  assert.equal(ents[0].value, "Department of Higher Education");
+  assert.equal(ents[0].orgType, "government");
+});
+
+test("db-repository: entities persist purpose and agent_results persist entityStatus correctly", () => {
+  const db = setupTestDb();
+  const check = createCheck({ language: "en" }, db);
+
+  // 1. Add amount entity with purpose
+  addEntities(
+    check.id,
+    [
+      {
+        kind: "amount",
+        value: "799",
+        purpose: "refundable deposit",
+        source: "extracted",
+        round: 0,
+        confirmed: true,
+      },
+    ],
+    db
+  );
+
+  const ents = getEntities(check.id, db);
+  assert.equal(ents.length, 1);
+  assert.equal(ents[0].kind, "amount");
+  assert.equal(ents[0].value, "799");
+  assert.equal(ents[0].purpose, "refundable deposit");
+
+  // 2. Save agent result with entityStatus
+  const savedResult = saveAgentResult(
+    check.id,
+    {
+      checkId: check.id,
+      agent: "official_verifier",
+      round: 1,
+      kind: "check",
+      status: "ok",
+      summary: "Verified 1 entity",
+      activity: [],
+      entityStatus: [
+        {
+          entityKind: "amount",
+          entityValue: "799",
+          status: "checked_no_issue",
+          reason: "fee purpose analyzed",
+        },
+      ],
+      flags: [],
+      verified: [],
+      newEntities: [],
+      processedEntities: ["amount:799"],
+      unchecked: [],
+      manualChecks: [],
+      trace: [],
+      notes: "",
+      durationMs: 42,
+    },
+    db
+  );
+
+  assert.equal(savedResult.entityStatus.length, 1);
+  assert.equal(savedResult.entityStatus[0].entityKind, "amount");
+  assert.equal(savedResult.entityStatus[0].entityValue, "799");
+  assert.equal(savedResult.entityStatus[0].status, "checked_no_issue");
+  assert.equal(savedResult.entityStatus[0].reason, "fee purpose analyzed");
+});
+

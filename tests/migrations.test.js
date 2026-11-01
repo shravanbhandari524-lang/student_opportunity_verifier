@@ -255,7 +255,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
 
   // Check version
   const versions = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
   // Check graph_nodes preserved and last_seen populated
   const node = migratedDb.prepare(`SELECT * FROM graph_nodes WHERE value = 'scammer.example'`).get();
@@ -360,7 +360,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
   // 3. Test idempotency: running migrations again changes nothing
   runMigrations(migratedDb);
   const versionsAgain = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
   const fkCheckAgain = migratedDb.prepare("PRAGMA foreign_key_check").all();
   assert.deepEqual(fkCheckAgain, [], "PRAGMA foreign_key_check after rerun must return empty array");
@@ -412,9 +412,9 @@ test("migration 003 applies on a DB already at migration 002 containing rows", (
   // 2. Run runMigrations (which applies 003)
   runMigrations(db);
 
-  // 3. Verify schema_migrations now has version 7
+  // 3. Verify schema_migrations now has version 11
   const versionsAt3 = db.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
   // 4. Verify classifier_result_json column exists and existing row has NULL
   const colInfoAfter = db.prepare(`PRAGMA table_info(agent_results)`).all();
@@ -457,4 +457,47 @@ test("migration 007 applies activity_json and summary columns to agent_results",
 
   db.close();
   if (fs.existsSync(TEST_007_DB)) fs.unlinkSync(TEST_007_DB);
+});
+
+test("migration 010 creates evidence_ledger table with cascade deletion", () => {
+  const TEST_010_DB = "./data/test_migration_010.db";
+  if (fs.existsSync(TEST_010_DB)) fs.unlinkSync(TEST_010_DB);
+
+  const db = new Database(TEST_010_DB);
+  db.pragma("foreign_keys = ON");
+
+  runMigrations(db);
+
+  const colInfo = db.prepare(`PRAGMA table_info(evidence_ledger)`).all();
+  assert.ok(colInfo.some((c) => c.name === "claim_key"));
+  assert.ok(colInfo.some((c) => c.name === "evidence_type"));
+  assert.ok(colInfo.some((c) => c.name === "confidence"));
+
+  const versions = db.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
+  assert.ok(versions.map((r) => r.version).includes(10));
+
+  // Test insert and cascade delete
+  db.prepare(`
+    INSERT INTO checks (id, status, language, created_at, updated_at, expires_at)
+    VALUES ('chk-ledger-test', 'created', 'en', datetime('now'), datetime('now'), datetime('now', '+1 day'))
+  `).run();
+
+  db.prepare(`
+    INSERT INTO evidence_ledger (
+      id, check_id, agent, round, kind, flag_id, claim_key, quote_or_url, evidence_type, verification_status, confidence, timestamp
+    ) VALUES (
+      'ev-1', 'chk-ledger-test', 'message_analyst', 1, 'flag', 'fee_demand', 'fee_demand', '₹799', 'quote', 'flagged', 'high', datetime('now')
+    )
+  `).run();
+
+  const rowBefore = db.prepare(`SELECT * FROM evidence_ledger WHERE check_id = 'chk-ledger-test'`).get();
+  assert.ok(rowBefore);
+  assert.equal(rowBefore.claim_key, 'fee_demand');
+
+  db.prepare(`DELETE FROM checks WHERE id = 'chk-ledger-test'`).run();
+  const rowAfter = db.prepare(`SELECT * FROM evidence_ledger WHERE check_id = 'chk-ledger-test'`).get();
+  assert.equal(rowAfter, undefined, "Evidence ledger row should cascade delete when check is deleted");
+
+  db.close();
+  if (fs.existsSync(TEST_010_DB)) fs.unlinkSync(TEST_010_DB);
 });

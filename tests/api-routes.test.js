@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 import sharp from "sharp";
 
@@ -30,17 +32,16 @@ import { POST as confirmCheckHandler } from "../app/api/checks/[id]/confirm/rout
 import { GET as getReportHandler } from "../app/api/checks/[id]/report/route.js";
 import { GET as getHealthHandler } from "../app/api/health/route.js";
 
-const TEST_DB_PATH = "./data/test_routes.db";
 const TEST_UPLOADS_DIR = "./test_route_uploads";
 
 function setupTestEnvironment() {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+  const dbPath = path.join(os.tmpdir(), `test_routes_${crypto.randomUUID()}.db`);
   if (fs.existsSync(TEST_UPLOADS_DIR)) {
     fs.rmSync(TEST_UPLOADS_DIR, { recursive: true, force: true });
   }
   fs.mkdirSync(TEST_UPLOADS_DIR, { recursive: true });
 
-  const db = new Database(TEST_DB_PATH);
+  const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   runMigrations(db);

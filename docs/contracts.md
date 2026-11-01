@@ -197,6 +197,17 @@ type EntityKind =
 
 type EntitySource = "extracted" | "user" | "discovered";
 
+type OrgType = "government" | "education" | "bank" | "company" | "unknown";
+type AmountPurpose =
+  | "application fee"
+  | "registration fee"
+  | "refundable deposit"
+  | "document verification"
+  | "processing charge"
+  | "training kit"
+  | "advance payment"
+  | "security deposit";
+
 type Entity = {
   id: number; // Integer primary key
   checkId: string; // UUID
@@ -204,6 +215,8 @@ type Entity = {
   value: string; // Normalized representation
   source: EntitySource;
   platform?: string | null; // Platform name (e.g. instagram, telegram) for handles
+  orgType?: OrgType | null; // Optional classification for company entities (government, education, bank, company, unknown)
+  purpose?: AmountPurpose | null; // Purpose for amount entities
   discoveredBy?: string | null; // Agent name if source === "discovered"
   round: number; // 0 for extracted/user; 1 or 2 for discovered
   confirmed: boolean;
@@ -270,6 +283,23 @@ type ActivityEntry = {
   flagId?: string;
 };
 
+type EntityStatus =
+  | "verified"
+  | "not_found"
+  | "unverified"
+  | "contradicted"
+  | "partial"
+  | "checked_no_issue"
+  | "skipped"
+  | "could_not_check";
+
+type EntityVerificationStatus = {
+  entityKind: string;
+  entityValue: string;
+  status: EntityStatus;
+  reason?: string; // Required when status is "skipped" or "could_not_check"
+};
+
 type AgentResult = {
   id?: number; // Integer primary key in DB
   checkId: string; // UUID
@@ -280,6 +310,7 @@ type AgentResult = {
   reason?: string; // Required when status is "skipped" or "could_not_check"
   summary?: string; // Max 160 chars; plain one-sentence summary e.g. "Checked 1 domain and 1 UPI ID; 2 red flags; 1 item could not be checked."
   activity?: ActivityEntry[]; // Max 40 entries
+  entityStatus?: EntityVerificationStatus[]; // Status record for every entity checked or skipped
   flags: Flag[]; // Max 20; unique flag IDs; MUST be empty when status !== "ok"
   verified: string[]; // MUST be empty when status !== "ok"
   newEntities: NewEntity[]; // Max 5; MUST be empty when status !== "ok"
@@ -364,6 +395,9 @@ type ScoreResult = {
   rulesFired: string[]; // Hard rules fired
   flagPoints: FlagPointItem[]; // Deterministic: sorted by points desc then id asc
   classifierPoints: number; // 0..25 from probability per D4
+  corroborationBonus?: number; // 0..10 bonus from independent method corroboration
+  contradictions?: string[]; // Plain-language contradiction descriptions
+  corroborations?: string[]; // Plain-language corroboration descriptions
   confidenceCapped: boolean; // true if capped at medium by external-evidence rule
   reasonCodes: string[]; // e.g. ["no_eligible_agents"]
   fallbackWeightFlags: string[]; // flags that used severity fallback weights

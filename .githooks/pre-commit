@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+# Pre-commit hook that validates staged files and diffs against secret leaks
+set -e
+
+node scripts/check-secrets.js

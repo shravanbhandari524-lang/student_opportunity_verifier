@@ -1,0 +1,14 @@
+{
+  "id": "case-freemail-recruiter-unverified",
+  "synthetic": true,
+  "input": {
+    "text": "Hello, I am a recruiter reaching out regarding opening for Junior Software Associate at Wipro Technologies. You can read about the company at https://www.wipro.com. Please send your updated resume to wipro.hr.recruitment@gmail.com for initial screening. No fee is required at any stage.",
+    "link": "https://www.wipro.com",
+    "company": "Wipro"
+  },
+  "expectedLevel": "medium",
+  "expectedFlagsIncluded": [
+    "free_email_recruiter"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Unverified recruiter using free mail claiming genuine company and domain, no fee, no payment demand."
+}

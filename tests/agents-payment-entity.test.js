@@ -1071,4 +1071,496 @@ describe("L4 Payment and Entity Agent", () => {
       assert.equal(flag, undefined, "UPI ID mentioned without payment request must not emit personal_payment_id");
     });
   });
+
+  describe("Activity Log & Audit 8 Cases", () => {
+    test("Case 1: Google Case produces input, rules, consistency, graph, search, limit, and manual entries", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000001";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "Google India summer internship program. Selected candidates must pay a refundable onboarding kit fee of Rs 1,500 to rahul.sharma99@okaxis. Contact our recruiter on Instagram @google_careers_intern or WhatsApp at +919876543210.",
+        }],
+        submission: {
+          text: "Google India summer internship program. Selected candidates must pay a refundable onboarding kit fee of Rs 1,500 to rahul.sharma99@okaxis. Contact our recruiter on Instagram @google_careers_intern or WhatsApp at +919876543210.",
+          company: "Google",
+        },
+        entities: [
+          { id: 1, checkId, kind: "company", value: "Google", source: "user", confirmed: true },
+          { id: 2, checkId, kind: "upi", value: "rahul.sharma99@okaxis", source: "user", confirmed: true },
+          { id: 3, checkId, kind: "handle", value: "google_careers_intern", source: "user", confirmed: true },
+          { id: 4, checkId, kind: "phone", value: "+919876543210", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: (kind, val) => (val === "+919876543210" ? { matched: true, reportCount: 3, connectedNodesCount: 5 } : { matched: false }),
+        search: async (q) => ({
+          ok: true,
+          data: {
+            query: q,
+            total: 1,
+            results: [
+              {
+                title: "Report on +919876543210 scam complaints",
+                snippet: "+919876543210 scam reported by users",
+                url: "https://example.com/report1",
+                position: 1,
+              },
+            ],
+          },
+        }),
+      });
+
+      assert.equal(res.status, "ok");
+      assert.ok(res.activity.length > 0, "Activity log must not be empty");
+
+      // Verify input entries
+      const inputs = res.activity.filter((e) => e.type === "input");
+      assert.ok(inputs.some((e) => e.title.includes("rahul.sharma99@okaxis")), "Must have input for UPI");
+      assert.ok(inputs.some((e) => e.title.includes("google_careers_intern")), "Must have input for handle");
+      assert.ok(inputs.some((e) => e.title.includes("+919876543210")), "Must have input for phone");
+
+      // Verify step rules (UPI): format valid, handle recognised, type, payee classification
+      const upiRuleStep = res.activity.find((e) => e.type === "step" && e.title.includes("UPI rules"));
+      assert.ok(upiRuleStep, "Must have UPI rules step");
+      assert.ok(upiRuleStep.detail.toLowerCase().includes("format valid"));
+      assert.ok(upiRuleStep.detail.includes("recognised") || upiRuleStep.detail.includes("okaxis"));
+      assert.ok(upiRuleStep.detail.includes("name-like ID") || upiRuleStep.detail.includes("type:"));
+      assert.ok(upiRuleStep.detail.toLowerCase().includes("payee classification"));
+
+      // Verify step rules (consistency): claimed organisation vs payee type, payment requested, mismatch explanation
+      const consistencyStep = res.activity.find((e) => e.type === "step" && e.title.includes("Payee consistency"));
+      assert.ok(consistencyStep, "Must have Payee consistency step");
+      assert.ok(consistencyStep.detail.includes("Google"));
+      assert.ok(consistencyStep.detail.includes("payment requested"));
+      assert.ok(consistencyStep.detail.includes("personal"));
+
+      // Verify step graph
+      const graphSteps = res.activity.filter((e) => e.type === "step" && e.tool === "graph");
+      assert.ok(graphSteps.some((e) => e.title.includes("Scam database match")), "Must report match for phone");
+      assert.ok(graphSteps.some((e) => e.title.includes("Checked our scam database: no earlier reports for this identifier")), "Must report no earlier reports for other entities");
+
+      // Verify step search: query as plain text, number of results, exact-match sources
+      const searchSteps = res.activity.filter((e) => e.type === "step" && e.tool === "search");
+      assert.ok(searchSteps.length > 0, "Must have search step");
+      assert.ok(searchSteps.some((e) => e.detail.includes("Query:") && e.detail.includes("Results found:")));
+
+      // Verify limit & manual entries for UPI ID
+      const limitEntry = res.activity.find((e) => e.type === "limit");
+      assert.ok(limitEntry, "Must have limit entry for UPI ID");
+      assert.equal(limitEntry.detail, "Whether this UPI ID exists or who owns it cannot be checked from here.");
+
+      const manualEntry = res.activity.find((e) => e.type === "manual");
+      assert.ok(manualEntry, "Must have manual entry for UPI ID");
+      assert.equal(
+        manualEntry.detail,
+        "Before paying, type the ID into your own UPI app and read the verified name. A scheme or a large company never asks fees to a personal ID. If the name does not match the organisation, do not pay."
+      );
+
+      // Verify summary conforms to prompt requirement
+      assert.ok(res.summary.includes("1 UPI ID: looks personal, offer claims Google, payment requested;"), `Summary was: ${res.summary}`);
+    });
+
+    test("Case 2: Genuine company official UPI produces institutional classification without mismatch warning", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000002";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "National Merit Scholarship Council official registration. Submit examination application fee of Rs 250 via UPI to merit.grants@sbi.",
+        }],
+        submission: {
+          text: "National Merit Scholarship Council official registration. Submit examination application fee of Rs 250 via UPI to merit.grants@sbi.",
+          company: "National Merit Scholarship Council",
+        },
+        entities: [
+          { id: 1, checkId, kind: "company", value: "National Merit Scholarship Council", source: "user", confirmed: true },
+          { id: 2, checkId, kind: "upi", value: "merit.grants@sbi", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0, "No flags for institutional bank handle");
+
+      const upiRuleStep = res.activity.find((e) => e.type === "step" && e.title.includes("UPI rules"));
+      assert.ok(upiRuleStep.detail.includes("institution-like ID"));
+      assert.ok(upiRuleStep.detail.includes("unverified institutional"));
+
+      const consistencyStep = res.activity.find((e) => e.type === "step" && e.title.includes("Payee consistency"));
+      assert.equal(consistencyStep.status, "ok");
+
+      const limitEntry = res.activity.find((e) => e.type === "limit");
+      assert.ok(limitEntry);
+
+      const manualEntry = res.activity.find((e) => e.type === "manual");
+      assert.ok(manualEntry);
+
+      assert.ok(res.summary.includes("institutional bank handle"));
+      assert.ok(res.summary.includes("no database match"));
+    });
+
+    test("Case 3: Graph-seeded scam identifier logs database match and linked count", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000003";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "Urgent: Payment required for grant disbursement. Send Rs 500 to scholarship.scam@okaxis to claim your award.",
+        }],
+        submission: {
+          text: "Urgent: Payment required for grant disbursement. Send Rs 500 to scholarship.scam@okaxis to claim your award.",
+        },
+        entities: [
+          { id: 1, checkId, kind: "upi", value: "scholarship.scam@okaxis", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: true, reportCount: 1, connectedNodesCount: 5 }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const graphStep = res.activity.find((e) => e.type === "step" && e.tool === "graph");
+      assert.ok(graphStep.title.includes("Scam database match"));
+      assert.ok(graphStep.detail.includes("5 linked identifier(s)"));
+      assert.ok(res.summary.includes("database match"));
+    });
+
+    test("Case 4: Unknown PSP suffix records unrecognised handle step", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000004";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "Freelance web design task payout registration. Transfer Rs 200 token to dev.user@unknowncryptopsp.",
+        }],
+        submission: {
+          text: "Freelance web design task payout registration. Transfer Rs 200 token to dev.user@unknowncryptopsp.",
+        },
+        entities: [
+          { id: 1, checkId, kind: "upi", value: "dev.user@unknowncryptopsp", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const upiRuleStep = res.activity.find((e) => e.type === "step" && e.title.includes("UPI rules"));
+      assert.ok(upiRuleStep.detail.includes("unrecognised handle"));
+    });
+
+    test("Case 5: Malformed UPI produces invalid format step and summary", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000005";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "Pay application charges to invalid..vpa@@@axis.",
+        }],
+        submission: {
+          text: "Pay application charges to invalid..vpa@@@axis.",
+        },
+        entities: [
+          { id: 1, checkId, kind: "upi", value: "invalid..vpa@@@axis", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const upiRuleStep = res.activity.find((e) => e.type === "step" && e.title.includes("UPI rules: invalid format"));
+      assert.ok(upiRuleStep, "Must record invalid format step");
+      assert.ok(res.summary.includes("invalid format"));
+    });
+
+    test("Case 6: Handle-only input produces handle input and database search steps", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000006";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "DM our recruitment coordinator on Telegram @student_internships_hub to apply.",
+        }],
+        submission: {
+          text: "DM our recruitment coordinator on Telegram @student_internships_hub to apply.",
+        },
+        entities: [
+          { id: 1, checkId, kind: "handle", value: "student_internships_hub", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const handleInput = res.activity.find((e) => e.type === "input");
+      assert.ok(handleInput.title.includes("@student_internships_hub"));
+      assert.ok(res.summary.includes("Checked 1 handle: no suspicious signals found; no database match."));
+    });
+
+    test("Case 7: Missing input returns skipped with explanatory summary", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000007";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "General announcement without any contact or payment details.",
+        }],
+        submission: {
+          text: "General announcement without any contact or payment details.",
+        },
+        entities: [],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap);
+      assert.equal(res.status, "skipped");
+      assert.equal(res.reason, "no_eligible_entities");
+      assert.equal(res.summary, "No payment details, UPI ID, or phone number found to check.");
+    });
+
+    test("Case 8: Free webmail recruiter and international phone produces phone/email steps and findings", async () => {
+      const checkId = "00000000-0000-0000-0000-000000000008";
+      const snap = {
+        check: { id: checkId, status: "investigating", currentRound: 1, language: "en" },
+        inputs: [{
+          type: "text",
+          value: "Global Technology Partners: We have a job offer for you as a Junior Associate. Send your resume to careers.recruiter@gmail.com or contact our HR via WhatsApp at +12025550143.",
+        }],
+        submission: {
+          text: "Global Technology Partners: We have a job offer for you as a Junior Associate. Send your resume to careers.recruiter@gmail.com or contact our HR via WhatsApp at +12025550143.",
+        },
+        entities: [
+          { id: 1, checkId, kind: "email", value: "careers.recruiter@gmail.com", source: "user", confirmed: true },
+          { id: 2, checkId, kind: "phone", value: "+12025550143", source: "user", confirmed: true },
+        ],
+        findings: [],
+        control: { processedEntitiesByAgent: {} },
+      };
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const emailStep = res.activity.find((e) => e.type === "step" && e.title.includes("Email rules"));
+      assert.ok(emailStep.detail.includes("Free-mail provider: yes"));
+
+      const phoneStep = res.activity.find((e) => e.type === "step" && e.title.includes("Phone rules"));
+      assert.ok(phoneStep.detail.includes("Country: US"));
+
+      assert.ok(res.summary.includes("Checked 1 email and 1 phone:"));
+      assert.ok(res.summary.includes("no database match"));
+    });
+
+    test("Invariance: No activity entry or summary ever claims any UPI ID is real or verified", async () => {
+      const testUpis = ["user@okaxis", "merit.grants@sbi", "invalid..vpa@@@axis"];
+      for (const upi of testUpis) {
+        const snap = makeSnapshot({
+          id: "11111111-1111-4111-8111-111111111111",
+          text: `Payment fee to ${upi}`,
+          entities: [{ id: 1, kind: "upi", value: upi, source: "user", confirmed: true }],
+        });
+
+        const res = await run(snap, {
+          graphLookup: () => ({ matched: false }),
+          search: async (q) => ({ ok: true, data: { query: q, total: 0, results: [] } }),
+        });
+
+        const allText = [
+          res.summary,
+          ...res.activity.map((a) => `${a.title} ${a.detail || ""}`),
+        ].join(" ").toLowerCase();
+
+        assert.equal(allText.includes("verified merchant"), false, "Must never claim verified merchant");
+        assert.equal(allText.includes("upi is verified"), false, "Must never claim upi is verified");
+        assert.equal(allText.includes("upi is real"), false, "Must never claim upi is real");
+      }
+    });
+
+    test("graph lookup: no prior reports records ok step with plain text", async () => {
+      const snap = makeSnapshot({
+        id: "22222222-2222-4222-8222-222222222222",
+        text: "Contact @mentor_john on Telegram for details.",
+        entities: [{ id: 1, kind: "handle", value: "mentor_john", source: "user", confirmed: true }],
+      });
+
+      const res = await run(snap, {
+        graphLookup: () => ({ matched: false }),
+        search: async () => ({ ok: true, data: { results: [] } }),
+      });
+
+      assert.equal(res.status, "ok");
+      const step = res.activity.find((a) => a.tool === "graph" && a.type === "step");
+      assert.ok(step, "Must have graph activity step");
+      assert.equal(step.status, "ok");
+      assert.equal(step.title, "Checked our scam database: no earlier reports for this identifier");
+      assert.ok(step.detail.includes("no earlier reports for this identifier"));
+    });
+
+    test("graph lookup: real database error stays failed and becomes could_not_check for that part", async () => {
+      const snap = makeSnapshot({
+        id: "33333333-3333-4333-8333-333333333333",
+        text: "Contact @mentor_john on Telegram for details.",
+        entities: [{ id: 1, kind: "handle", value: "mentor_john", source: "user", confirmed: true }],
+      });
+
+      // 1. When all checks fail for this entity (search throws, graph has DB error), result is could_not_check
+      const resAllFailed = await run(snap, {
+        graphLookup: () => ({ ok: false, error: { code: "SQLITE_IOERR", message: "disk I/O error" } }),
+        search: async () => ({ ok: false, error: { code: "SEARCH_TIMEOUT", message: "timed out" } }),
+      });
+
+      assert.equal(resAllFailed.status, "could_not_check");
+      const failedStep = resAllFailed.activity.find((a) => a.tool === "graph" && a.type === "step");
+      assert.ok(failedStep, "Must record failed step for graph lookup error");
+      assert.equal(failedStep.status, "failed");
+      assert.equal(failedStep.title, "Checked our scam database: lookup failed");
+
+      // 2. Partial check failure: syntax succeeds for UPI, but graph lookup has DB error -> entity is in unchecked
+      const snapUpi = makeSnapshot({
+        id: "44444444-4444-4444-8444-444444444444",
+        text: "Send Rs 100 to user@oksbi",
+        entities: [{ id: 2, kind: "upi", value: "user@oksbi", source: "user", confirmed: true }],
+      });
+
+      const resPartial = await run(snapUpi, {
+        graphLookup: () => ({ ok: false, error: { code: "ECONNREFUSED", message: "connection refused" } }),
+        search: async () => ({ ok: true, data: { results: [] } }),
+      });
+
+      assert.equal(resPartial.status, "ok");
+      assert.ok(resPartial.unchecked.includes("upi:user@oksbi"), "Failed graph check part must place entity in unchecked");
+      const upiFailedStep = resPartial.activity.find((a) => a.tool === "graph" && a.type === "step");
+      assert.ok(upiFailedStep);
+      assert.equal(upiFailedStep.status, "failed");
+      assert.equal(upiFailedStep.title, "Checked our scam database: lookup failed");
+    });
+
+    test("Requirement 3: payment demand analysis when fee demand exists without payee identifier", async () => {
+      const scholarshipText =
+        "Government of India – National Student Digital Empowerment Scholarship 2026. Selected students enrolled in undergraduate programs are eligible for financial assistance of ₹45,000 per academic year. Registration is available through the National Scholarship Verification Portal. Applicants must complete Aadhaar verification and submit their bank account details. A refundable document verification deposit of ₹799 is required to activate the scholarship. Limited to 5000 students nationwide. Last date: 5 November 2026. Issued under the Department of Higher Education.";
+
+      const snap = makeSnapshot({
+        id: "55555555-5555-4555-8555-555555555555",
+        text: scholarshipText,
+        entities: [
+          { kind: "company", value: "Government of India", orgType: "government" },
+          { kind: "company", value: "Department of Higher Education", orgType: "government" },
+          { kind: "scheme", value: "National Student Digital Empowerment Scholarship 2026" },
+          { kind: "amount", value: "45000" },
+          { kind: "amount", value: "799", purpose: "refundable deposit" },
+        ],
+      });
+
+      // 1. Direct run()
+      const res = await run(snap);
+      assert.equal(res.status, "ok");
+      assert.ok(res.summary.includes("recipient cannot be verified"), "Summary must state recipient cannot be verified");
+      assert.equal(res.flags.length, 0, "Payment agent must NOT emit fee flag (Message Analyst owns fee flags, avoid double counting)");
+
+      const manualActivity = res.activity.find((a) => a.type === "manual");
+      assert.ok(manualActivity, "Activity must contain manual item");
+      assert.equal(
+        manualActivity.title,
+        "Ask where the money is to be sent. A scholarship or genuine employer does not charge a deposit."
+      );
+
+      // Check entityStatus
+      assert.ok(Array.isArray(res.entityStatus));
+      const amtStatus = res.entityStatus.find((es) => es.entityKind === "amount" && es.entityValue === "799");
+      assert.ok(amtStatus);
+      assert.equal(amtStatus.status, "unverified");
+
+      // 2. runAgent runner
+      const resFromRunner = await runAgent(paymentEntity, snap);
+      assert.equal(resFromRunner.status, "ok");
+      assert.ok(resFromRunner.summary.includes("recipient cannot be verified"));
+      assert.equal(resFromRunner.flags.length, 0);
+      assert.ok(resFromRunner.activity.some((a) => a.type === "manual"));
+    });
+
+    test("Payment Direction & Demands: stipend alone produces 0 demands; stipend + reg fee produces 1 demand; refundable deposit produces a demand", async () => {
+      // 1. Stipend alone
+      const snapStipend = makeSnapshot({
+        id: "66666666-6666-4666-8666-666666666666",
+        text: "Internship at Microsoft India. Stipend: Rs 18,000 per month.",
+        entities: [
+          { kind: "domain", value: "careers-microsoft.com" },
+          { kind: "amount", value: "18000", direction: "to_candidate", purpose: "stipend/salary" },
+        ],
+      });
+      const resStipend = await run(snapStipend, {
+        graphLookup: () => ({ matched: false }),
+        search: async () => ({ ok: true, data: { results: [] } }),
+      });
+      assert.equal(resStipend.status, "ok");
+      assert.equal(resStipend.summary.includes("payment demand"), false, "Summary must not report payment demand for stipend alone");
+      assert.ok(resStipend.trace.some((t) => t.type === "compensation_amount_analysis"), "Trace must record compensation amount analysis");
+
+      // 2. Stipend + registration fee
+      const snapStipendPlusFee = makeSnapshot({
+        id: "77777777-7777-4777-8777-777777777777",
+        text: "Internship offering stipend of Rs 18000. Please pay registration fee of Rs 500.",
+        entities: [
+          { kind: "amount", value: "18000", direction: "to_candidate", purpose: "stipend/salary" },
+          { kind: "amount", value: "500", direction: "from_candidate", purpose: "registration fee" },
+        ],
+      });
+      const resStipendPlusFee = await run(snapStipendPlusFee, {
+        graphLookup: () => ({ matched: false }),
+        search: async () => ({ ok: true, data: { results: [] } }),
+      });
+      assert.equal(resStipendPlusFee.status, "ok");
+      assert.ok(
+        resStipendPlusFee.summary.includes("1 payment demand") || resStipendPlusFee.summary.includes("demands ₹500"),
+        "Summary must report the payment demand"
+      );
+
+      // 3. Refundable deposit
+      const snapDeposit = makeSnapshot({
+        id: "88888888-8888-4888-8888-888888888888",
+        text: "A refundable document verification deposit of Rs 799 is required.",
+        entities: [
+          { kind: "amount", value: "799", direction: "from_candidate", purpose: "refundable deposit" },
+        ],
+      });
+      const resDeposit = await run(snapDeposit, {
+        graphLookup: () => ({ matched: false }),
+        search: async () => ({ ok: true, data: { results: [] } }),
+      });
+      assert.equal(resDeposit.status, "ok");
+      assert.ok(resDeposit.summary.includes("1 payment demand") || resDeposit.summary.includes("demands ₹799"), "Refundable deposit must produce a demand");
+      assert.ok(resDeposit.trace.some((t) => t.type === "payment_demand_analysis"), "Trace must record payment demand analysis");
+    });
+  });
 });

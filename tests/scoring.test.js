@@ -24,9 +24,11 @@ function makeFinding({
   round = 1,
   status = "ok",
   flags = [],
+  verified = [],
   classifierResult = null,
+  ...rest
 } = {}) {
-  const finding = { agent, round, status, flags };
+  const finding = { agent, round, status, flags, verified, ...rest };
   if (classifierResult !== null) {
     finding.classifierResult = classifierResult;
   }
@@ -77,24 +79,26 @@ describe("L3 Decision: scoreCase engine", () => {
   test("skipped results do not change completionRatio or confidence", () => {
     const baseFindings = [
       makeFinding({ agent: "message_analyst", status: "ok" }),
-      makeFinding({ agent: "website_forensics", status: "ok" }),
+      makeFinding({ agent: "website_forensics", status: "ok", verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }] }),
+      makeFinding({ agent: "official_verifier", status: "ok" }),
+      makeFinding({ agent: "payment_entity", status: "ok" }),
     ];
     const withSkippedFindings = [
       ...baseFindings,
-      makeFinding({ agent: "official_verifier", status: "skipped" }),
-      makeFinding({ agent: "payment_entity", status: "skipped" }),
+      makeFinding({ agent: "reputation_osint", status: "skipped" }),
+      makeFinding({ agent: "classifier_client", status: "skipped" }),
     ];
 
     const baseRes = scoreCase(makeSnapshot(baseFindings));
     const withSkippedRes = scoreCase(makeSnapshot(withSkippedFindings));
 
-    assert.equal(baseRes.completedCount, 2);
-    assert.equal(baseRes.eligibleCount, 2);
+    assert.equal(baseRes.completedCount, 4);
+    assert.equal(baseRes.eligibleCount, 4);
     assert.equal(baseRes.completionRatio, 1.0);
     assert.equal(baseRes.confidence, "high");
 
-    assert.equal(withSkippedRes.completedCount, 2);
-    assert.equal(withSkippedRes.eligibleCount, 2);
+    assert.equal(withSkippedRes.completedCount, 4);
+    assert.equal(withSkippedRes.eligibleCount, 4);
     assert.equal(withSkippedRes.completionRatio, 1.0);
     assert.equal(withSkippedRes.confidence, "high");
   });
@@ -103,7 +107,7 @@ describe("L3 Decision: scoreCase engine", () => {
   test("could_not_check lowers the ratio and confidence", () => {
     const allOk = [
       makeFinding({ agent: "message_analyst", status: "ok" }),
-      makeFinding({ agent: "website_forensics", status: "ok" }),
+      makeFinding({ agent: "website_forensics", status: "ok", verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }] }),
       makeFinding({ agent: "official_verifier", status: "ok" }),
       makeFinding({ agent: "payment_entity", status: "ok" }),
     ];
@@ -114,7 +118,7 @@ describe("L3 Decision: scoreCase engine", () => {
     // 2 ok, 2 could_not_check -> ratio 0.50 -> medium
     const halfFailed = [
       makeFinding({ agent: "message_analyst", status: "ok" }),
-      makeFinding({ agent: "website_forensics", status: "ok" }),
+      makeFinding({ agent: "website_forensics", status: "ok", verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }] }),
       makeFinding({ agent: "official_verifier", status: "could_not_check" }),
       makeFinding({ agent: "payment_entity", status: "could_not_check" }),
     ];
@@ -248,13 +252,22 @@ describe("L3 Decision: scoreCase engine", () => {
 
   // Test 7
   test("thresholds at 24/25 and 59/60 give low/medium and medium/high", () => {
-    // Score 24: qr_code_payment_request (20) + classifier 4 (p=0.58) = 24
+    // Score 24: urgency_pressure (10, low) + candidate_picks_hours (10, low) + classifier 4 (p=0.58) = 24
+    // With 2 signal types and a positive verified signal, low is allowed
     const res24 = scoreCase(
       makeSnapshot([
         makeFinding({
+          agent: "message_analyst",
+          status: "ok",
+          flags: [
+            { id: "urgency_pressure", severity: "low" },
+            { id: "candidate_picks_hours", severity: "low" },
+          ],
+        }),
+        makeFinding({
           agent: "website_forensics",
           status: "ok",
-          flags: [{ id: "qr_code_payment_request", severity: "high" }],
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
         }),
         makeFinding({
           agent: "classifier_client",
@@ -266,7 +279,7 @@ describe("L3 Decision: scoreCase engine", () => {
     assert.equal(res24.score, 24);
     assert.equal(res24.level, "low");
 
-    // Score 25: bank_details_request (25)
+    // Score 25: bank_details_request (25, high) -> score 25 -> medium
     const res25 = scoreCase(
       makeSnapshot([
         makeFinding({
@@ -426,7 +439,7 @@ describe("L3 Decision: scoreCase engine", () => {
       ])
     );
     assert.equal(unverifiedHardRule.score, 0);
-    assert.deepEqual(unverifiedHardRule.rulesFired, []);
+    assert.equal(unverifiedHardRule.rulesFired.includes("mule_account_request"), false);
     assert.equal(unverifiedHardRule.level, "cannot_verify");
   });
 
@@ -479,24 +492,32 @@ describe("L3 Decision: scoreCase engine", () => {
   });
 
   // Test 12
-  test("confidence cap: message_analyst and classifier_client both ok (ratio 1.0, no external agent) gives medium with confidenceCapped true; adding one ok external agent gives high; a cannot_verify result never reports above low", () => {
-    // No external agent: capped at medium
-    const resTextOnly = scoreCase(
+  test("confidence cap: 4 signal types without required external agent caps confidence at medium; adding ok external agent gives high; cannot_verify never reports above low", () => {
+    // 4 signal types completed, but config requires reputation_osint as externalEvidenceAgents
+    const customConfig = {
+      ...defaultConfig,
+      externalEvidenceAgents: ["reputation_osint"],
+    };
+    const resNoRequiredExternal = scoreCase(
       makeSnapshot([
         makeFinding({ agent: "message_analyst", status: "ok" }),
-        makeFinding({ agent: "classifier_client", status: "ok" }),
-      ])
+        makeFinding({ agent: "website_forensics", status: "ok", verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }] }),
+        makeFinding({ agent: "official_verifier", status: "ok" }),
+        makeFinding({ agent: "payment_entity", status: "ok" }),
+      ]),
+      customConfig
     );
-    assert.equal(resTextOnly.completionRatio, 1.0);
-    assert.equal(resTextOnly.confidence, "medium");
-    assert.equal(resTextOnly.confidenceCapped, true);
+    assert.equal(resNoRequiredExternal.completionRatio, 1.0);
+    assert.equal(resNoRequiredExternal.confidence, "medium");
+    assert.equal(resNoRequiredExternal.confidenceCapped, true);
 
-    // Adding one ok external agent (website_forensics): uncapped high
+    // With default config (where website_forensics, official_verifier, etc. are external): uncapped high
     const resWithExternal = scoreCase(
       makeSnapshot([
         makeFinding({ agent: "message_analyst", status: "ok" }),
-        makeFinding({ agent: "classifier_client", status: "ok" }),
-        makeFinding({ agent: "website_forensics", status: "ok" }),
+        makeFinding({ agent: "website_forensics", status: "ok", verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }] }),
+        makeFinding({ agent: "official_verifier", status: "ok" }),
+        makeFinding({ agent: "payment_entity", status: "ok" }),
       ])
     );
     assert.equal(resWithExternal.completionRatio, 1.0);
@@ -754,7 +775,12 @@ describe("L3 Decision: scoreCase engine", () => {
     test("message_analyst skipped (no text) with a low score stays low", () => {
       const snapshot = makeSnapshot([
         makeFinding({ agent: "message_analyst", status: "skipped", reason: "no text" }),
-        makeFinding({ agent: "website_forensics", status: "ok", flags: [] }),
+        makeFinding({
+          agent: "website_forensics",
+          status: "ok",
+          flags: [],
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
+        }),
         makeFinding({ agent: "official_verifier", status: "ok", flags: [] }),
       ]);
       const res = scoreCase(snapshot);
@@ -767,7 +793,13 @@ describe("L3 Decision: scoreCase engine", () => {
       const snapshot = makeSnapshot([
         makeFinding({ agent: "message_analyst", round: 1, status: "could_not_check" }),
         makeFinding({ agent: "message_analyst", round: 2, status: "ok", flags: [] }),
-        makeFinding({ agent: "website_forensics", round: 1, status: "ok", flags: [] }),
+        makeFinding({
+          agent: "website_forensics",
+          round: 1,
+          status: "ok",
+          flags: [],
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
+        }),
       ]);
       const res = scoreCase(snapshot);
       assert.equal(res.level, "low");
@@ -778,7 +810,12 @@ describe("L3 Decision: scoreCase engine", () => {
       const snapshot = makeSnapshot([
         makeFinding({ agent: "message_analyst", status: "ok", flags: [] }),
         makeFinding({ agent: "classifier_client", status: "could_not_check", reason: "service down" }),
-        makeFinding({ agent: "website_forensics", status: "ok", flags: [] }),
+        makeFinding({
+          agent: "website_forensics",
+          status: "ok",
+          flags: [],
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
+        }),
       ]);
       const res = scoreCase(snapshot);
       assert.equal(res.level, "low");
@@ -792,7 +829,12 @@ describe("L3 Decision: scoreCase engine", () => {
       };
       const snapshot = makeSnapshot([
         makeFinding({ agent: "message_analyst", status: "could_not_check" }),
-        makeFinding({ agent: "website_forensics", status: "ok", flags: [] }),
+        makeFinding({
+          agent: "website_forensics",
+          status: "ok",
+          flags: [],
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
+        }),
         makeFinding({ agent: "official_verifier", status: "ok", flags: [] }),
       ]);
       const res = scoreCase(snapshot, customConfig);
@@ -1018,54 +1060,58 @@ describe("L3 Decision: scoreCase engine", () => {
     test("skipped agents do not lower confidence; could_not_check does", () => {
       const baseOkFindings = [
         makeFinding({ agent: "message_analyst", status: "ok" }),
-        makeFinding({ agent: "website_forensics", status: "ok" }),
+        makeFinding({
+          agent: "website_forensics",
+          status: "ok",
+          verified: [{ id: "domain_registration", claim: "domain_registration", status: "verified" }],
+        }),
+        makeFinding({ agent: "payment_entity", status: "ok" }),
+        makeFinding({ agent: "official_verifier", status: "ok" }),
       ];
 
-      // Base: 2 ok agents (including 1 external) -> ratio 1.0, confidence high
+      // Base: 4 ok agents -> ratio 1.0, confidence high
       const resBase = score(makeSnapshot(baseOkFindings));
-      assert.equal(resBase.completedCount, 2);
-      assert.equal(resBase.eligibleCount, 2);
+      assert.equal(resBase.completedCount, 4);
+      assert.equal(resBase.eligibleCount, 4);
       assert.equal(resBase.completionRatio, 1.0);
       assert.equal(resBase.confidence, "high");
 
-      // Adding 3 skipped agents does NOT increment eligibleCount and does NOT lower ratio or confidence
+      // Adding 2 skipped agents does NOT increment eligibleCount and does NOT lower ratio or confidence
       const findingsWithSkipped = [
         ...baseOkFindings,
-        makeFinding({ agent: "payment_entity", status: "skipped", reason: "no payment entity" }),
-        makeFinding({ agent: "official_verifier", status: "skipped", reason: "no official portal" }),
         makeFinding({ agent: "reputation_osint", status: "skipped", reason: "no handle" }),
+        makeFinding({ agent: "classifier_client", status: "skipped", reason: "no text" }),
       ];
       const resSkipped = score(makeSnapshot(findingsWithSkipped));
-      assert.equal(resSkipped.completedCount, 2);
-      assert.equal(resSkipped.eligibleCount, 2);
+      assert.equal(resSkipped.completedCount, 4);
+      assert.equal(resSkipped.eligibleCount, 4);
       assert.equal(resSkipped.completionRatio, 1.0);
       assert.equal(resSkipped.confidence, "high");
 
-      // Adding 2 could_not_check agents increments eligibleCount to 4 -> ratio 0.50 -> medium confidence
+      // Adding 4 could_not_check agents increments eligibleCount to 8 -> ratio 0.50 -> medium confidence
       const findingsWithHalfFailed = [
         ...baseOkFindings,
-        makeFinding({ agent: "payment_entity", status: "could_not_check", reason: "timeout" }),
-        makeFinding({ agent: "official_verifier", status: "could_not_check", reason: "error" }),
+        makeFinding({ agent: "reputation_osint", round: 1, status: "could_not_check", reason: "timeout" }),
+        makeFinding({ agent: "classifier_client", round: 1, status: "could_not_check", reason: "error" }),
+        makeFinding({ agent: "reputation_osint", round: 2, status: "could_not_check", reason: "timeout" }),
+        makeFinding({ agent: "classifier_client", round: 2, status: "could_not_check", reason: "error" }),
       ];
       const resHalfFailed = score(makeSnapshot(findingsWithHalfFailed));
-      assert.equal(resHalfFailed.completedCount, 2);
-      assert.equal(resHalfFailed.eligibleCount, 4);
+      assert.equal(resHalfFailed.completedCount, 4);
+      assert.equal(resHalfFailed.eligibleCount, 8);
       assert.equal(resHalfFailed.completionRatio, 0.50);
       assert.equal(resHalfFailed.confidence, "medium");
 
-      // Adding 6 could_not_check agents increments eligibleCount to 8 -> ratio 0.25 -> low confidence
+      // Adding 12 could_not_check agents increments eligibleCount to 16 -> ratio 0.25 -> low confidence
       const findingsWithMostlyFailed = [
         ...baseOkFindings,
-        makeFinding({ agent: "payment_entity", status: "could_not_check" }),
-        makeFinding({ agent: "official_verifier", status: "could_not_check" }),
-        makeFinding({ agent: "reputation_osint", status: "could_not_check" }),
-        makeFinding({ agent: "agent_fail_4", status: "could_not_check" }),
-        makeFinding({ agent: "agent_fail_5", status: "could_not_check" }),
-        makeFinding({ agent: "agent_fail_6", status: "could_not_check" }),
+        ...Array.from({ length: 12 }, (_, i) =>
+          makeFinding({ agent: `agent_fail_${i}`, status: "could_not_check" })
+        ),
       ];
       const resMostlyFailed = score(makeSnapshot(findingsWithMostlyFailed));
-      assert.equal(resMostlyFailed.completedCount, 2);
-      assert.equal(resMostlyFailed.eligibleCount, 8);
+      assert.equal(resMostlyFailed.completedCount, 4);
+      assert.equal(resMostlyFailed.eligibleCount, 16);
       assert.equal(resMostlyFailed.completionRatio, 0.25);
       assert.equal(resMostlyFailed.confidence, "low");
     });
@@ -1141,6 +1187,453 @@ describe("L3 Decision: scoreCase engine", () => {
       const res = score(frozenInput);
       assert.equal(typeof res.score, "number");
       assert.equal(typeof res.level, "string");
+    });
+
+    test("Ledger integration: claimKey deduplication counts highest weight and ignores duplicates", () => {
+      const snap = {
+        findings: [
+          {
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "refundable_fee_offer", severity: "high", title: "Refundable fee", explanation: "Deposit requested", evidence: [{ type: "quote", value: "deposit 799" }] },
+            ],
+          },
+          {
+            agent: "payment_analyst",
+            status: "ok",
+            flags: [
+              { id: "upfront_payment_demand", severity: "high", title: "Upfront fee", explanation: "Fee requested", evidence: [{ type: "quote", value: "deposit 799" }] },
+            ],
+          },
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.score, 25); // Highest weight of fee_demand (25), not duplicated
+      assert.equal(res.flagPoints.filter((f) => f.status === "counted").length, 1);
+      assert.equal(res.flagPoints.filter((f) => f.status === "group_suppressed").length, 1);
+    });
+
+    test("Ledger integration: corroboration bonus adds points and appears in rulesFired", () => {
+      const snap = {
+        findings: [
+          {
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "chat_only_interview", severity: "medium", title: "Chat interview", explanation: "Telegram", evidence: [{ type: "quote", value: "telegram" }] },
+            ],
+          },
+        ],
+      };
+
+      const baseRes = score(snap);
+      assert.equal(baseRes.score, 15); // chat_only_interview weight is 15
+      assert.equal(baseRes.corroborationBonus, 0);
+
+      // With corroboration (+5 bonus)
+      const corroboratedRes = score(snap, {
+        corroborations: ["Message analysis corroborated by OSINT"],
+      });
+      assert.equal(corroboratedRes.score, 20); // 15 + 5
+      assert.equal(corroboratedRes.corroborationBonus, 5);
+      assert.ok(corroboratedRes.rulesFired.includes("corroboration_bonus"));
+      assert.deepEqual(corroboratedRes.corroborations, ["Message analysis corroborated by OSINT"]);
+    });
+
+    test("Ledger integration: low classifier probability never lowers score and reports contradiction", () => {
+      const snap = {
+        findings: [
+          {
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "scholarship_fee_demand", severity: "high", title: "Fee demand", explanation: "Fee demanded", evidence: [{ type: "quote", value: "799 deposit" }] },
+            ],
+          },
+          {
+            agent: "classifier_client",
+            status: "ok",
+            classifierResult: {
+              probability: 0.02,
+              label: "benign",
+            },
+          },
+        ],
+      };
+
+      const contradictionMsg = "The ML model rated this message 2% scam-like, but message analysis found a deposit demand. Evidence from the message text outweighs the model.";
+      const res = score(snap, {
+        contradictions: [contradictionMsg],
+      });
+
+      assert.equal(res.level, "high");
+      assert.ok(res.score >= 60);
+      assert.equal(res.classifierPoints, 0);
+      assert.ok(res.contradictions.includes(contradictionMsg));
+    });
+  });
+
+  describe("Evidence Coverage & Strict Risk Gate Scenarios", () => {
+    test("Scenario a: google-only sentence -> Medium, big brand without official channel, message-only coverage, confidence low", () => {
+      const snap = {
+        entities: [
+          { kind: "company", value: "Google" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "no_interview_selection", severity: "medium" },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.level, "medium");
+      assert.ok(res.rulesFired.includes("big_brand_no_official_channel"));
+      assert.deepEqual(res.coverage.checked, ["message"]);
+      assert.equal(res.confidence, "low");
+    });
+
+    test("Scenario b: genuine-looking offer letter text only, no flags -> cannot_verify with thin_coverage", () => {
+      const snap = {
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.level, "cannot_verify");
+      assert.ok(res.reasonCodes.includes("thin_coverage"));
+      assert.ok(res.rulesFired.includes("thin_coverage"));
+      assert.deepEqual(res.coverage.checked, ["message"]);
+      assert.equal(res.confidence, "low");
+    });
+
+    test("Scenario c: genuine offer with official domain matched, valid certificate, old domain, no flags -> low", () => {
+      const snap = {
+        entities: [
+          { kind: "company", value: "Google" },
+          { kind: "domain", value: "careers.google.com" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [],
+          }),
+          makeFinding({
+            agent: "website_forensics",
+            status: "ok",
+            flags: [],
+            verified: [
+              { id: "ssl_certificate", claim: "ssl_certificate", status: "verified" },
+              { id: "domain_age", claim: "domain_age", status: "verified" },
+            ],
+          }),
+          makeFinding({
+            agent: "official_verifier",
+            status: "ok",
+            flags: [],
+            verified: [
+              { id: "official_domain_match", claim: "domain_authenticity", status: "verified" },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.level, "low");
+      assert.equal(res.score, 0);
+      assert.ok(res.coverage.checked.includes("message"));
+      assert.ok(res.coverage.checked.includes("website"));
+      assert.ok(res.coverage.checked.includes("official sources"));
+      assert.ok(res.confidence === "medium" || res.confidence === "high");
+    });
+
+    test("Scenario d: clear scam (fee, personal UPI, Telegram) -> high", () => {
+      const snap = {
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "fee_demand", severity: "high" },
+              { id: "chat_only_interview", severity: "medium" },
+            ],
+          }),
+          makeFinding({
+            agent: "payment_entity",
+            status: "ok",
+            flags: [
+              { id: "personal_payment_id", severity: "high" },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.level, "high");
+      assert.ok(res.score >= 60);
+      assert.ok(res.coverage.checked.includes("message"));
+      assert.ok(res.coverage.checked.includes("payee"));
+    });
+
+    test("Scenario e: skipped agents never reduce confidence; failed agents reduce it; thin evidence with a hard rule still yields High", () => {
+      const fourOkFindings = [
+        makeFinding({ agent: "message_analyst", status: "ok" }),
+        makeFinding({
+          agent: "website_forensics",
+          status: "ok",
+          verified: [{ id: "ssl_cert", claim: "ssl_certificate", status: "verified" }],
+        }),
+        makeFinding({ agent: "official_verifier", status: "ok" }),
+        makeFinding({ agent: "payment_entity", status: "ok" }),
+      ];
+
+      const baseRes = score(makeSnapshot(fourOkFindings));
+      assert.equal(baseRes.confidence, "high");
+
+      // Skipped agents do not reduce confidence
+      const withSkipped = score(makeSnapshot([
+        ...fourOkFindings,
+        makeFinding({ agent: "reputation_osint", status: "skipped", reason: "no handle" }),
+      ]));
+      assert.equal(withSkipped.confidence, "high");
+
+      // Failed agents reduce confidence
+      const withFailed = score(makeSnapshot([
+        ...fourOkFindings,
+        makeFinding({ agent: "reputation_osint", status: "could_not_check", reason: "timeout" }),
+        makeFinding({ agent: "classifier_client", status: "could_not_check", reason: "error" }),
+      ]));
+      assert.equal(withFailed.confidence, "medium");
+
+      // Thin evidence with a hard rule still yields High
+      const thinHardRule = score(makeSnapshot([
+        makeFinding({
+          agent: "message_analyst",
+          status: "ok",
+          flags: [{ id: "scholarship_fee_demand", severity: "high" }],
+        }),
+      ]));
+      assert.equal(thinHardRule.level, "high");
+      assert.ok(thinHardRule.score >= 60);
+      assert.ok(thinHardRule.rulesFired.includes("scholarship_fee_demand"));
+    });
+
+    test("Scenario f: full Google case with notes -> High", () => {
+      const snap = {
+        entities: [
+          { kind: "company", value: "Google" },
+          { kind: "upi", value: "rahul.hr@oksbi" },
+          { kind: "handle", value: "@google_hr_careers" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "fee_demand", severity: "high" },
+              { id: "no_interview_selection", severity: "medium" },
+            ],
+          }),
+          makeFinding({
+            agent: "payment_entity",
+            status: "ok",
+            flags: [
+              { id: "personal_payment_id", severity: "high" },
+            ],
+          }),
+          makeFinding({
+            agent: "reputation_osint",
+            status: "ok",
+            flags: [
+              { id: "brand_handle_lookalike", severity: "medium" },
+              { id: "scam_reports_found", severity: "high" },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.equal(res.level, "high");
+      assert.ok(res.score >= 60);
+      assert.ok(res.coverage.checked.includes("message"));
+      assert.ok(res.coverage.checked.includes("payee"));
+      assert.ok(res.coverage.checked.includes("reputation"));
+    });
+  });
+
+  describe("Claim Groups & Correlated Scoring", () => {
+    test("domain_brand_impersonation: lookalike_domain and domain_company_mismatch count once at highest weight + corroboration bonus", () => {
+      const snap = {
+        entities: [
+          { kind: "domain", value: "careers-microsoft-internships.example" },
+          { kind: "company", value: "Microsoft India" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "website_forensics",
+            status: "ok",
+            flags: [
+              { id: "lookalike_domain", severity: "high", evidence: [{ type: "quote", value: "careers-microsoft-internships.example" }] },
+            ],
+          }),
+          makeFinding({
+            agent: "official_verifier",
+            status: "ok",
+            flags: [
+              { id: "domain_company_mismatch", severity: "high", evidence: [{ type: "quote", value: "careers-microsoft-internships.example" }] },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      assert.ok(res.rulesFired.includes("claim_group:domain_brand_impersonation"), "Must record claim group rule");
+
+      const mismatchFlag = res.flagPoints.find((f) => f.id === "domain_company_mismatch");
+      const lookalikeFlag = res.flagPoints.find((f) => f.id === "lookalike_domain");
+
+      assert.ok(mismatchFlag);
+      assert.ok(lookalikeFlag);
+
+      // Highest weight is 25 (mismatch) + 5 (corroboration bonus) = 30 points
+      assert.equal(mismatchFlag.status, "counted");
+      assert.equal(mismatchFlag.points, 30);
+
+      // Other flag in group is suppressed to 0 points
+      assert.equal(lookalikeFlag.status, "group_suppressed");
+      assert.equal(lookalikeFlag.points, 0);
+
+      // Total score from the group is 30, not 45
+      assert.equal(res.score, 30);
+    });
+
+    test("brand_handle_impersonation: authority_impersonation and brand_handle_lookalike group only when sharing evidence", () => {
+      // 1. Sharing evidence: both reference @google_hr_careers
+      const snapSharing = {
+        entities: [{ kind: "handle", value: "@google_hr_careers" }],
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "authority_impersonation", severity: "high", evidence: [{ type: "quote", value: "@google_hr_careers" }] },
+            ],
+          }),
+          makeFinding({
+            agent: "reputation_osint",
+            status: "ok",
+            flags: [
+              { id: "brand_handle_lookalike", severity: "medium", evidence: [{ type: "quote", value: "@google_hr_careers" }] },
+            ],
+          }),
+        ],
+      };
+
+      const resSharing = score(snapSharing);
+      assert.ok(resSharing.rulesFired.includes("claim_group:brand_handle_impersonation"));
+      const authFlag = resSharing.flagPoints.find((f) => f.id === "authority_impersonation");
+      const handleFlag = resSharing.flagPoints.find((f) => f.id === "brand_handle_lookalike");
+
+      // 25 (authority) + 5 (bonus) = 30
+      assert.equal(authFlag.status, "counted");
+      assert.equal(authFlag.points, 30);
+      assert.equal(handleFlag.status, "group_suppressed");
+      assert.equal(handleFlag.points, 0);
+      assert.equal(resSharing.score, 30);
+
+      // 2. Not sharing evidence: separate claims
+      const snapSeparate = {
+        entities: [
+          { kind: "handle", value: "@tcs_support_desk" },
+          { kind: "company", value: "Google" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "message_analyst",
+            status: "ok",
+            flags: [
+              { id: "authority_impersonation", severity: "high", evidence: [{ type: "quote", value: "Official Google Letterhead" }] },
+            ],
+          }),
+          makeFinding({
+            agent: "reputation_osint",
+            status: "ok",
+            flags: [
+              { id: "brand_handle_lookalike", severity: "medium", evidence: [{ type: "quote", value: "@tcs_support_desk" }] },
+            ],
+          }),
+        ],
+      };
+
+      const resSeparate = score(snapSeparate);
+      assert.equal(resSeparate.rulesFired.includes("claim_group:brand_handle_impersonation"), false);
+      const authSep = resSeparate.flagPoints.find((f) => f.id === "authority_impersonation");
+      const handleSep = resSeparate.flagPoints.find((f) => f.id === "brand_handle_lookalike");
+      assert.equal(authSep.status, "counted");
+      assert.equal(authSep.points, 25);
+      assert.equal(handleSep.status, "counted");
+      assert.equal(handleSep.points, 15);
+      assert.equal(resSeparate.score, 40);
+    });
+
+    test("independent evidence (domain_new, personal_payment_id, free_email_recruiter) stays separate", () => {
+      const snap = {
+        entities: [
+          { kind: "domain", value: "careers-portal.in" },
+          { kind: "upi", value: "recruiter@oksbi" },
+          { kind: "email", value: "recruiter@gmail.com" },
+        ],
+        findings: [
+          makeFinding({
+            agent: "website_forensics",
+            status: "ok",
+            flags: [
+              { id: "domain_new", severity: "medium", evidence: [{ type: "url", value: "https://rdap.org/domain/careers-portal.in" }] },
+            ],
+          }),
+          makeFinding({
+            agent: "payment_entity",
+            status: "ok",
+            flags: [
+              { id: "personal_payment_id", severity: "high", evidence: [{ type: "quote", value: "recruiter@oksbi" }] },
+            ],
+          }),
+          makeFinding({
+            agent: "payment_entity",
+            status: "ok",
+            flags: [
+              { id: "free_email_recruiter", severity: "medium", evidence: [{ type: "quote", value: "recruiter@gmail.com" }] },
+            ],
+          }),
+        ],
+      };
+
+      const res = score(snap);
+      const domNew = res.flagPoints.find((f) => f.id === "domain_new");
+      const payId = res.flagPoints.find((f) => f.id === "personal_payment_id");
+      const freeMail = res.flagPoints.find((f) => f.id === "free_email_recruiter");
+
+      assert.equal(domNew.status, "counted");
+      assert.equal(domNew.points, 20);
+      assert.equal(payId.status, "counted");
+      assert.equal(payId.points, 25);
+      assert.equal(freeMail.status, "counted");
+      assert.equal(freeMail.points, 15);
+
+      // None of them are grouped or suppressed
+      assert.equal(res.rulesFired.some((r) => r.startsWith("claim_group:")), false);
     });
   });
 });

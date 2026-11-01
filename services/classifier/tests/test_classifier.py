@@ -178,3 +178,35 @@ def test_evaluate_real_test_set_optional_loader():
         assert "precision" in metrics["benign"]
         assert "recall" in metrics["suspicious"]
         assert "confusion_matrix" in metrics
+
+
+def test_formal_government_scholarship_scam_scores_suspicious():
+    test_msg = (
+        "Government of India – National Student Digital Empowerment Scholarship 2026 ... "
+        "refundable document verification deposit of ₹799 is required to activate the scholarship ... "
+        "Last date: 5 November 2026. Issued under the Department of Higher Education."
+    )
+    response = client.post("/classify", json={"text": test_msg})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["label"] == "suspicious"
+    assert data["probability"] >= 0.50
+    assert len(data["topTerms"]) > 0
+    assert any(term in ("deposit", "activate", "verification", "refundable") for term in data["topTerms"])
+
+
+def test_top_terms_never_empty_on_suspicious():
+    # Suspicious message where key features include amounts: topTerms should still be populated
+    # with strongest non-placeholder n-grams and never empty.
+    test_msg = "Pay Rs 500 immediately to unlock account and deposit fee Rs 1000"
+    response = client.post("/classify", json={"text": test_msg})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["label"] == "suspicious"
+    assert isinstance(data["topTerms"], list)
+    assert len(data["topTerms"]) > 0
+    for term in data["topTerms"]:
+        assert "<AMT>" not in term
+        assert "<NUM>" not in term
+
+

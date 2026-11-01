@@ -49,9 +49,12 @@ coverage/
 env.local
 
 # Python / Classifier
-services/classifier/.venv/
+services/classifier/.venv
 services/classifier/__pycache__/
 services/classifier/*/__pycache__/
 services/classifier/.pytest_cache/
 services/classifier/model.joblib
 services/classifier/metrics.json
+
+# OCR data
+*.traineddata

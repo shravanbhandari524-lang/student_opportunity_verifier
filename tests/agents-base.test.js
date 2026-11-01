@@ -480,4 +480,48 @@ describe("L4 Agents: Base Runner and Utilities", () => {
       "Submitted UPI form field must verify as valid quote evidence"
     );
   });
+
+  // Test 20
+  test("buildOkResult, buildSkippedResult, and buildCouldNotCheckResult retain summary and activity", () => {
+    const entry = {
+      seq: 0,
+      atMs: 5,
+      type: "step",
+      status: "ok",
+      title: "Ran UPI check",
+      sources: [],
+    };
+
+    const okRes = buildOkResult({
+      checkId: "11111111-1111-4111-8111-111111111111",
+      agent: "payment_entity",
+      kind: "check",
+      round: 1,
+      summary: "1 UPI ID checked",
+      activity: [entry],
+    });
+    assert.equal(okRes.summary, "1 UPI ID checked");
+    assert.equal(okRes.activity.length, 1);
+    assert.equal(okRes.activity[0].title, "Ran UPI check");
+
+    const skippedRes = buildSkippedResult({
+      checkId: "11111111-1111-4111-8111-111111111111",
+      agent: "payment_entity",
+      reason: "no_eligible_entities",
+      summary: "Skipped: no payment entities",
+      activity: [entry],
+    });
+    assert.equal(skippedRes.summary, "Skipped: no payment entities");
+    assert.equal(skippedRes.activity.length, 1);
+
+    const failRes = buildCouldNotCheckResult({
+      checkId: "11111111-1111-4111-8111-111111111111",
+      agent: "payment_entity",
+      reason: "timeout",
+      summary: "Could not check: timed out",
+      activity: [entry],
+    });
+    assert.equal(failRes.summary, "Could not check: timed out");
+    assert.equal(failRes.activity.length, 1);
+  });
 });

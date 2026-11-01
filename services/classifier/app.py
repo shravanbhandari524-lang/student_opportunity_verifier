@@ -185,6 +185,27 @@ def extract_top_terms(normalized_text: str, clf_pipeline, max_terms: int = 5) ->
             if len(unique) >= max_terms:
                 break
 
+        # If no positive-weight non-placeholder terms were found, fallback to the strongest non-placeholder
+        # n-grams present in the text sorted by contribution
+        if not unique:
+            all_candidate_terms = []
+            for idx in non_zero_indices:
+                feat = feature_names[idx]
+                clean_term = re.sub(r"^(word|char)__", "", feat).strip()
+                if not clean_term or is_placeholder_term(clean_term):
+                    continue
+                score = coefs[idx] * X[0, idx]
+                all_candidate_terms.append((clean_term, score))
+
+            all_candidate_terms.sort(key=lambda x: x[1], reverse=True)
+            for term, _ in all_candidate_terms:
+                t_lower = term.lower()
+                if t_lower not in seen and len(t_lower) > 1:
+                    seen.add(t_lower)
+                    unique.append(term)
+                if len(unique) >= max_terms:
+                    break
+
         return unique
     except Exception:
         return []

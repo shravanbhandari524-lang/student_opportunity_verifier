@@ -1,0 +1,16 @@
+{
+  "id": "case3-fake-internship-tcs",
+  "synthetic": true,
+  "input": {
+    "text": "Tata Consultancy Services (TCS) – Campus Hiring & Internship Programme 2026. Congratulations! You have been shortlisted for our 6-month Software Engineering Internship with a stipend of ₹35,000/month. To confirm your joining slot and receive your onboarding kit, register on our official portal at http://tcs-careers-india.in/internship and transfer a mandatory equipment security deposit of ₹1,200 to our HR onboarding coordinator at tcs.recruitment.desk@oksbi. This amount will be refunded with your first month stipend.",
+    "link": "http://tcs-careers-india.in/internship",
+    "upi": "tcs.recruitment.desk@oksbi",
+    "company": "Tata Consultancy Services"
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "fee_demand",
+    "personal_payment_id"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Fake TCS internship offer using lookalike domain tcs-careers-india.in and personal UPI ID payment demand."
+}

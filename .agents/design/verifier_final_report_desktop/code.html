@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; } .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "primary-fixed-dim": "#c9c6c5", "tertiary-container": "#1d1b1a", "on-secondary-fixed-variant": "#474747", "tertiary-fixed": "#e6e1df", "on-surface-variant": "#444748", "secondary-fixed": "#e4e2e2", "on-tertiary-fixed": "#1d1b1a", "outline-variant": "#c4c7c7", "on-tertiary-fixed-variant": "#484645", "surface-container-high": "#e8e8e8", "surface-container-lowest": "#ffffff", "secondary-container": "#e4e2e2", "surface-container-low": "#f3f3f3", "tertiary-fixed-dim": "#cac6c3", "on-tertiary-container": "#868381", "on-secondary-fixed": "#1b1c1c", "on-primary-fixed-variant": "#474646", "on-secondary-container": "#646464", "error": "#ba1a1a", "error-container": "#ffdad6", "inverse-on-surface": "#f0f1f1", "surface-tint": "#5f5e5e", "on-tertiary": "#ffffff", "secondary-fixed-dim": "#c8c6c6", "primary": "#000000", "on-primary": "#ffffff", "secondary": "#5e5e5e", "surface-container-highest": "#e2e2e2", "on-primary-container": "#858383", "surface-dim": "#dadada", "primary-container": "#1c1b1b", "on-error-container": "#93000a", "on-background": "#1a1c1c", "surface-bright": "#f9f9f9", "surface-variant": "#e2e2e2", "inverse-surface": "#2f3131", "on-surface": "#1a1c1c", "outline": "#747878", "primary-fixed": "#e5e2e1", "inverse-primary": "#c9c6c5", "on-error": "#ffffff", "surface-container": "#eeeeee", "on-secondary": "#ffffff", "surface": "#f9f9f9", "on-primary-fixed": "#1c1b1b", "background": "#f9f9f9", "tertiary": "#000000" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-sm": "0.5rem", "space-md": "1rem", "margin-desktop": "2rem", "space-xs": "0.25rem", "space-xl": "2.5rem", "space-lg": "1.5rem", "margin": "1rem", "gutter-desktop": "1.5rem", "gutter": "1rem" }, "fontFamily": { "code-sm": [ "JetBrains Mono" ], "headline-sm": [ "Inter" ], "body-sm": [ "Inter" ], "label-caps": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "body-lg": [ "Inter" ], "code-md": [ "JetBrains Mono" ], "headline-xl": [ "Inter" ], "headline-lg": [ "Inter" ], "body-md": [ "Inter" ], "headline-md": [ "Inter" ] }, "fontSize": { "code-sm": [ "11px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500" } ], "headline-sm": [ "14px", { "lineHeight": "20px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" } ], "label-caps": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" } ], "headline-xl-mobile": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "body-lg": [ "15px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" } ], "code-md": [ "13px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "400" } ], "headline-xl": [ "36px", { "lineHeight": "40px", "letterSpacing": "-0.035em", "fontWeight": "700" } ], "headline-lg": [ "24px", { "lineHeight": "28px", "letterSpacing": "-0.03em", "fontWeight": "600" } ], "body-md": [ "13px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "headline-md": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.025em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-surface-container-lowest font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-container-lowest border-r border-[#E5E5E5] z-50 flex flex-col justify-between"><div class="flex flex-col"><div class="h-14 px-space-lg flex items-center border-b border-[#E5E5E5]"><span class="font-headline-md text-headline-md font-semibold tracking-tight text-primary">Verifier</span></div><nav class="flex flex-col py-space-sm" data-active-classes="border-l-2 border-primary text-primary font-semibold bg-surface-container-low"><a class="flex items-center gap-space-sm px-space-md py-space-sm text-secondary hover:text-primary transition-colors" data-path="new-check" href="#"><span class="material-symbols-outlined text-[16px]">add_circle</span><span class="font-body-md text-body-md">New check</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm text-secondary hover:text-primary transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[16px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm text-secondary hover:text-primary transition-colors" data-path="guides" href="#"><span class="material-symbols-outlined text-[16px]">menu_book</span><span class="font-body-md text-body-md">Guides</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm text-secondary hover:text-primary transition-colors" data-path="report-fraud" href="#"><span class="material-symbols-outlined text-[16px]">flag</span><span class="font-body-md text-body-md">Report fraud</span></a></nav></div><div class="flex flex-col border-t border-[#E5E5E5] p-space-md gap-space-sm"><div class="flex items-center justify-between text-secondary"><span class="font-label-caps text-label-caps text-on-surface-variant">Language</span><div class="flex items-center gap-space-xs font-code-sm text-code-sm"><button class="text-primary font-semibold hover:underline" type="button">EN</button><span class="text-outline-variant">/</span><button class="text-secondary hover:text-primary" type="button">हि</button></div></div><div class="flex items-center justify-between pt-space-xs"><div class="flex items-center gap-space-sm min-w-0"><div class="w-7 h-7 rounded-full border border-[#E5E5E5] bg-surface-container-low flex items-center justify-center font-headline-sm text-headline-sm text-primary flex-shrink-0">S</div><span class="font-body-md text-body-md text-primary truncate font-medium">Shreyas</span></div><a class="font-body-sm text-body-sm text-secondary hover:text-primary transition-colors whitespace-nowrap" data-path="login" href="#">Log out</a></div></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-14 bg-surface-container-lowest border-b border-[#E5E5E5] z-40 flex items-center justify-end px-space-lg"><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full">
+<div class="w-full max-w-[760px] mx-auto px-space-md py-space-xl flex flex-col gap-space-lg text-primary">
+<!-- Top Variant Switcher (Interactive Preview Bar) -->
+<div class="flex items-center justify-between py-space-xs border-b border-[#E5E5E5] text-secondary">
+<div class="flex items-center gap-space-xs font-code-sm text-code-sm">
+<span class="text-on-surface-variant mr-1 uppercase tracking-wider">Preview State:</span>
+<button class="px-2 py-0.5 rounded text-primary font-semibold bg-surface-container-high transition-colors" id="tab-high" onclick="switchRiskVariant('high')" type="button">High (Active)</button>
+<button class="px-2 py-0.5 rounded text-secondary hover:text-primary hover:bg-surface-container transition-colors" id="tab-med" onclick="switchRiskVariant('medium')" type="button">Medium</button>
+<button class="px-2 py-0.5 rounded text-secondary hover:text-primary hover:bg-surface-container transition-colors" id="tab-low" onclick="switchRiskVariant('low')" type="button">Low</button>
+<button class="px-2 py-0.5 rounded text-secondary hover:text-primary hover:bg-surface-container transition-colors" id="tab-unverified" onclick="switchRiskVariant('cannot-verify')" type="button">Cannot Verify</button>
+</div>
+<div class="flex items-center gap-space-xs text-secondary font-code-sm text-code-sm">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>SHA-256: e8b2...9f41</span>
+</div>
+</div>
+<!-- Header & Case Verdict Block -->
+<section class="flex flex-col gap-space-sm pt-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-secondary tracking-wider uppercase">Case #8492 · Verified 14:02 IST</span>
+<span class="font-code-sm text-code-sm text-secondary">Run ID · 0x7c9a</span>
+</div>
+<!-- Verdict Headline -->
+<div class="flex items-baseline gap-3 mt-1">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#DC2626] inline-block shrink-0" id="verdict-dot"></span>
+<h1 class="font-headline-xl text-headline-xl font-bold tracking-tight text-primary leading-none" id="verdict-headline">HIGH</h1>
+</div>
+<div class="flex items-center gap-2 text-secondary font-body-sm text-body-sm">
+<span>·</span>
+<span id="verdict-confidence">Confidence: Medium (88%)</span>
+</div>
+</div>
+<!-- Minimal 2px Score Line Gauge -->
+<div class="w-full bg-[#E5E5E5] h-[2px] mt-2 relative overflow-hidden">
+<div class="h-full bg-primary transition-all duration-300 w-[92%]" id="risk-score-bar"></div>
+</div>
+<div class="flex justify-between items-center text-secondary font-code-sm text-code-sm -mt-0.5">
+<span id="risk-score-label">Score 92 / 100 Risk</span>
+<span>Telemetry v2.4</span>
+</div>
+<!-- One Sentence Summary & Chips -->
+<p class="font-body-lg text-body-lg text-primary font-normal leading-relaxed mt-1" id="verdict-summary">
+        Impersonation of Central Ministry demanding an upfront non-refundable verification deposit via an unauthorized UPI handle.
+      </p>
+<div class="flex flex-wrap items-center gap-space-xs mt-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-[8px] border border-primary text-primary font-body-sm text-body-sm font-medium">
+          Fake scholarship
+        </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-[8px] border border-[#E5E5E5] text-secondary font-code-sm text-code-sm">
+          upi:gov-scholarship@okaxis
+        </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-[8px] border border-[#E5E5E5] text-secondary font-code-sm text-code-sm">
+          moya-verify.in
+        </span>
+</div>
+</section>
+<!-- SECTION 1: WHY (Flags) -->
+<section class="flex flex-col border-t border-[#E5E5E5] pt-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-[0.08em]">Why · Flags Detected</span>
+<span class="font-code-sm text-code-sm text-secondary">3 active signals</span>
+</div>
+<div class="divide-y divide-[#E5E5E5] flex flex-col">
+<!-- Row 1: Expandable -->
+<details class="group py-space-sm cursor-pointer" open="">
+<summary class="flex items-start justify-between list-none focus:outline-none">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0 mt-0.5"></span>
+<span class="font-headline-sm text-headline-sm text-primary font-medium">Advance fee demanded</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-secondary transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="pl-[18px] pt-space-xs flex flex-col gap-space-xs cursor-default">
+<p class="font-body-md text-body-md text-on-surface">
+              Government awards never require advance clearance fee, security bond, or administrative unlock charges.
+            </p>
+<div class="bg-[#FAFAFA] border border-[#E5E5E5] rounded p-space-sm font-code-md text-code-md text-primary">
+              “You must remit an upfront verification charge of ₹2,500 via QR to unlock the allotment certificate.”
+            </div>
+<div class="flex items-center gap-1 font-body-sm text-body-sm text-secondary pt-0.5">
+<span>Authority benchmark:</span>
+<a class="underline text-primary hover:text-secondary font-code-sm text-code-sm" href="#">pib.gov.in/factcheck/2026-03</a>
+</div>
+</div>
+</details>
+<!-- Row 2 -->
+<details class="group py-space-sm cursor-pointer">
+<summary class="flex items-start justify-between list-none focus:outline-none">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0 mt-0.5"></span>
+<div class="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+<span class="font-headline-sm text-headline-sm text-primary font-medium">Domain registered 6 days ago</span>
+<span class="font-code-sm text-code-sm text-secondary">scholarships-gov-portal.in · NameCheap Inc.</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-secondary transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="pl-[18px] pt-space-xs flex flex-col gap-space-xs cursor-default">
+<p class="font-body-md text-body-md text-on-surface">
+              Official Indian ministry portals resolve under the restricted <code class="font-code-sm bg-surface-container-low px-1 py-0.5 rounded">.gov.in</code> or <code class="font-code-sm bg-surface-container-low px-1 py-0.5 rounded">.nic.in</code> TLDs operated by NIC. Generic commercial registrars are never utilized.
+            </p>
+</div>
+</details>
+<!-- Row 3 -->
+<details class="group py-space-sm cursor-pointer">
+<summary class="flex items-start justify-between list-none focus:outline-none">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0 mt-0.5"></span>
+<div class="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+<span class="font-headline-sm text-headline-sm text-primary font-medium">Spoofed ministry identity</span>
+<span class="font-body-sm text-body-sm text-secondary">Contradicts official gazette schedule</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-secondary transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="pl-[18px] pt-space-xs flex flex-col gap-space-xs cursor-default">
+<p class="font-body-md text-body-md text-on-surface">
+              The circular claims authorization under Khelo India FY26 Cycle 1, which concluded disbursement in December 2025 according to Department of Sports records.
+            </p>
+</div>
+</details>
+</div>
+</section>
+<!-- SECTION 2: CHECKED OUT -->
+<section class="flex flex-col border-t border-[#E5E5E5] pt-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-[0.08em]">Checked Out · Verified Cleared</span>
+<span class="font-code-sm text-code-sm text-secondary">2 passing</span>
+</div>
+<div class="divide-y divide-[#E5E5E5] flex flex-col">
+<div class="py-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[14px] text-[#16A34A] shrink-0 font-bold">check</span>
+<span class="font-body-md text-body-md text-primary">No malicious binary payload in attachment</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">PDF static heuristics: Clean</span>
+</div>
+<div class="py-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[14px] text-[#16A34A] shrink-0 font-bold">check</span>
+<span class="font-body-md text-body-md text-primary">Target student registration format matched syntax</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">Pattern match: ISO-REG-STD</span>
+</div>
+</div>
+</section>
+<!-- SECTION 3: COULD NOT CHECK -->
+<section class="flex flex-col border-t border-[#E5E5E5] pt-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-[0.08em]">Could Not Check · Unresolved &amp; N/A</span>
+<span class="font-code-sm text-code-sm text-secondary">1 degraded · 1 skipped</span>
+</div>
+<div class="divide-y divide-[#E5E5E5] flex flex-col">
+<div class="py-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[14px] text-secondary shrink-0">warning</span>
+<span class="font-body-md text-body-md text-primary">Upstream registry socket timed out</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">whois.registry.in rate-limited</span>
+</div>
+<div class="pt-space-sm pb-space-xs flex flex-col gap-space-xs">
+<span class="font-code-sm text-code-sm text-secondary uppercase">Not applicable</span>
+<div class="flex items-center justify-between pl-1">
+<div class="flex items-center gap-space-sm">
+<span class="text-secondary font-mono text-[14px]">—</span>
+<span class="font-body-md text-body-md text-secondary">Payment gateway API check</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">No merchant VPA provided</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 4: VERIFY NEXT -->
+<section class="flex flex-col border-t border-[#E5E5E5] pt-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-[0.08em]">Verify Next · Recommended Action</span>
+<span class="font-code-sm text-code-sm text-secondary">Preservation checklist</span>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<label class="flex items-start gap-space-sm py-1.5 cursor-pointer group">
+<span class="font-code-sm text-code-sm text-secondary pt-0.5 select-none">01.</span>
+<input class="mt-1 w-3.5 h-3.5 rounded-[3px] border border-[#E5E5E5] accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md text-primary">
+            Check the official MoYA portal directly at <a class="underline text-primary hover:text-secondary font-code-sm text-code-sm" href="https://scholarships.gov.in" target="_blank">scholarships.gov.in</a>
+</span>
+</label>
+<label class="flex items-start gap-space-sm py-1.5 cursor-pointer group">
+<span class="font-code-sm text-code-sm text-secondary pt-0.5 select-none">02.</span>
+<input class="mt-1 w-3.5 h-3.5 rounded-[3px] border border-[#E5E5E5] accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md text-primary">
+            Contact your collegiate sports officer or Dean of Student Welfare before replying
+          </span>
+</label>
+<label class="flex items-start gap-space-sm py-1.5 cursor-pointer group">
+<span class="font-code-sm text-code-sm text-secondary pt-0.5 select-none">03.</span>
+<input class="mt-1 w-3.5 h-3.5 rounded-[3px] border border-[#E5E5E5] accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md text-primary">
+            Never transfer funds or scan QR codes received via WhatsApp or unauthenticated Telegram channels
+          </span>
+</label>
+</div>
+</section>
+<!-- SECTION 5: INVESTIGATION LOG -->
+<section class="flex flex-col border-t border-[#E5E5E5] pt-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-[0.08em]">Investigation Log</span>
+<span class="font-code-sm text-code-sm text-secondary">Machine runtime</span>
+</div>
+<details class="group py-space-xs cursor-pointer">
+<summary class="flex items-center justify-between list-none focus:outline-none py-1.5">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">terminal</span>
+<span class="font-headline-sm text-headline-sm text-primary font-medium">Autonomous verification trace</span>
+<span class="font-code-sm text-code-sm text-secondary">· 8 steps · 0:34 duration</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-secondary transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded p-space-sm font-code-sm text-code-sm text-primary flex flex-col gap-1.5 leading-tight">
+<div class="text-secondary">[00:00.02] INGEST: Document parser initialized on payload SHA256:e8b2c</div>
+<div class="text-secondary">[00:04.11] OCR_EXTRACT: Extracted string 'Ministry of Youth Affairs &amp; Sports'</div>
+<div class="text-secondary">[00:11.45] WHOIS_QUERY: Checking domain scholarships-gov-portal.in...</div>
+<div class="text-secondary">[00:12.80] WHOIS_RES: Reg date 2026-03-24 (Age: 6 days) via NameCheap Inc</div>
+<div class="text-secondary">[00:18.90] VPA_PARSER: Found handle gov-scholarship@okaxis (Flag: Consumer VPA pattern)</div>
+<div class="text-secondary">[00:22.04] ARCHIVE_DIFF: Queried gazette archive for 'Khelo India FY26 C1' - Mismatch found</div>
+<div class="text-secondary">[00:29.62] CLASSIFIER_RUN: Confidence 0.88, Risk Level calculated: HIGH</div>
+<div class="text-primary font-semibold">[00:34.10] REPORT_FINALIZED: Report rendered under identifier #8492</div>
+</div>
+</details>
+</section>
+<!-- Community Protection Toggle (High Risk Only) -->
+<div class="flex items-center justify-between border-t border-[#E5E5E5] pt-space-md" id="community-toggle-container">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-primary font-medium">Save identifiers to help others</span>
+<span class="font-body-sm text-body-sm text-secondary">Anonymously contributes detected VPA and registrar records to central registry.</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer shrink-0">
+<input checked="" class="sr-only peer" id="comm-switch" type="checkbox"/>
+<div class="w-9 h-5 bg-[#E5E5E5] peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+</label>
+</div>
+<!-- Action Row (Three buttons on one line) -->
+<div class="flex items-center gap-space-sm border-t border-[#E5E5E5] pt-space-md">
+<button class="flex-1 h-9 px-4 rounded bg-primary text-white font-headline-sm text-headline-sm font-medium hover:bg-[#262626] transition-colors flex items-center justify-center gap-1.5" onclick="openCollegeModal()" type="button">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+<span>Email my college</span>
+</button>
+<button class="flex-1 h-9 px-4 rounded border border-primary bg-white text-primary font-headline-sm text-headline-sm font-medium hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5" onclick="alert('Redirecting to National Cyber Crime Reporting Portal guide (cybercrime.gov.in)...')" type="button">
+<span class="material-symbols-outlined text-[16px]">receipt_long</span>
+<span>I already paid</span>
+</button>
+<button class="h-9 px-4 rounded border border-[#E5E5E5] bg-white text-primary font-headline-sm text-headline-sm font-medium hover:border-primary hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5 shrink-0" onclick="copyChecklistToClipboard(this)" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span id="copy-btn-text">Copy checklist</span>
+</button>
+</div>
+<!-- Feedback Row -->
+<div class="flex items-center justify-between border-t border-[#E5E5E5] pt-space-md pb-space-sm text-secondary">
+<span class="font-body-md text-body-md text-secondary">Was this verification accurate?</span>
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm">
+<button class="px-3 py-1 rounded border border-[#E5E5E5] bg-white text-primary hover:border-primary transition-colors flex items-center gap-1" onclick="handleFeedbackThumb(true, this)" type="button">
+<span class="material-symbols-outlined text-[14px]">thumb_up</span>
+<span>Right</span>
+</button>
+<button class="px-3 py-1 rounded border border-[#E5E5E5] bg-white text-primary hover:border-primary transition-colors flex items-center gap-1" onclick="openFeedbackModal()" type="button">
+<span class="material-symbols-outlined text-[14px]">thumb_down</span>
+<span>Wrong</span>
+</button>
+</div>
+</div>
+<!-- Statutory Footer Disclaimer -->
+<div class="border-t border-[#E5E5E5] pt-space-md pb-space-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-secondary font-body-sm text-body-sm">
+<span>Verifier is an autonomous advisory tool and does not constitute statutory legal advice.</span>
+<span class="font-code-sm text-code-sm shrink-0">ID: REP-8492-AX</span>
+</div>
+</div>
+<!-- MODAL 1: College Email Draft Modal -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[1px] hidden" id="college-modal">
+<div class="w-full max-w-[560px] bg-white border border-[#E5E5E5] rounded-lg p-space-lg flex flex-col gap-space-md relative mx-4">
+<!-- Modal Header -->
+<div class="flex items-center justify-between border-b border-[#E5E5E5] pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">outgoing_mail</span>
+<h2 class="font-headline-md text-headline-md font-semibold text-primary">Email draft</h2>
+</div>
+<button class="text-secondary hover:text-primary transition-colors p-1" onclick="closeCollegeModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Segmented Target Selection -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Recipient Group</span>
+<div class="grid grid-cols-3 gap-1 bg-[#FAFAFA] p-1 border border-[#E5E5E5] rounded">
+<button class="py-1 text-center font-headline-sm text-headline-sm text-primary font-medium bg-white border border-[#E5E5E5] rounded shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all" id="seg-college" onclick="switchDraftRecipient('college')" type="button">College</button>
+<button class="py-1 text-center font-headline-sm text-headline-sm text-secondary hover:text-primary rounded transition-all" id="seg-placement" onclick="switchDraftRecipient('placement')" type="button">Placement cell</button>
+<button class="py-1 text-center font-headline-sm text-headline-sm text-secondary hover:text-primary rounded transition-all" id="seg-teacher" onclick="switchDraftRecipient('teacher')" type="button">Teacher</button>
+</div>
+</div>
+<!-- Subject Input -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase" for="email-subject-input">Subject</label>
+<input class="w-full px-3 py-1.5 bg-white border border-[#E5E5E5] rounded font-body-md text-body-md text-primary focus:border-primary focus:outline-none" id="email-subject-input" type="text" value="Inquiry regarding suspicious sports scholarship circular (Case #8492)"/>
+</div>
+<!-- Email Body Monospace Read/Edit block -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-secondary uppercase" for="email-body-area">Body Text</label>
+<span class="font-code-sm text-code-sm text-secondary">Geist Mono / Markdown compatible</span>
+</div>
+<textarea class="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded p-space-sm font-code-sm text-code-sm text-primary leading-relaxed focus:border-primary focus:outline-none resize-none" id="email-body-area" rows="7">Respected Sir/Madam,
+
+I received a communication claiming to be a MoYA sports scholarship award requiring an advance security verification deposit (UPI: gov-scholarship@okaxis).
+
+An autonomous forensic check (Case #8492) identified unauthorized domain registration and fake ministry credentials. Before taking any action or sharing with peer students, I would like to verify if your office received any genuine official communication regarding this notice.
+
+Report Reference: verifier.local/case/8492
+Student Name: Shreyas
+Attachment: sports_award_letter_2026.pdf</textarea>
+</div>
+<!-- Modal Actions -->
+<div class="flex items-center justify-between border-t border-[#E5E5E5] pt-space-sm mt-1">
+<span class="font-code-sm text-code-sm text-[#16A34A] opacity-0 transition-opacity" id="draft-copied-msg">Draft copied to clipboard</span>
+<div class="flex items-center gap-space-xs">
+<button class="h-8 px-3 rounded border border-primary bg-white text-primary font-headline-sm text-headline-sm font-medium hover:bg-surface-container-low transition-colors" onclick="copyDraftBody()" type="button">Copy</button>
+<button class="h-8 px-4 rounded bg-primary text-white font-headline-sm text-headline-sm font-medium hover:bg-[#262626] transition-colors flex items-center gap-1" onclick="openClientMail()" type="button">
+<span>Open in mail</span>
+<span class="material-symbols-outlined text-[14px]">arrow_outward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- MODAL 2: Feedback Modal ("What was wrong?") -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[1px] hidden" id="feedback-modal">
+<div class="w-full max-w-[460px] bg-white border border-[#E5E5E5] rounded-lg p-space-lg flex flex-col gap-space-md relative mx-4">
+<div class="flex items-center justify-between border-b border-[#E5E5E5] pb-space-sm">
+<h2 class="font-headline-md text-headline-md font-semibold text-primary">What was wrong?</h2>
+<button class="text-secondary hover:text-primary transition-colors p-1" onclick="closeFeedbackModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Radio options -->
+<div class="flex flex-col gap-2 font-body-md text-body-md text-primary">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="w-3.5 h-3.5 accent-primary cursor-pointer" name="feedback-reason" type="radio" value="wrong-level"/>
+<span>Wrong risk level</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="w-3.5 h-3.5 accent-primary cursor-pointer" name="feedback-reason" type="radio" value="missed"/>
+<span>Missed something important</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="w-3.5 h-3.5 accent-primary cursor-pointer" name="feedback-reason" type="radio" value="genuine"/>
+<span>Flagged a genuine offer</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="w-3.5 h-3.5 accent-primary cursor-pointer" name="feedback-reason" type="radio" value="other"/>
+<span>Other issue</span>
+</label>
+</div>
+<!-- Textarea 500 max -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center text-secondary font-code-sm text-code-sm">
+<span>Details (optional)</span>
+<span id="char-counter">0 / 500</span>
+</div>
+<textarea class="w-full p-2.5 border border-[#E5E5E5] rounded font-body-sm text-body-sm text-primary focus:border-primary focus:outline-none resize-none" id="feedback-notes" maxlength="500" oninput="updateCharCount(this)" placeholder="Provide link or context that clarifies this circular..." rows="3"></textarea>
+</div>
+<!-- Footer Buttons -->
+<div class="flex items-center justify-between border-t border-[#E5E5E5] pt-space-sm">
+<button class="font-body-sm text-body-sm text-secondary hover:text-primary underline" onclick="closeFeedbackModal()" type="button">Skip</button>
+<button class="h-8 px-4 rounded bg-primary text-white font-headline-sm text-headline-sm font-medium hover:bg-[#262626] transition-colors" onclick="submitFeedback()" type="button">Send</button>
+</div>
+</div>
+</div>
+<!-- Inline Script for Interactivity -->
+<script>
+    function switchRiskVariant(variant) {
+      const tabs = ['tab-high', 'tab-med', 'tab-low', 'tab-unverified'];
+      tabs.forEach(t => {
+        const el = document.getElementById(t);
+        if (el) {
+          el.className = "px-2 py-0.5 rounded text-secondary hover:text-primary hover:bg-surface-container transition-colors";
+        }
+      });
+
+      const dot = document.getElementById('verdict-dot');
+      const headline = document.getElementById('verdict-headline');
+      const conf = document.getElementById('verdict-confidence');
+      const scoreBar = document.getElementById('risk-score-bar');
+      const scoreLabel = document.getElementById('risk-score-label');
+      const summary = document.getElementById('verdict-summary');
+      const commContainer = document.getElementById('community-toggle-container');
+
+      if (variant === 'high') {
+        document.getElementById('tab-high').className = "px-2 py-0.5 rounded text-primary font-semibold bg-surface-container-high transition-colors";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-[#DC2626] inline-block shrink-0";
+        headline.textContent = "HIGH";
+        conf.textContent = "Confidence: Medium (88%)";
+        scoreBar.style.width = "92%";
+        scoreLabel.textContent = "Score 92 / 100 Risk";
+        summary.textContent = "Impersonation of Central Ministry demanding an upfront non-refundable verification deposit via an unauthorized UPI handle.";
+        commContainer.style.display = "flex";
+      } else if (variant === 'medium') {
+        document.getElementById('tab-med').className = "px-2 py-0.5 rounded text-primary font-semibold bg-surface-container-high transition-colors";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-[#525252] inline-block shrink-0";
+        headline.textContent = "MEDIUM";
+        conf.textContent = "Confidence: High (94%)";
+        scoreBar.style.width = "54%";
+        scoreLabel.textContent = "Score 54 / 100 Risk";
+        summary.textContent = "Unverified third-party grant portal requesting phone contacts and academic identity documents without fee demands.";
+        commContainer.style.display = "none";
+      } else if (variant === 'low') {
+        document.getElementById('tab-low').className = "px-2 py-0.5 rounded text-primary font-semibold bg-surface-container-high transition-colors";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block shrink-0";
+        headline.textContent = "LOW";
+        conf.textContent = "Confidence: High (99%)";
+        scoreBar.style.width = "8%";
+        scoreLabel.textContent = "Score 8 / 100 Risk";
+        summary.textContent = "Authentic gazette announcement matching verified public keys and signed NIC digital certificate records.";
+        commContainer.style.display = "none";
+      } else if (variant === 'cannot-verify') {
+        document.getElementById('tab-unverified').className = "px-2 py-0.5 rounded text-primary font-semibold bg-surface-container-high transition-colors";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-[#525252] inline-block shrink-0";
+        headline.textContent = "CANNOT VERIFY";
+        conf.textContent = "Confidence: Insufficient Data";
+        scoreBar.style.width = "0%";
+        scoreLabel.textContent = "Indeterminate Telemetry";
+        summary.textContent = "Payload contained insufficient verifiable headers or domain endpoints to compute deterministic risk score.";
+        commContainer.style.display = "none";
+      }
+    }
+
+    function openCollegeModal() {
+      document.getElementById('college-modal').classList.remove('hidden');
+    }
+
+    function closeCollegeModal() {
+      document.getElementById('college-modal').classList.add('hidden');
+    }
+
+    function switchDraftRecipient(type) {
+      const segs = ['seg-college', 'seg-placement', 'seg-teacher'];
+      segs.forEach(s => {
+        const el = document.getElementById(s);
+        el.className = "py-1 text-center font-headline-sm text-headline-sm text-secondary hover:text-primary rounded transition-all";
+      });
+      const target = document.getElementById('seg-' + type);
+      target.className = "py-1 text-center font-headline-sm text-headline-sm text-primary font-medium bg-white border border-[#E5E5E5] rounded shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all";
+
+      const subject = document.getElementById('email-subject-input');
+      const body = document.getElementById('email-body-area');
+
+      if (type === 'placement') {
+        subject.value = "Verification Request: Unlisted sports scholarship offer sent to batch (Case #8492)";
+        body.value = "Respected Placement Coordinator,\n\nA circular was circulated directly regarding an urgent scholarship allotment demanding fees. Verifier forensic check #8492 flagged this as spoofed.\n\nCould the Placement Cell confirm whether this entity approached the university officially?\n\nReference: verifier.local/case/8492\nCandidate: Shreyas";
+      } else if (type === 'teacher') {
+        subject.value = "Clarification on Sports Ministry notification (Case #8492)";
+        body.value = "Dear Professor,\n\nI was sent this scholarship notification instructing me to remit an advance verification fee. Verifier flagged several anomalies including a fresh domain registered 6 days ago.\n\nSharing this to confirm if any students should be warned against sending funds.\n\nReference: verifier.local/case/8492\nShreyas";
+      } else {
+        subject.value = "Inquiry regarding suspicious sports scholarship circular (Case #8492)";
+        body.value = "Respected Sir/Madam,\n\nI received a communication claiming to be a MoYA sports scholarship award requiring an advance security verification deposit (UPI: gov-scholarship@okaxis).\n\nAn autonomous forensic check (Case #8492) identified unauthorized domain registration and fake ministry credentials. Before taking any action or sharing with peer students, I would like to verify if your office received any genuine official communication regarding this notice.\n\nReport Reference: verifier.local/case/8492\nStudent Name: Shreyas\nAttachment: sports_award_letter_2026.pdf";
+      }
+    }
+
+    function copyDraftBody() {
+      const bodyText = document.getElementById('email-body-area').value;
+      navigator.clipboard.writeText(bodyText).then(() => {
+        const msg = document.getElementById('draft-copied-msg');
+        msg.classList.remove('opacity-0');
+        setTimeout(() => msg.classList.add('opacity-0'), 2500);
+      });
+    }
+
+    function openClientMail() {
+      const subject = encodeURIComponent(document.getElementById('email-subject-input').value);
+      const body = encodeURIComponent(document.getElementById('email-body-area').value);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+
+    function openFeedbackModal() {
+      document.getElementById('feedback-modal').classList.remove('hidden');
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('feedback-modal').classList.add('hidden');
+    }
+
+    function updateCharCount(el) {
+      document.getElementById('char-counter').textContent = `${el.value.length} / 500`;
+    }
+
+    function submitFeedback() {
+      alert("Thank you. Feedback submitted for model calibration.");
+      closeFeedbackModal();
+    }
+
+    function copyChecklistToClipboard(button) {
+      const text = "Verifier Action Checklist (Case #8492):\n1. Check official portal at scholarships.gov.in\n2. Contact collegiate sports officer or Dean of Student Welfare\n3. Never transfer funds or scan QR codes received via WhatsApp";
+      navigator.clipboard.writeText(text).then(() => {
+        const label = document.getElementById('copy-btn-text');
+        label.textContent = "Copied!";
+        setTimeout(() => { label.textContent = "Copy checklist"; }, 2000);
+      });
+    }
+
+    function handleFeedbackThumb(isRight, btn) {
+      btn.classList.add('bg-[#FAFAFA]', 'font-semibold');
+      alert(isRight ? "Feedback recorded: Correct classification." : "Opening feedback form.");
+    }
+  </script>
+</div></main></div></body></html>

@@ -49,6 +49,7 @@ function parseArgs(args) {
   const flags = {
     validateOnly: false,
     dataset: "data/eval/sample-cases.json",
+    casesDir: null,
     fixtures: false,
     sampleSmoke: false,
     replay: false,
@@ -68,7 +69,9 @@ function parseArgs(args) {
     else if (a === "--live") flags.live = true;
     else if (a === "--yes-use-fake-or-public-data") flags.yesUseFakeOrPublicData = true;
     else if (a === "--show-text") flags.showText = true;
-    else if (a === "--dataset" && i + 1 < args.length) {
+    else if (a === "--cases") {
+      flags.casesDir = (i + 1 < args.length && !args[i + 1].startsWith("--")) ? args[++i] : "tests/eval/cases";
+    } else if (a === "--dataset" && i + 1 < args.length) {
       flags.dataset = args[++i];
     } else if (a === "--max-llm-calls" && i + 1 < args.length) {
       flags.maxLlmCalls = parseInt(args[++i], 10);
@@ -182,8 +185,140 @@ export async function runScenariosSmoke(tempDir) {
   return results;
 }
 
+export async function runCasesEvaluation(casesDir, flags) {
+  const dirPath = path.resolve(process.cwd(), casesDir);
+  if (!fs.existsSync(dirPath)) {
+    console.error(`ERROR: Cases directory not found: ${dirPath}`);
+    process.exit(1);
+  }
+
+  const files = fs.readdirSync(dirPath).filter((f) => f.endsWith(".json"));
+  if (files.length === 0) {
+    console.warn(`No .json evaluation cases found in ${dirPath}`);
+    return;
+  }
+
+  console.log(`\n=======================================================`);
+  console.log(`        RUNNING EVALUATION CASES: ${casesDir}          `);
+  console.log(`=======================================================`);
+  console.log(`Found ${files.length} case file(s).\n`);
+
+  const cases = [];
+  for (const file of files) {
+    const filePath = path.join(dirPath, file);
+    try {
+      const content = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      cases.push({
+        file,
+        id: content.id || path.basename(file, ".json"),
+        input: content.input || {},
+        expectedLevel: content.expectedLevel,
+        expectedFlagsIncluded: content.expectedFlagsIncluded || [],
+        expectedOfficialVerdict: content.expectedOfficialVerdict || null,
+        notes: content.notes || "",
+      });
+    } catch (err) {
+      console.error(`Failed to parse ${file}: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (flags.validateOnly) {
+    console.log("Validation mode only. Cases validated successfully:");
+    for (const c of cases) {
+      console.log(`  - [OK] ${c.id}: expected ${c.expectedLevel}, flags: [${c.expectedFlagsIncluded.join(", ")}]`);
+    }
+    return;
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eval-cases-"));
+  const results = [];
+  let mismatches = 0;
+
+  try {
+    for (let i = 0; i < cases.length; i++) {
+      const c = cases[i];
+      process.stdout.write(`[${i + 1}/${cases.length}] Evaluating ${c.id}... `);
+
+      const evalCaseObj = {
+        id: c.id,
+        text: c.input?.text || "",
+        link: c.input?.link || c.input?.url || "",
+        upiId: c.input?.upi || c.input?.upiId || "",
+        company: c.input?.company || "",
+        handle: c.input?.handle || "",
+        phone: c.input?.phone || "",
+        language: c.input?.language || "en",
+        expectedLevel: c.expectedLevel,
+        scamType: "scholarship",
+        why: c.notes || "Case verification",
+      };
+
+      const mode = flags.live ? "live" : (flags.replay ? "replay" : "fixtures");
+
+      const res = await runEvalCase(evalCaseObj, {
+        mode,
+        tempDir,
+        recordingsDir: process.env.RECORD_REPLAY_DIR || path.join(process.cwd(), ".recordings"),
+        limits: {
+          maxLlmCalls: flags.maxLlmCalls,
+          maxSearches: flags.maxSearches,
+        },
+      });
+
+      const levelMatch = res.predicted === c.expectedLevel;
+      const missingFlags = c.expectedFlagsIncluded.filter((f) => !res.flags.includes(f));
+      const flagsMatch = missingFlags.length === 0;
+
+      const isPass = levelMatch && flagsMatch;
+      if (!isPass) mismatches++;
+
+      results.push({
+        id: c.id,
+        expectedLevel: c.expectedLevel,
+        predictedLevel: res.predicted,
+        levelMatch,
+        expectedFlags: c.expectedFlagsIncluded,
+        actualFlags: res.flags,
+        missingFlags,
+        flagsMatch,
+        durationMs: res.durationMs,
+        isPass,
+      });
+
+      const statusTag = isPass ? "PASS" : "MISMATCH";
+      console.log(`${statusTag} (predicted: ${res.predicted}, expected: ${c.expectedLevel}) [${res.durationMs}ms]`);
+      if (!flagsMatch) {
+        console.log(`    Missing expected flags: ${missingFlags.join(", ")}`);
+      }
+    }
+
+    console.log(`\n=======================================================`);
+    console.log(`                 EVALUATION RESULTS                    `);
+    console.log(`=======================================================`);
+    console.log(`Total Cases:              ${cases.length}`);
+    console.log(`Passed (Agreement):       ${cases.length - mismatches}`);
+    console.log(`Mismatches:               ${mismatches}`);
+    console.log(`Agreement Rate:           ${Math.round(((cases.length - mismatches) / cases.length) * 100)}%`);
+    console.log(`=======================================================\n`);
+
+    if (mismatches > 0) {
+      process.exitCode = 1;
+    }
+  } finally {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {}
+  }
+}
+
 export async function main() {
   const flags = parseArgs(process.argv.slice(2));
+
+  if (flags.casesDir) {
+    await runCasesEvaluation(flags.casesDir, flags);
+    return;
+  }
   const datasetPath = path.resolve(process.cwd(), flags.dataset);
 
   const datasetResult = loadEvaluationDataset(datasetPath);

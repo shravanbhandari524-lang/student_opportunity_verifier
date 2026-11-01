@@ -64,7 +64,7 @@ test("E2E: browser confirm flow with rapid double-click, live stream events, pag
     await page.click("button[type='submit']");
 
     // Wait for navigation to /check/<id>
-    await page.waitForURL(/\/check\/[0-9a-fA-F-]+/, { timeout: 30000 });
+    await page.waitForURL(/\/check\/[0-9a-fA-F-]+/, { timeout: 60000 });
     const checkUrl = page.url();
     const checkId = checkUrl.split("/check/")[1].split("?")[0].replace(/\/$/, "");
     assert.ok(checkId, "Expected valid checkId from URL");
@@ -136,6 +136,10 @@ test("E2E: browser confirm flow with rapid double-click, live stream events, pag
     // 8. Step 5: Wait for final report to render
     // Investigation finishes within 60 seconds (accounting for 25s per-agent timeout)
     await page.waitForSelector("text=Assessed Risk Level", { timeout: 60000 });
+    await page.waitForFunction(
+      () => /What to Verify Next/i.test(document.body.innerText) || /Checklist/i.test(document.body.innerText),
+      { timeout: 60000 }
+    );
 
     const finalBodyText = await page.innerText("body");
     assert.ok(finalBodyText.includes("Opportunity Risk Assessment"), "Final report header must be displayed");

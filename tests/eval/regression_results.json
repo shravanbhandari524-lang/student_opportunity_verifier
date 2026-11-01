@@ -1,0 +1,485 @@
+{
+  "matchedCount": 5,
+  "totalCases": 5,
+  "run1": [
+    {
+      "id": "case-microsoft-impersonation",
+      "notes": "[SYNTHETIC TEST CASE] Microsoft internship impersonation with .example reserved domain, Gmail recruiter, stipend, no fee.",
+      "expected": "medium/high",
+      "actualLevel": "medium",
+      "score": 45,
+      "confidence": "medium",
+      "flags": [
+        "domain_company_mismatch",
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=Microsoft",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://reddit.com",
+        "https://consumercomplaints.in",
+        "https://mkp.gem",
+        "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+        "https://www.reddit.com/search"
+      ],
+      "ledgerCount": 5,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 13514,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-controlled-domain",
+      "notes": "[SYNTHETIC TEST CASE] Controlled domain fixture: registered 3 days ago, valid cert, no archive history.",
+      "expected": "high",
+      "actualLevel": "high",
+      "score": 65,
+      "confidence": "medium",
+      "flags": [
+        "domain_company_mismatch",
+        "domain_new",
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=Microsoft",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://reddit.com",
+        "https://consumercomplaints.in",
+        "https://mkp.gem"
+      ],
+      "ledgerCount": 7,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 10020,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-genuine-careers",
+      "notes": "[SYNTHETIC TEST CASE] Genuine-looking careers page: official company domain in curated list, corporate email recruiter, stipend, no fee.",
+      "expected": "low",
+      "actualLevel": "low",
+      "score": 0,
+      "confidence": "medium",
+      "flags": [],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://careers.infosys.com",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://www.trustpilot.com/search?query=careers.infosys.com",
+        "https://www.trustpilot.com/search?query=Infosys",
+        "https://www.trustpilot.com/search?query=infosys.com",
+        "https://ddnews.gov",
+        "https://careers.infosys",
+        "https://infosys.com",
+        "https://reddit.com",
+        "https://consumercomplaints.in"
+      ],
+      "ledgerCount": 10,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 16733,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-internship-fee-upi",
+      "notes": "[SYNTHETIC TEST CASE] Internship with upfront registration fee payable to a personal UPI handle.",
+      "expected": "high",
+      "actualLevel": "high",
+      "score": 80,
+      "confidence": "medium",
+      "flags": [
+        "fee_demand",
+        "no_interview_selection",
+        "personal_payment_id",
+        "urgency_pressure"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "skipped"
+      },
+      "officialLinks": [
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://www.trustpilot.com/search?query=Tech%20Mahindra",
+        "https://coordinator.onboarding"
+      ],
+      "ledgerCount": 6,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 14299,
+      "searchCallsUsed": 7,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-freemail-recruiter-unverified",
+      "notes": "[SYNTHETIC TEST CASE] Unverified recruiter using free mail claiming genuine company and domain, no fee, no payment demand.",
+      "expected": "medium/cannot_verify",
+      "actualLevel": "medium",
+      "score": 15,
+      "confidence": "medium",
+      "flags": [
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://wipro.com",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://www.trustpilot.com/search?query=wipro.com",
+        "https://www.trustpilot.com/search?query=Wipro",
+        "https://www.trustpilot.com/search?query=Wipro%20Technologies",
+        "https://www.pib",
+        "https://consumercomplaints.in",
+        "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+        "https://www.reddit.com/search"
+      ],
+      "ledgerCount": 8,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 21694,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    }
+  ],
+  "run2": [
+    {
+      "id": "case-microsoft-impersonation",
+      "notes": "[SYNTHETIC TEST CASE] Microsoft internship impersonation with .example reserved domain, Gmail recruiter, stipend, no fee.",
+      "expected": "medium/high",
+      "actualLevel": "medium",
+      "score": 45,
+      "confidence": "medium",
+      "flags": [
+        "domain_company_mismatch",
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=Microsoft",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://reddit.com",
+        "https://consumercomplaints.in",
+        "https://mkp.gem",
+        "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+        "https://www.reddit.com/search"
+      ],
+      "ledgerCount": 5,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 10342,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-controlled-domain",
+      "notes": "[SYNTHETIC TEST CASE] Controlled domain fixture: registered 3 days ago, valid cert, no archive history.",
+      "expected": "high",
+      "actualLevel": "high",
+      "score": 65,
+      "confidence": "medium",
+      "flags": [
+        "domain_company_mismatch",
+        "domain_new",
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=microsoft-careers-india.example",
+        "https://www.trustpilot.com/search?query=Microsoft",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://reddit.com",
+        "https://consumercomplaints.in",
+        "https://mkp.gem"
+      ],
+      "ledgerCount": 7,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 10528,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-genuine-careers",
+      "notes": "[SYNTHETIC TEST CASE] Genuine-looking careers page: official company domain in curated list, corporate email recruiter, stipend, no fee.",
+      "expected": "low",
+      "actualLevel": "low",
+      "score": 0,
+      "confidence": "medium",
+      "flags": [],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://careers.infosys.com",
+        "https://www.trustpilot.com/search?query=careers.infosys.com",
+        "https://www.trustpilot.com/search?query=Infosys",
+        "https://www.trustpilot.com/search?query=infosys.com",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://careers.infosys",
+        "https://infosys.com",
+        "https://reddit.com",
+        "https://consumercomplaints.in",
+        "https://ddnews.gov"
+      ],
+      "ledgerCount": 10,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 19808,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-internship-fee-upi",
+      "notes": "[SYNTHETIC TEST CASE] Internship with upfront registration fee payable to a personal UPI handle.",
+      "expected": "high",
+      "actualLevel": "high",
+      "score": 80,
+      "confidence": "medium",
+      "flags": [
+        "fee_demand",
+        "no_interview_selection",
+        "personal_payment_id",
+        "urgency_pressure"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "skipped"
+      },
+      "officialLinks": [
+        "https://www.trustpilot.com/search?query=Tech%20Mahindra",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://coordinator.onboarding"
+      ],
+      "ledgerCount": 6,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 10795,
+      "searchCallsUsed": 7,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    },
+    {
+      "id": "case-freemail-recruiter-unverified",
+      "notes": "[SYNTHETIC TEST CASE] Unverified recruiter using free mail claiming genuine company and domain, no fee, no payment demand.",
+      "expected": "medium/cannot_verify",
+      "actualLevel": "medium",
+      "score": 15,
+      "confidence": "medium",
+      "flags": [
+        "free_email_recruiter"
+      ],
+      "agentStatuses": {
+        "classifier_client": "could_not_check",
+        "message_analyst": "ok",
+        "official_verifier": "ok",
+        "payment_entity": "ok",
+        "reputation_osint": "ok",
+        "website_forensics": "ok"
+      },
+      "officialLinks": [
+        "https://wipro.com",
+        "https://www.trustpilot.com/search?query=wipro.com",
+        "https://www.trustpilot.com/search?query=Wipro",
+        "https://www.trustpilot.com/search?query=Wipro%20Technologies",
+        "https://www.mca.gov.in",
+        "https://factcheck.pib.gov.in",
+        "https://consumercomplaints.in",
+        "https://www.pib",
+        "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+        "https://www.reddit.com/search"
+      ],
+      "ledgerCount": 8,
+      "ledgerTraceable": true,
+      "untraceableFlags": [],
+      "durationMs": 9414,
+      "searchCallsUsed": 8,
+      "isMatch": true,
+      "fp": false,
+      "fn": false,
+      "error": null
+    }
+  ],
+  "matrix": [
+    {
+      "caseId": "case-microsoft-impersonation",
+      "expected": "medium/high",
+      "r1Level": "medium",
+      "r1Score": 45,
+      "r1Flags": "domain_company_mismatch, free_email_recruiter",
+      "r2Level": "medium",
+      "r2Score": 45,
+      "r2Flags": "domain_company_mismatch, free_email_recruiter",
+      "r1Traceable": true,
+      "r2Traceable": true,
+      "fp": "NO",
+      "fn": "NO",
+      "differences": "Identical"
+    },
+    {
+      "caseId": "case-controlled-domain",
+      "expected": "high",
+      "r1Level": "high",
+      "r1Score": 65,
+      "r1Flags": "domain_company_mismatch, domain_new, free_email_recruiter",
+      "r2Level": "high",
+      "r2Score": 65,
+      "r2Flags": "domain_company_mismatch, domain_new, free_email_recruiter",
+      "r1Traceable": true,
+      "r2Traceable": true,
+      "fp": "NO",
+      "fn": "NO",
+      "differences": "Identical"
+    },
+    {
+      "caseId": "case-genuine-careers",
+      "expected": "low",
+      "r1Level": "low",
+      "r1Score": 0,
+      "r1Flags": "",
+      "r2Level": "low",
+      "r2Score": 0,
+      "r2Flags": "",
+      "r1Traceable": true,
+      "r2Traceable": true,
+      "fp": "NO",
+      "fn": "NO",
+      "differences": "Identical"
+    },
+    {
+      "caseId": "case-internship-fee-upi",
+      "expected": "high",
+      "r1Level": "high",
+      "r1Score": 80,
+      "r1Flags": "fee_demand, no_interview_selection, personal_payment_id, urgency_pressure",
+      "r2Level": "high",
+      "r2Score": 80,
+      "r2Flags": "fee_demand, no_interview_selection, personal_payment_id, urgency_pressure",
+      "r1Traceable": true,
+      "r2Traceable": true,
+      "fp": "NO",
+      "fn": "NO",
+      "differences": "Identical"
+    },
+    {
+      "caseId": "case-freemail-recruiter-unverified",
+      "expected": "medium/cannot_verify",
+      "r1Level": "medium",
+      "r1Score": 15,
+      "r1Flags": "free_email_recruiter",
+      "r2Level": "medium",
+      "r2Score": 15,
+      "r2Flags": "free_email_recruiter",
+      "r1Traceable": true,
+      "r2Traceable": true,
+      "fp": "NO",
+      "fn": "NO",
+      "differences": "Identical"
+    }
+  ],
+  "mismatches": [],
+  "stats": {
+    "totalLlmCalls": 40,
+    "totalSearchCalls": 31,
+    "totalSearchCacheHits": 47
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "case-genuine-careers",
+  "synthetic": true,
+  "input": {
+    "text": "Infosys InStep Internship Program 2026: Applications are invited for full-time engineering internships with a monthly stipend of ₹30,000. Apply directly on our official careers portal at https://careers.infosys.com or contact university.relations@infosys.com. No application fee is charged.",
+    "link": "https://careers.infosys.com",
+    "company": "Infosys"
+  },
+  "expectedLevel": "low",
+  "expectedFlagsIncluded": [],
+  "notes": "[SYNTHETIC TEST CASE] Genuine-looking careers page: official company domain in curated list, corporate email recruiter, stipend, no fee."
+}

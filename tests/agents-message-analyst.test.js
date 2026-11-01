@@ -1740,6 +1740,289 @@ describe("L4 Message Analyst Agent", () => {
       );
     });
   });
+
+  describe("Activity Recorder Instrumentation", () => {
+    test("Google case: activity records input, llm step, findings, and summary", async () => {
+      const text = "Congratulations, you are selected for an internship at Google. Pay Rs 500 to rahul.hr@oksbi";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        entities: [
+          { kind: "company", value: "Google", source: "user" },
+          { kind: "upi", value: "rahul.hr@oksbi", source: "extracted" },
+        ],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          findings: [
+            {
+              flagId: "no_interview_selection",
+              quote: "Congratulations, you are selected for an internship at Google.",
+              explanation: "'You are selected' with no application or interview: scams often start this way.",
+            },
+            {
+              flagId: "fee_demand",
+              quote: "Pay Rs 500 to rahul.hr@oksbi",
+              explanation: "Demands an upfront fee for an internship.",
+            },
+          ],
+        },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "ok");
+      assert.strictEqual(result.flags.length, 2);
+
+      // Summary verification
+      assert.strictEqual(result.summary, "Read the message; 2 red flags found.");
+
+      // Activity entries
+      assert.ok(Array.isArray(result.activity), "result.activity must be an array");
+      assert.ok(result.activity.length >= 3, `Expected at least 3 entries, got ${result.activity.length}`);
+
+      // 1. input entry
+      const inEntry = result.activity.find((a) => a.type === "input");
+      assert.ok(inEntry, "Must produce an input entry");
+      assert.strictEqual(inEntry.status, "info");
+      assert.ok(inEntry.detail.includes(`message text (${text.length} chars)`), "Detail must contain main text length");
+      assert.ok(inEntry.detail.includes("notes: not present"), "Detail must state notes are not present");
+      assert.ok(inEntry.detail.includes("OCR text: not present"), "Detail must state OCR is not present");
+      assert.ok(inEntry.detail.includes("company:Google"), "Detail must mention Google entity");
+      assert.ok(inEntry.detail.includes("upi:rahul.hr@oksbi"), "Detail must mention UPI entity");
+
+      // 2. step entry (llm)
+      const stepEntry = result.activity.find((a) => a.type === "step" && a.tool === "llm");
+      assert.ok(stepEntry, "Must produce an LLM step entry");
+      assert.strictEqual(stepEntry.status, "ok");
+      assert.ok(stepEntry.detail.includes("2 candidate findings") || stepEntry.detail.includes("2 candidate finding"));
+
+      // 3. finding entries
+      const findingEntries = result.activity.filter((a) => a.type === "finding");
+      assert.strictEqual(findingEntries.length, 2, "Must produce 2 finding entries");
+
+      const noInterviewEntry = findingEntries.find((f) => f.flagId === "no_interview_selection");
+      assert.ok(noInterviewEntry, "Must have finding entry for no_interview_selection");
+      assert.ok(noInterviewEntry.detail.includes("Congratulations, you are selected for an internship at Google."));
+      assert.ok(noInterviewEntry.detail.includes("'You are selected' with no application or interview"));
+
+      const feeEntry = findingEntries.find((f) => f.flagId === "fee_demand");
+      assert.ok(feeEntry, "Must have finding entry for fee_demand");
+      assert.ok(feeEntry.detail.includes("Pay Rs 500 to rahul.hr@oksbi"));
+    });
+
+    test("Google-only sentence: produces clear no_interview_selection finding with human-readable explanation", async () => {
+      const text = "Congratulations, you are selected for an internship at Google.";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        entities: [{ kind: "company", value: "Google", source: "user" }],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          findings: [
+            {
+              flagId: "no_interview_selection",
+              quote: "Congratulations, you are selected for an internship at Google.",
+              explanation: "'You are selected' with no application or interview: scams often start this way.",
+            },
+          ],
+        },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "ok");
+      assert.strictEqual(result.flags.length, 1);
+      assert.strictEqual(result.flags[0].id, "no_interview_selection");
+      assert.strictEqual(result.summary, "Read the message; 1 red flag found.");
+
+      const findingEntry = result.activity.find((a) => a.type === "finding" && a.flagId === "no_interview_selection");
+      assert.ok(findingEntry, "Finding entry must be recorded");
+      assert.ok(findingEntry.detail.includes("Congratulations, you are selected for an internship at Google."));
+      assert.ok(findingEntry.detail.includes("no application or interview"));
+    });
+
+    test("notes-only case: records notes in input and reflects user notes in summary", async () => {
+      const userNotes = "A guy called Ravi from Flipkart HR messaged me on Telegram, asked for 300 rupees";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [
+          { type: "text", value: "" },
+          { type: "user_notes", value: userNotes },
+        ],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          findings: [
+            {
+              flagId: "off_platform_contact",
+              quote: "messaged me on Telegram",
+              explanation: "Recruiter moved conversation to Telegram.",
+            },
+            {
+              flagId: "fee_demand",
+              quote: "asked for 300 rupees",
+              explanation: "Recruiter demanded an upfront fee of 300 rupees.",
+            },
+          ],
+        },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "ok");
+      assert.strictEqual(result.flags.length, 2);
+
+      // Summary must acknowledge notes
+      assert.strictEqual(result.summary, "Read your notes; 2 red flags found.");
+
+      // Input entry checks
+      const inEntry = result.activity.find((a) => a.type === "input");
+      assert.ok(inEntry);
+      assert.ok(inEntry.detail.includes("message text (0 chars)"));
+      assert.ok(inEntry.detail.includes("notes: present"));
+    });
+
+    test("LLM failure case: records failed step in plain language and sets failure summary", async () => {
+      const text = "Earn Rs 5000 daily by liking YouTube videos.";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: false,
+        error: { code: "RATE_LIMITED", message: "Resource exhausted (quota exceeded)" },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "could_not_check");
+      assert.strictEqual(result.reason, "RATE_LIMITED");
+
+      assert.ok(Array.isArray(result.activity), "result.activity must be an array");
+      const failStep = result.activity.find((a) => a.type === "step" && a.status === "failed");
+      assert.ok(failStep, "Must record a failed step");
+      assert.ok(failStep.detail.includes("Resource exhausted") || failStep.detail.includes("RATE_LIMITED"));
+      assert.ok(result.summary.includes("failure") || result.summary.includes("could not complete"));
+    });
+
+    test("limits: quote snapping, quote dropped, and carve-out suppression create plain limit entries", async () => {
+      const text = "Free of charge for all students. Semester IV Examination Fee is Rs 500.";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          findings: [
+            // 1. Snapped quote
+            {
+              flagId: "candidate_picks_hours",
+              quote: "Free of charge ... students",
+              explanation: "Fuzzy quote",
+            },
+            // 2. Dropped quote (not in text)
+            {
+              flagId: "pay_too_high",
+              quote: "Earn 10 Lakhs daily",
+              explanation: "Not in text",
+            },
+            // 3. Carve-out suppressed quote (genuine exam fee)
+            {
+              flagId: "fee_demand",
+              quote: "Semester IV Examination Fee is Rs 500",
+              explanation: "Exam fee",
+            },
+          ],
+        },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "ok");
+
+      const limits = result.activity.filter((a) => a.type === "limit");
+      assert.ok(limits.length >= 3, `Expected at least 3 limit entries, got ${limits.length}`);
+
+      const snapped = limits.find((l) => l.title.includes("Quote snapped"));
+      assert.ok(snapped, "Must record Quote snapped limit entry");
+      assert.strictEqual(snapped.flagId, "candidate_picks_hours");
+
+      const dropped = limits.find((l) => l.title.includes("Finding dropped"));
+      assert.ok(dropped, "Must record Finding dropped limit entry");
+      assert.strictEqual(dropped.flagId, "pay_too_high");
+
+      const suppressed = limits.find((l) => l.title.includes("Finding suppressed"));
+      assert.ok(suppressed, "Must record Finding suppressed limit entry");
+      assert.strictEqual(suppressed.flagId, "fee_demand");
+    });
+
+    test("offline invariant: when LLM fails or times out, result is could_not_check, never ok", async () => {
+      const text = "Congratulations, you are selected for an internship at Google. Pay Rs 500 to rahul.hr@oksbi";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        findings: [],
+      };
+
+      // Case 1: Thrown network exception
+      const throwingGenerate = async () => {
+        throw new Error("Network offline: ENOTFOUND");
+      };
+      const throwResult = await run(snapshot, { generate: throwingGenerate });
+      assert.strictEqual(throwResult.status, "could_not_check");
+      assert.notStrictEqual(throwResult.status, "ok");
+
+      // Case 2: Returned upstream error
+      const failingGenerate = async () => ({
+        ok: false,
+        error: { code: "UPSTREAM_ERROR", message: "Service unavailable" },
+      });
+      const failResult = await run(snapshot, { generate: failingGenerate });
+      assert.strictEqual(failResult.status, "could_not_check");
+      assert.notStrictEqual(failResult.status, "ok");
+
+      // Case 3: Timeout error
+      const timeoutGenerate = async () => ({
+        ok: false,
+        error: { code: "TIMEOUT", message: "Request timed out after 20000ms" },
+      });
+      const timeoutResult = await run(snapshot, { generate: timeoutGenerate });
+      assert.strictEqual(timeoutResult.status, "could_not_check");
+      assert.notStrictEqual(timeoutResult.status, "ok");
+    });
+
+    test("benign case: summary states 'No red flags found in the text. This does not mean the offer is safe.'", async () => {
+      const text = "Please join the meeting on Monday at 10 AM.";
+      const snapshot = {
+        check: { id: "00000000-0000-0000-0000-000000000001", currentRound: 1 },
+        inputs: [{ type: "text", value: text }],
+        findings: [],
+      };
+
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          findings: [],
+        },
+      });
+
+      const result = await run(snapshot, { generate: fakeGenerate });
+      assert.strictEqual(result.status, "ok");
+      assert.strictEqual(result.flags.length, 0);
+      assert.strictEqual(result.summary, "No red flags found in the text. This does not mean the offer is safe.");
+    });
+  });
 });
 
 

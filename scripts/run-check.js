@@ -33,12 +33,14 @@ import {
   getReport,
   getEvents,
   getCheck,
+  getLedger,
 } from "../lib/db/index.js";
 import { getCaseFile } from "../lib/caseFile.js";
 import { scoreCase } from "../lib/scoring/score.js";
 import { getEnv } from "../lib/env.js";
 import { generate as realGenerate } from "../lib/llm/generate.js";
 import { search as realSearch } from "../lib/tools/search.js";
+import { reconcile } from "../lib/evidence/ledger.js";
 
 /**
  * Formats a TraceEvent into a clean, human-readable CLI trace line:
@@ -299,6 +301,23 @@ function createScenarioDeps(scenarioKey, db, opts = {}) {
           },
         };
       }
+      if (isB && (query.includes("Fellowship") || query.includes("National Research Institute") || query.includes("fellowship") || query.includes("Academic"))) {
+        return {
+          ok: true,
+          data: {
+            query,
+            total: 1,
+            results: [
+              {
+                position: 1,
+                title: "2026 Academic Research Fellowship - Official Portal",
+                snippet: "Applications are invited for the active 2026 Academic Research Fellowship scheme.",
+                url: "https://scholarships.gov.in/fellowships/academic-research-2026",
+              },
+            ],
+          },
+        };
+      }
       return {
         ok: true,
         data: { query, total: 0, results: [] },
@@ -319,6 +338,18 @@ function createScenarioDeps(scenarioKey, db, opts = {}) {
             metaDescription: "Apply for scholarship",
             text: "Official scholarship information.",
             links: ["https://partner-portal.example/trust"],
+          },
+        };
+      }
+      if (url.includes("scholarships.gov.in")) {
+        return {
+          ok: true,
+          data: {
+            finalUrl: url,
+            title: "National Scholarship Portal",
+            metaDescription: "Active fellowship scheme",
+            text: "Official 2026 Academic Research Fellowship is an active scholarship scheme for students.",
+            links: [],
           },
         };
       }
@@ -1068,15 +1099,43 @@ async function runLiveMode(args, opts = {}) {
     console.log(`  Total Duration:       ${durationMs}ms`);
 
     console.log("\n  ScoreResult Details:");
-    console.log(`    Level:           ${scoreRes.level}`);
-    console.log(`    Score:           ${scoreRes.score}`);
-    console.log(`    Confidence:      ${scoreRes.confidence}`);
-    console.log(`    CompletedCount:  ${scoreRes.completedCount}`);
-    console.log(`    EligibleCount:   ${scoreRes.eligibleCount}`);
-    console.log(`    CompletionRatio: ${scoreRes.completionRatio}`);
-    console.log(`    RulesFired:      ${JSON.stringify(scoreRes.rulesFired)}`);
-    console.log(`    ReasonCodes:     ${JSON.stringify(scoreRes.reasonCodes)}`);
-    console.log(`    FlagPoints:      ${JSON.stringify(scoreRes.flagPoints.map((fp) => ({ id: fp.id, points: fp.points, status: fp.status, agents: Array.from(fp.agents || []) })))}`);
+    console.log(`    Level:               ${scoreRes.level}`);
+    console.log(`    Score:               ${scoreRes.score}`);
+    console.log(`    Confidence:          ${scoreRes.confidence}`);
+    console.log(`    Corroboration Bonus: +${scoreRes.corroborationBonus ?? 0}`);
+    console.log(`    CompletedCount:      ${scoreRes.completedCount}`);
+    console.log(`    EligibleCount:       ${scoreRes.eligibleCount}`);
+    console.log(`    CompletionRatio:     ${scoreRes.completionRatio}`);
+    console.log(`    RulesFired:          ${JSON.stringify(scoreRes.rulesFired)}`);
+    console.log(`    ReasonCodes:         ${JSON.stringify(scoreRes.reasonCodes)}`);
+    console.log(`    Coverage:            ${JSON.stringify(scoreRes.coverage)}`);
+    console.log(`    FlagPoints:          ${JSON.stringify(scoreRes.flagPoints.map((fp) => ({ id: fp.id, points: fp.points, status: fp.status, agents: Array.from(fp.agents || []) })))}`);
+
+    const ledgerEntries = getLedger(checkId, db);
+    console.log(`\n  Evidence Ledger Entries (${ledgerEntries.length}):`);
+    for (const e of ledgerEntries) {
+      const src = e.supportingSource ? `(${e.supportingSource}) ` : "";
+      const quote = e.quoteOrUrl ? `"${e.quoteOrUrl.slice(0, 70)}..."` : "-";
+      console.log(`    - [${e.id.slice(0, 11)}] agent: ${e.agent.padEnd(19)} | claim: ${e.claimKey.padEnd(20)} | kind: ${e.kind.padEnd(8)} | status: ${e.verificationStatus.padEnd(12)} | conf: ${e.confidence.padEnd(6)} | ${src}${quote}`);
+    }
+
+    const recon = reconcile(ledgerEntries);
+    console.log("\n  Reconciliation Output:");
+    console.log(`    Duplicates (${recon.duplicates.length}):`);
+    if (recon.duplicates.length === 0) console.log("      (none)");
+    for (const d of recon.duplicates) {
+      console.log(`      * ${d}`);
+    }
+    console.log(`    Corroborations (${recon.corroborations.length}):`);
+    if (recon.corroborations.length === 0) console.log("      (none)");
+    for (const c of recon.corroborations) {
+      console.log(`      * ${c}`);
+    }
+    console.log(`    Contradictions (${recon.contradictions.length}):`);
+    if (recon.contradictions.length === 0) console.log("      (none)");
+    for (const ct of recon.contradictions) {
+      console.log(`      * ${ct}`);
+    }
 
 
     console.log("\n  Extracted Entities:");

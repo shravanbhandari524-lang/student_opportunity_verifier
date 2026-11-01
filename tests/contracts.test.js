@@ -52,7 +52,13 @@ import {
   GraphEdgeSchema,
   GraphMatchSchema,
   CaseFileSchema,
+  OFFICIAL_VERDICTS,
+  ENTITY_STATUSES,
+  AMOUNT_PURPOSES,
+  OSINT_RESULT_STATES,
+  EntityVerificationStatusSchema,
 } from "../lib/contracts/index.js";
+import { VerdictTraceEventSchema } from "../lib/contracts/trace.js";
 
 import { validFixtures } from "../lib/contracts/fixtures/valid/valid-fixtures.js";
 import { invalidFixtures } from "../lib/contracts/fixtures/invalid/invalid-fixtures.js";
@@ -649,3 +655,116 @@ test("Scoring Input Fixtures: Phase 4 input snapshots validate and match expecte
   assert.equal(caseD_feeDemandPlusEquipmentAdvance.expected.suppressedPoints, 0);
   assert.deepEqual([...caseD_feeDemandPlusEquipmentAdvance.expected.rulesFired], ["exclusion:fee_equipment"]);
 });
+
+test("Contract Extensions: Entity purpose, AgentResult entityStatus, and VerdictTraceEvent", () => {
+  // 1. Amount purpose and direction validation
+  const validAmount = EntitySchema.parse({
+    checkId: "11111111-1111-4111-8111-111111111111",
+    kind: "amount",
+    value: "799",
+    source: "extracted",
+    purpose: "refundable deposit",
+    direction: "from_candidate",
+    confirmed: true,
+  });
+  assert.equal(validAmount.purpose, "refundable deposit");
+  assert.equal(validAmount.direction, "from_candidate");
+
+  // Invalid direction on non-amount entity
+  assert.throws(
+    () => {
+      EntitySchema.parse({
+        checkId: "11111111-1111-4111-8111-111111111111",
+        kind: "company",
+        value: "Google",
+        source: "extracted",
+        direction: "to_candidate",
+        confirmed: true,
+      });
+    },
+    /direction may only be set for amount entities/
+  );
+
+  // Invalid purpose on non-amount entity
+  assert.throws(
+    () => {
+      EntitySchema.parse({
+        checkId: "11111111-1111-4111-8111-111111111111",
+        kind: "company",
+        value: "Google",
+        source: "extracted",
+        purpose: "refundable deposit",
+        confirmed: true,
+      });
+    },
+    /purpose may only be set for amount entities/
+  );
+
+  // 2. EntityVerificationStatus validation
+  const validStatus = EntityVerificationStatusSchema.parse({
+    entityKind: "domain",
+    entityValue: "example.com",
+    status: "verified",
+    reason: "",
+  });
+  assert.equal(validStatus.status, "verified");
+
+  const validTestDomain = EntityVerificationStatusSchema.parse({
+    entityKind: "domain",
+    entityValue: "careers.example",
+    status: "test_domain",
+    reason: "This is a reserved test domain and cannot be a real website",
+  });
+  assert.equal(validTestDomain.status, "test_domain");
+
+  const validSkipped = EntityVerificationStatusSchema.parse({
+    entityKind: "upi",
+    entityValue: "test@upi",
+    status: "skipped",
+    reason: "no_payment_entities",
+  });
+  assert.equal(validSkipped.status, "skipped");
+
+  // Skipped without reason must throw
+  assert.throws(
+    () => {
+      EntityVerificationStatusSchema.parse({
+        entityKind: "upi",
+        entityValue: "test@upi",
+        status: "skipped",
+        reason: "",
+      });
+    },
+    /reason is required/
+  );
+
+  // Could_not_check without reason must throw
+  assert.throws(
+    () => {
+      EntityVerificationStatusSchema.parse({
+        entityKind: "company",
+        entityValue: "Acme",
+        status: "could_not_check",
+        reason: "   ",
+      });
+    },
+    /reason is required/
+  );
+
+  // 3. VerdictTraceEvent validation
+  for (const v of ["verified", "contradicted", "not_found", "unverified", "partial", "VERIFIED", "NOT_FOUND"]) {
+    const ev = VerdictTraceEventSchema.parse({
+      seq: 1,
+      checkId: "11111111-1111-4111-8111-111111111111",
+      ts: new Date().toISOString(),
+      round: 1,
+      agent: "official_verifier",
+      type: "verdict",
+      claim: "National Digital Scheme",
+      verdict: v,
+      sources: ["https://scholarships.gov.in"],
+    });
+    assert.equal(ev.verdict, v.toLowerCase());
+  }
+});
+

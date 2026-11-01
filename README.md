@@ -68,7 +68,11 @@ All environment variables are validated through [`lib/env.js`](file:///home/shre
 npm run dev
 
 # Start Next.js AND the Python classifier microservice together:
+# (Automatically trains model.joblib via classifier:train if missing on clean checkout)
 npm run dev:all
+
+# Train or retrain the Python classifier model manually:
+npm run classifier:train
 
 # Start only the Python classifier microservice:
 npm run classifier:dev
@@ -76,7 +80,7 @@ npm run classifier:dev
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 > [!NOTE]
-> **Classifier Service Resilience:** If the Python microservice is not running, the Node application gracefully continues. The classifier agent returns `status: "could_not_check"` with reason `"classifier_service_unavailable"`, adding 0 risk points and never throwing.
+> **Classifier Service Resilience & Auto-Training:** On a clean checkout where `services/classifier/model.joblib` is not yet present, `npm run dev:all` detects the missing model and automatically runs `services/classifier/train.py` before starting the server. If the Python microservice is not running, the Node application gracefully continues. The classifier agent returns `status: "could_not_check"` with reason `"classifier_service_unavailable"`, adding 0 risk points and never throwing. Formal held-out evaluation results in `metrics.json` are marked as `"synthetic, author-written, not evidence of accuracy"`.
 
 
 ### Linting
@@ -173,6 +177,33 @@ npm run eval:replay
 ```
 Measures confusion matrices, false alarms, and dangerous misses without making unfounded statistical accuracy claims. Discloses synthetic data boundaries explicitly.
 
+### Evaluation Cases Format & Runner
+Individual opportunity assessment cases are stored as JSON files under `tests/eval/cases/` using the following schema:
+```json
+{
+  "id": "gov-scholarship-2026",
+  "input": {
+    "text": "Government of India – National Student Digital Empowerment Scholarship 2026..."
+  },
+  "expectedLevel": "high",
+  "expectedFlagsIncluded": [
+    "scholarship_fee_demand",
+    "not_on_official_portal"
+  ],
+  "expectedOfficialVerdict": "unverified",
+  "notes": "Government scholarship scam with refundable fee demand; official registry search produces unverified verdict without contradiction."
+}
+```
+
+To validate or execute evaluation cases:
+```bash
+# Validate case files and schema integrity:
+node scripts/evaluate.js --cases tests/eval/cases --validate-only
+
+# Run evaluation cases:
+node scripts/evaluate.js --cases tests/eval/cases
+```
+
 ### Privacy & Retention Verification (L7-G)
 ```bash
 # Verify 24h expiration, image cleanup, PII redaction, and graph persistence:
@@ -220,6 +251,14 @@ Demonstrates complete offline end-to-end opportunity verification across high-ri
 | `npm run privacy:check` | **Offline** | None | None |
 | `npm run secrets:scan` | **Offline** | Local files & `npm audit` | None |
 | `npm run demo` | **Offline** | None | None |
+
+### Pre-Commit Secret Guard
+
+A repository pre-commit hook ([`.githooks/pre-commit`](file:///home/shreyas_95/Documents/PROJECTS/MY%20PROJECTS/DEM/.githooks/pre-commit) + [`scripts/check-secrets.js`](file:///home/shreyas_95/Documents/PROJECTS/MY%20PROJECTS/DEM/scripts/check-secrets.js)) actively prevents committing credentials or sensitive artifacts:
+- Blocks staging of `.env*` live environment files (except templates like `.env.example`).
+- Blocks staging of SQLite database files (`data/app.db`, `*.db`).
+- Inspects added diff lines for API keys (`AIza...`, `sk-...`, `gsk_...`), private keys, and high-entropy secrets assigned to `*_KEY` variables.
+- Repository hooks path is configured via `git config core.hooksPath .githooks`.
 
 ---
 

@@ -1,0 +1,13 @@
+{
+  "id": "case6-screenshot-hidden-fee",
+  "synthetic": true,
+  "input": {
+    "text": "Screenshot of internship offer letter.",
+    "image": "tests/eval/fixtures/screenshot_hidden_fee.png"
+  },
+  "expectedLevel": "medium",
+  "expectedFlagsIncluded": [
+    "fee_demand"
+  ],
+  "notes": "[SYNTHETIC TEST CASE] Screenshot of internship offer containing hidden document processing fee demand in small fine print; expected result at least Medium."
+}

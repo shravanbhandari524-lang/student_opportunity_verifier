@@ -13,11 +13,16 @@ import {
   formatFlagTitle,
   isNearScamWord,
   DisambiguationJudgementsSchema,
+  tokenizeHandle,
+  findMatchingBrand,
+  HIRING_KEYWORDS,
+  buildOsintSummary,
 } from "../lib/agents/reputation-osint.js";
 import { runAgent } from "../lib/agents/base.js";
 import { scoreCase } from "../lib/scoring/score.js";
 import { config as scoringConfig } from "../lib/scoring/config.js";
-import { AgentResultSchema } from "../lib/contracts/agent-result.js";
+import { AgentResultSchema, ActivityEntrySchema } from "../lib/contracts/agent-result.js";
+import { createActivityRecorder } from "../lib/agents/activity.js";
 import { routeMock, validateToolResult } from "./helpers/tool-result-schemas.js";
 
 const run = (snap, deps = {}, opts = {}) => {
@@ -942,7 +947,7 @@ describe("L4 Reputation / OSINT Agent", () => {
 
   // 17. output with scam_reports_found fed to scoreCase gives expected points from config
   test("output with scam_reports_found fed to scoreCase gives expected points from config", async () => {
-    const reportUrl = "https://reddit.com/r/scams/123";
+    const reportUrl = "https://consumercomplaints.in/complaints/123";
     const snap = makeSnapshot({
       entities: [{ kind: "company", value: "ShadyDealings" }],
     });
@@ -1181,6 +1186,595 @@ describe("L4 Reputation / OSINT Agent", () => {
 
       assert.equal(res.status, "ok");
       assert.deepEqual(res.flags, [], "Must not emit scam_reports_found when disambiguation or proximity rejects unrelated hit");
+    });
+  });
+
+  describe("Activity Log and 10 Audit Cases (9 audit cases + handle lookalike)", () => {
+    test("tokenizeHandle splits handles on punctuation, numbers, and camelCase", () => {
+      assert.deepEqual(tokenizeHandle("@GoogleCareers"), ["google", "careers"]);
+      assert.deepEqual(tokenizeHandle("tcs_official_jobs"), ["tcs", "official", "jobs"]);
+      assert.deepEqual(tokenizeHandle("flipkart.hr-recruitment_123"), ["flipkart", "hr", "recruitment"]);
+      assert.deepEqual(tokenizeHandle("@parttime_earn_daily"), ["parttime", "earn", "daily"]);
+    });
+
+    test("findMatchingBrand identifies brand from snapshot company entities and BIG_BRANDS", () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "Acme Innovations Tech Pvt Ltd" }],
+      });
+      assert.equal(findMatchingBrand(["acme", "careers"], snap), "acme");
+      assert.equal(findMatchingBrand(["innovations", "hr"], snap), "innovations");
+      assert.equal(findMatchingBrand(["google", "jobs"], snap), "google"); // via BIG_BRANDS
+      assert.equal(findMatchingBrand(["unrelated", "worker"], snap), null);
+    });
+
+    // 1. Google (Big brand: search step, generic info step, no flag)
+    test("Case 1 (Google): records input, search steps, brand-only info step, no flag", async () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "Google" }],
+      });
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "Google warning: beware of fake recruiters asking for training fees",
+          snippet: "Google warns applicants about scammers using fake Google letters.",
+          url: "https://news.example.com/google-scam-warning",
+        },
+      ]);
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+
+      // Verify activity log entries
+      assert.ok(Array.isArray(res.activity));
+      assert.ok(res.activity.length > 0 && res.activity.length <= 40);
+
+      const inputEntry = res.activity.find((a) => a.type === "input");
+      assert.ok(inputEntry, "Must record input for Google");
+      assert.equal(inputEntry.title, "Company to search: Google");
+
+      const searchEntries = res.activity.filter((a) => a.type === "step" && a.tool === "search");
+      assert.ok(searchEntries.length > 0, "Must record search steps");
+      assert.ok(searchEntries[0].detail.includes("Query:"));
+
+      const infoEntry = res.activity.find((a) => a.type === "step" && a.status === "info");
+      assert.ok(infoEntry, "Must record brand impersonation context info step");
+      assert.ok(infoEntry.detail.includes("General scam warnings exist about people impersonating Google; none mention this specific offer"));
+
+      // Summary check
+      assert.ok(res.summary.includes("no reports specific to this offer"));
+      assert.ok(res.summary.length <= 160);
+    });
+
+    // 2. TCS (Big brand: search step, generic info step, no flag)
+    test("Case 2 (TCS): records input, search steps, brand-only info step, no flag", async () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "TCS" }],
+      });
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "TCS fake job alert notice issued by police",
+          snippet: "Fraudsters pretending to be from TCS targeting engineering graduates.",
+          url: "https://news.example.com/tcs-fake-alert",
+        },
+      ]);
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+      const infoEntry = res.activity.find((a) => a.type === "step" && a.status === "info");
+      assert.ok(infoEntry);
+      assert.ok(infoEntry.detail.includes("TCS"));
+    });
+
+    // 3. Flipkart (Big brand: search step, generic info step, no flag)
+    test("Case 3 (Flipkart): records input, search steps, brand-only info step, no flag", async () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "Flipkart" }],
+      });
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "Flipkart customer scam advisory on fake part-time task jobs",
+          snippet: "Public notice regarding unauthorized fraudsters using the Flipkart name.",
+          url: "https://news.example.com/flipkart-advisory",
+        },
+      ]);
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+      const infoEntry = res.activity.find((a) => a.type === "step" && a.status === "info");
+      assert.ok(infoEntry);
+      assert.ok(infoEntry.detail.includes("Flipkart"));
+    });
+
+    // 4. Unknown Co (Search step, 0 results kept, clean summary)
+    test("Case 4 (Unknown Co): records 0 results kept, no flag, clean not-a-guarantee summary", async () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "XYZ Global Analytics Tech Private Limited" }],
+      });
+      const fakeSearch = makeFakeSearch([]);
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+      const searchSteps = res.activity.filter((a) => a.tool === "search" && a.type === "step");
+      assert.ok(searchSteps.every((s) => s.detail.includes("0 kept after relevance filter")));
+      assert.ok(res.summary.includes("no reports found (not a safety guarantee)"));
+    });
+
+    // 5. Known Scam (National Sports Scholarship Scheme: search step, LLM step, finding with linked sources, scam_reports_found flag)
+    test("Case 5 (Known Scam): records search, disambiguation outcome with linked sources, scam_reports_found flag", async () => {
+      const reportUrl = "https://factcheck.pib.gov.in/sports-scholarship-scam-alert";
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "National Sports Scholarship Scheme" }],
+      });
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "PIB Fact Check: National Sports Scholarship Scheme is fake and fraudulent",
+          snippet: "National Sports Scholarship Scheme fake scholarship asking students 2500 INR registration fee.",
+          url: reportUrl,
+        },
+      ]);
+      const fakeGenerate = async () => ({
+        ok: true,
+        data: {
+          judgements: [
+            {
+              resultUrl: reportUrl,
+              aboutSameEntity: "yes",
+              reason: "Official fact check confirms National Sports Scholarship Scheme is a known scam.",
+            },
+          ],
+        },
+      });
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: fakeSearch,
+        generate: fakeGenerate,
+      });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 1);
+      assert.equal(res.flags[0].id, "scam_reports_found");
+
+      // Verify finding activity entry
+      const findingEntry = res.activity.find((a) => a.type === "finding" && a.flagId === "scam_reports_found");
+      assert.ok(findingEntry, "Must record finding activity entry for scam_reports_found");
+      assert.ok(findingEntry.sources.some((s) => s.url === reportUrl));
+
+      // Verify LLM disambiguation activity entry
+      const llmEntry = res.activity.find((a) => a.tool === "llm" && a.type === "step");
+      assert.ok(llmEntry);
+      assert.ok(llmEntry.title.includes("yes"));
+      assert.ok(llmEntry.sources.some((s) => s.url === reportUrl));
+
+      assert.ok(res.summary.includes("found public scam complaints"));
+    });
+
+    // 6. Suspicious Domain (national-scholarship-gov.in: dork query without -site:, domain filtered in code, activity logged)
+    test("Case 6 (Suspicious Domain): dork executed without -site:, activity logged correctly", async () => {
+      const domain = "national-scholarship-gov.in";
+      const snap = makeSnapshot({
+        entities: [{ kind: "domain", value: domain }],
+      });
+      const executed = [];
+      const fakeSearch = async (query) => {
+        executed.push(query);
+        return {
+          ok: true,
+          data: {
+            query,
+            total: 1,
+            results: [
+              {
+                position: 1,
+                title: "Fake Scholarship Portal national-scholarship-gov.in",
+                snippet: "Self domain page for national-scholarship-gov.in",
+                url: `https://${domain}/index.html`, // Originating from domain -> filtered in code
+              },
+            ],
+          },
+        };
+      };
+
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0); // Filtered out self domain
+      for (const q of executed) {
+        assert.ok(!q.includes("-site:"), "Must not use -site: operator");
+      }
+      assert.ok(res.activity.some((a) => a.type === "input" && a.title.includes(domain)));
+    });
+
+    // 7. Handle benign (@parttime_earn_daily: search step, limit on social profile, manual steps, no lookalike flag)
+    test("Case 7 (Handle benign): search step, social profile limitation, manual steps, no lookalike flag", async () => {
+      const snap = makeSnapshot({
+        entities: [{ kind: "handle", value: "parttime_earn_daily" }],
+      });
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "Profile page parttime_earn_daily",
+          snippet: "Daily updates and earnings.",
+          url: "https://example.com/parttime",
+        },
+      ]);
+      const res = await run(snap, { ...baseMocks, search: fakeSearch });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+
+      // Verify social profile limit
+      const limitEntry = res.activity.find(
+        (a) => a.type === "limit" && a.detail?.includes("Instagram, Facebook and LinkedIn profiles cannot be checked automatically.")
+      );
+      assert.ok(limitEntry, "Must always add limit about social media profiles");
+
+      // Verify manual check step
+      const manualEntry = res.activity.find(
+        (a) => a.type === "manual" && a.detail?.includes("verified badge, account age and first posts")
+      );
+      assert.ok(manualEntry, "Must always add manual check instructions for handles");
+
+      assert.ok(res.summary.includes("could not check the profile itself"));
+    });
+
+    // 8. YouTube URL: unconfigured tool records limit in activity log
+    test("Case 8 (YouTube URL): unconfigured tool records limit cleanly without throwing", async () => {
+      const ytUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+      const snap = makeSnapshot({
+        entities: [{ kind: "youtube_url", value: ytUrl }],
+      });
+      const res = await run(snap, { ...baseMocks, youtubeComments: null });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0);
+
+      const limitEntry = res.activity.find(
+        (a) => a.type === "limit" && a.detail?.includes("YouTube Data API credentials not configured")
+      );
+      assert.ok(limitEntry, "Must record unconfigured YouTube limit");
+      assert.ok(res.summary.includes("video comments could not be inspected"));
+    });
+
+    // 9. Missing Input: Skipped with guidance summary and skipped activity entry
+    test("Case 9 (Missing Input): returns skipped with guidance and valid activity", async () => {
+      const snap = makeSnapshot({ entities: [] });
+      const res = await run(snap, baseMocks);
+
+      assert.equal(res.status, "skipped");
+      assert.equal(res.reason, "no_eligible_entities");
+      assert.ok(res.summary.includes("Check skipped: no_eligible_entities"));
+      assert.ok(Array.isArray(res.activity));
+    });
+
+    // 10. Branded Recruiter Handle Lookalike: emits brand_handle_lookalike (weight 15) with exact summary
+    test("Case 10 (Handle Lookalike): detects brand token and recruitment keyword, emits brand_handle_lookalike", async () => {
+      const snap = makeSnapshot({
+        entities: [
+          { kind: "company", value: "Google" },
+          { kind: "handle", value: "@google_careers_recruitment" },
+        ],
+      });
+
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "Google generic scam warning alert",
+          snippet: "Scammers claiming to be Google recruiters.",
+          url: "https://news.example.com/scam-warn",
+        },
+      ]);
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: fakeSearch,
+      });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 1);
+      assert.equal(res.flags[0].id, "brand_handle_lookalike");
+      assert.equal(res.flags[0].severity, "medium");
+      assert.deepEqual(res.flags[0].evidence, [{ type: "quote", value: "@google_careers_recruitment" }]);
+
+      // Verify scoreCase contributes 15 points
+      const scoreRes = scoreCase({ findings: [res] }, scoringConfig);
+      const flagPoint = scoreRes.flagPoints.find((fp) => fp.id === "brand_handle_lookalike");
+      assert.ok(flagPoint, "brand_handle_lookalike must appear in scoreCase flagPoints");
+      assert.equal(flagPoint.points, 15, "brand_handle_lookalike must have weight 15");
+
+      // Verify activity log
+      const findingEntry = res.activity.find((a) => a.type === "finding" && a.flagId === "brand_handle_lookalike");
+      assert.ok(findingEntry, "Must record finding for brand_handle_lookalike");
+
+      const limitEntry = res.activity.find((a) => a.type === "limit" && a.detail?.includes("Instagram, Facebook and LinkedIn"));
+      assert.ok(limitEntry, "Must record social platform limit");
+
+      const manualEntry = res.activity.find((a) => a.type === "manual" && a.detail?.includes("verified badge"));
+      assert.ok(manualEntry, "Must record manual handle check");
+
+      // Verify summary matches user specification within 160-char contract limit:
+      // "Searched web for the company and 1 handle: no reports specific to this offer; handle looks like a branded recruiter account; could not check the profile itself."
+      const expectedSummary =
+        "Searched web for the company and 1 handle: no reports specific to this offer; handle looks like a branded recruiter account; could not check the profile itself.";
+      assert.equal(res.summary, expectedSummary);
+      assert.ok(res.summary.length <= 160);
+
+      // Verify all activity entries validate against schema
+      for (const entry of res.activity) {
+        assert.doesNotThrow(() => ActivityEntrySchema.parse(entry));
+      }
+    });
+
+    test("injected deps.activity receives live entries and forwards events", async () => {
+      const forwardedEvents = [];
+      const recorder = createActivityRecorder({
+        agent: NAME,
+        round: 1,
+        onEvent: (evt) => forwardedEvents.push(evt),
+      });
+
+      const snap = makeSnapshot({
+        entities: [{ kind: "company", value: "AcmeCorp" }],
+      });
+
+      const res = await run(snap, {
+        ...baseMocks,
+        activity: recorder,
+      });
+
+      assert.equal(res.status, "ok");
+      assert.ok(forwardedEvents.length > 0, "onEvent must have received live activity events");
+      assert.equal(forwardedEvents[0].type, "activity");
+      assert.equal(forwardedEvents[0].agent, NAME);
+      assert.equal(res.activity.length, forwardedEvents.length);
+    });
+
+    test("Requirement 4: scheme entity queries exact scheme name and relevance filter drops generic gov scams", async () => {
+      const snap = makeSnapshot({
+        text: "National Student Digital Empowerment Scholarship 2026 under Department of Higher Education",
+        entities: [
+          { kind: "company", value: "Government of India", orgType: "government" },
+          { kind: "company", value: "Department of Higher Education", orgType: "government" },
+          { kind: "scheme", value: "National Student Digital Empowerment Scholarship 2026" },
+        ],
+      });
+
+      const queriesRun = [];
+      const fakeSearch = async (query) => {
+        queriesRun.push(query);
+        return {
+          ok: true,
+          data: {
+            query,
+            total: 2,
+            results: [
+              {
+                position: 1,
+                title: "Generic Warning: Scammers impersonating Government of India online",
+                url: "https://news.example.com/scam-alert",
+                snippet: "Beware of fraudsters using government logos to steal money.",
+              },
+              {
+                position: 2,
+                title: "Fake circular debunked: National Student Digital Empowerment Scholarship 2026",
+                url: "https://pib.gov.in/factcheck/scholarship-fake",
+                snippet: "A fake notice regarding National Student Digital Empowerment Scholarship 2026 asking for deposit is fraud.",
+              },
+            ],
+          },
+        };
+      };
+
+      const mockGenerate = async () => ({
+        ok: true,
+        data: {
+          judgements: [
+            {
+              resultUrl: "https://pib.gov.in/factcheck/scholarship-fake",
+              aboutSameEntity: "yes",
+              reason: "Directly discusses the exact scholarship scheme",
+            },
+          ],
+        },
+      });
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: fakeSearch,
+        generate: mockGenerate,
+      });
+
+      assert.equal(res.status, "ok");
+      // Government of India standalone query must NOT be run
+      assert.ok(!queriesRun.some((q) => q.includes("Government of India scam")));
+      // Scheme exact name query must be run
+      assert.ok(
+        queriesRun.some((q) =>
+          q.includes('"National Student Digital Empowerment Scholarship 2026"') &&
+          q.includes("fake OR scam OR fraud")
+        ),
+        "Must query exact scheme name with fake/scam/fraud/PIB"
+      );
+
+      // Trustpilot review search must NOT be added for government bodies
+      assert.ok(!res.manualChecks.some((m) => m.url.includes("trustpilot.com/search?query=Government")));
+
+      // The generic gov scam article was dropped to context notes, only the specific one kept
+      assert.equal(res.flags.length, 1);
+      assert.equal(res.flags[0].id, "scam_reports_found");
+      assert.equal(res.flags[0].evidence[0].value, "https://pib.gov.in/factcheck/scholarship-fake");
+
+      // Activity shows queries, results returned, kept vs dropped
+      const searchActivity = res.activity.find((a) => a.title === "Web intelligence search");
+      assert.ok(searchActivity);
+      assert.ok(searchActivity.detail.includes("2 result(s) returned"));
+      assert.ok(searchActivity.detail.includes("1 kept after relevance filter"));
+      assert.ok(searchActivity.detail.includes("1 dropped"));
+    });
+
+    test("Requirement 4: overall 18s budget timeout marks unfinished items as unchecked", async () => {
+      const snap = makeSnapshot({
+        entities: [
+          { kind: "domain", value: "first-portal.com" },
+          { kind: "domain", value: "second-portal.com" },
+        ],
+      });
+
+      let simulatedTime = 1000;
+      const fakeNow = () => {
+        const t = simulatedTime;
+        simulatedTime += 10000; // each call advances time by 10s (exceeds 18s after 2nd check)
+        return t;
+      };
+
+      const fakeSearch = async (query) => ({
+        ok: true,
+        data: { query, total: 0, results: [] },
+      });
+
+      const res = await run(snap, {
+        ...baseMocks,
+        now: fakeNow,
+        search: fakeSearch,
+      });
+
+      assert.equal(res.status, "ok");
+      assert.ok(res.unchecked.length > 0, "Unfinished items must be listed in unchecked");
+      assert.ok(res.unchecked[0].includes("time budget reached"));
+      assert.ok(res.activity.some((a) => a.type === "limit" && a.title.includes("OSINT time limit reached")));
+    });
+
+    test("Requirement 4: 5 OSINT result states, mapping search_unavailable and search_timed_out to unchecked", async () => {
+      // 1. search_timed_out mapping to unchecked when another item succeeds
+      const snapTimeout = makeSnapshot({
+        entities: [
+          { kind: "company", value: "SuccessCorp" },
+          { kind: "company", value: "TimeoutCorp" },
+        ],
+      });
+      const timeoutSearch = async (q) => {
+        if (q.includes("TimeoutCorp")) {
+          return { ok: false, error: { code: "TIMEOUT", message: "timed out" } };
+        }
+        return { ok: true, data: { query: q, total: 0, results: [] } };
+      };
+      const resTimeout = await run(snapTimeout, { ...baseMocks, search: timeoutSearch });
+      assert.equal(resTimeout.status, "ok");
+      assert.ok(resTimeout.unchecked.some((u) => u.includes("TimeoutCorp: search_timed_out")));
+      const timeoutStatus = resTimeout.entityStatus.find((es) => es.entityValue === "TimeoutCorp");
+      assert.equal(timeoutStatus.status, "could_not_check");
+      assert.equal(timeoutStatus.reason, "search_timed_out");
+      assert.ok(resTimeout.activity.some((a) => typeof a.detail === "string" && a.detail.includes("OSINT status: search_timed_out")));
+
+      // 2. supporting_evidence_found
+      const snapSupport = makeSnapshot({
+        entities: [{ kind: "domain", value: "scholarships.gov.in" }],
+      });
+      const supportSearch = async () => ({
+        ok: true,
+        data: {
+          query: "test",
+          total: 1,
+          results: [
+            {
+              position: 1,
+              title: "National Scholarship Portal",
+              url: "https://scholarships.gov.in/portal",
+              snippet: "Official scholarship portal",
+            },
+          ],
+        },
+      });
+      const resSupport = await run(snapSupport, { ...baseMocks, search: supportSearch });
+      assert.equal(resSupport.status, "ok");
+      assert.ok(resSupport.summary.includes("supporting evidence found"));
+      const supportStatus = resSupport.entityStatus.find((es) => es.entityValue === "scholarships.gov.in");
+      assert.equal(supportStatus.status, "unverified");
+      assert.ok(supportStatus.reason.includes("never presented as proof of legitimacy"));
+      assert.ok(resSupport.activity.some((a) => typeof a.detail === "string" && a.detail.includes("OSINT status: supporting_evidence_found")));
+    });
+
+    test("Official bodies & portals guard: NSP advisory does not raise scam_reports_found (case2)", async () => {
+      const snap = makeSnapshot({
+        entities: [
+          { kind: "company", value: "National Scholarship Portal" },
+          { kind: "domain", value: "scholarships.gov.in" },
+        ],
+      });
+
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "PIB warns students against fake websites resembling National Scholarship Portal scam",
+          snippet: "Fraudulent portals are charging money claiming to be National Scholarship Portal. Beware of fake sites.",
+          url: "https://pib.gov.in/PressReleasePage.aspx?PRID=1800000",
+        },
+      ]);
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: fakeSearch,
+        generate: async () => ({
+          ok: true,
+          data: {
+            judgements: [
+              {
+                resultUrl: "https://pib.gov.in/PressReleasePage.aspx?PRID=1800000",
+                aboutSameEntity: "yes",
+                reason: "Article discusses National Scholarship Portal scams",
+              },
+            ],
+          },
+        }),
+      });
+
+      assert.equal(res.status, "ok");
+      assert.equal(res.flags.length, 0, "Must not emit scam_reports_found for official portal advisory");
+      assert.ok(
+        (typeof res.notes === "string" && res.notes.includes("National Scholarship Portal")) ||
+          res.trace.some((t) => t.item?.includes("official_context")),
+        "Advisory must be recorded in context notes or trace"
+      );
+    });
+
+    test("Official bodies & portals guard: specific suspicious identifier allows scam_reports_found (case3)", async () => {
+      const reportUrl = "https://complaint-portal.org/reports/tcs-fake-scam";
+      const snap = makeSnapshot({
+        entities: [
+          { kind: "company", value: "Tata Consultancy Services" },
+          { kind: "domain", value: "tcs-careers-india.in" },
+          { kind: "upi", value: "tcs.recruitment.desk@oksbi" },
+        ],
+      });
+
+      const fakeSearch = makeFakeSearch([
+        {
+          title: "TCS fake job complaint on tcs-careers-india.in",
+          snippet: "Students cheated by transferring fee to tcs.recruitment.desk@oksbi on lookalike domain tcs-careers-india.in. Definite scam.",
+          url: reportUrl,
+        },
+      ]);
+
+      const res = await run(snap, {
+        ...baseMocks,
+        search: fakeSearch,
+        generate: async () => ({
+          ok: true,
+          data: {
+            judgements: [
+              {
+                resultUrl: reportUrl,
+                aboutSameEntity: "yes",
+                reason: "Direct scam report mentioning tcs.recruitment.desk@oksbi",
+              },
+            ],
+          },
+        }),
+      });
+
+      assert.equal(res.status, "ok");
+      const flag = res.flags.find((f) => f.id === "scam_reports_found");
+      assert.ok(flag, "Must emit scam_reports_found when specific suspicious identifier is present");
+      assert.ok(flag.evidence.some((e) => e.value === reportUrl));
     });
   });
 });

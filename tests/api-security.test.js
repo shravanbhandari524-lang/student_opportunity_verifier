@@ -27,14 +27,12 @@ const TEST_DB_PATH = "./data/test_security.db";
 const TEST_UPLOADS_DIR = "./test_security_uploads";
 
 function setupSecurityTestEnvironment() {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
   if (fs.existsSync(TEST_UPLOADS_DIR)) {
     fs.rmSync(TEST_UPLOADS_DIR, { recursive: true, force: true });
   }
   fs.mkdirSync(TEST_UPLOADS_DIR, { recursive: true });
 
-  const db = new Database(TEST_DB_PATH);
-  db.pragma("journal_mode = WAL");
+  const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   runMigrations(db);
 

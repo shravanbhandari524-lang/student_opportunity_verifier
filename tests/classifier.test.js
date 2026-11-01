@@ -19,9 +19,16 @@ process.env.LLM_MODEL ??= "gemini-3.5-flash-lite";
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { classifyText, classifierHealth } from "../lib/classifier.js";
+import { classifyText, classifierHealth, filterPlaceholderTokens } from "../lib/classifier.js";
+import { createActivityRecorder } from "../lib/agents/activity.js";
 
 describe("lib/classifier.js", () => {
+  test("filterPlaceholderTokens removes normalization tokens and placeholders", () => {
+    const rawTerms = ["<AMT>", "fee", "<URL>", "deposit", "<PHONE>", "registration", "<EMAIL>", "<NUM>", "amt", "upi", "urgent"];
+    const filtered = filterPlaceholderTokens(rawTerms);
+    assert.deepEqual(filtered, ["fee", "deposit", "registration", "urgent"]);
+  });
+
   test("returns INVALID_INPUT when text is empty or whitespace", async () => {
     const res = await classifyText("   ");
     assert.equal(res.ok, false);
@@ -153,5 +160,35 @@ describe("lib/classifier.js", () => {
     });
     assert.equal(failHealth.ok, false);
     assert.equal(failHealth.error.code, "UPSTREAM_ERROR");
+  });
+
+  test("classifyText attaches durationMs and logs to activity recorder if provided", async () => {
+    const recorder = createActivityRecorder({ agent: "test_classifier" });
+    const mockFetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        probability: 0.88,
+        label: "suspicious",
+        topTerms: ["<AMT>", "deposit", "telegram"],
+        scamType: "recruitment_fraud",
+      }),
+    });
+
+    const res = await classifyText("Pay deposit on telegram", {
+      fetchFn: mockFetch,
+      recorder,
+    });
+
+    assert.equal(res.ok, true);
+    assert.equal(typeof res.durationMs, "number");
+    assert.deepEqual(res.data.topTerms, ["deposit", "telegram"], "Placeholder <AMT> stripped");
+
+    const entries = recorder.getEntries();
+    assert.ok(entries.length >= 1);
+    assert.equal(entries[0].tool, "classifier");
+    assert.equal(entries[0].status, "ok");
+    assert.ok(entries[0].detail.includes("88% scam probability"));
+    assert.ok(entries[0].detail.includes("deposit, telegram"));
   });
 });

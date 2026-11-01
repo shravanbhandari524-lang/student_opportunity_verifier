@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:all": "node scripts/dev-all.js",
+    "classifier:train": "services/classifier/.venv/bin/python services/classifier/train.py",
     "classifier:dev": "services/classifier/.venv/bin/python -m uvicorn services.classifier.app:app --host 127.0.0.1 --port 8000",
     "build": "next build",
     "start": "next start",
@@ -35,6 +36,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.35.5",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -222,40 +222,68 @@ Owns the case file. Runs extraction, then rounds: it evaluates which agents can 
 - **Reporting:** precision, recall and F1 on the test split, a confusion matrix, and a list of failure cases shown honestly in the presentation.
 - **Role in the product:** one input to the score. It does not override evidence from agents.
 
-## 10. Scoring engine
+## 10. Scoring engine and evidence ledger
 
-Plain code, fully explainable. Configured via `lib/scoring/config.js` with weights tuned against the test set. Scoring is a pure function performing zero file I/O or network requests.
+Plain code, fully explainable. Built on an evidence ledger (`lib/evidence/ledger.js`) derived from sanitized agent results, and configured via `lib/scoring/config.js` with weights tuned against the test set. Scoring is a pure function performing zero file I/O or network requests.
 
 ### 10.1 Algorithm
-1. **Eligible agents:** Results with status `ok` or `could_not_check`. Skipped agents are not eligible and not counted. Each `(agent, round)` counts once. If there are zero eligible agents, the outcome is `cannot_verify` with `low` confidence and reason code `no_eligible_agents`.
-2. **Flag points, groups, and caps:** Collect flags only from `ok` results, deduplicated by flag id. Weights come from `config.flagWeights[id]`, falling back to `config.severityWeights[severity]` if missing.
+1. **Evidence ledger reconciliation:** Sanitized agent results are transformed into structured ledger entries `{ id, agent, round, kind, flagId, claimKey, quoteOrUrl, evidenceType, verificationStatus, confidence, supportingSource, timestamp }`. A pure `reconcile(ledger)` step detects:
+   - Duplicates: identical `claimKey` with overlapping evidence across agents.
+   - Corroboration: independent methods supporting the same claim (e.g. LLM quote from text plus a search result or payment demand analysis).
+   - Contradictions: classifier low vs rule/LLM finding of a fee; official verified vs warning; official-domain curated list vs mismatch flag. Contradictions do not alter the score but are surfaced in the report under "Where the checks disagreed".
+2. **Evidence coverage computation:** Compute which of 5 independent signal types were successfully checked (`status === "ok"`):
+   - `message`: Message & Offer text analysis completed.
+   - `payee`: Payment & UPI verification completed (UPI, phone, or bank details checked).
+   - `website`: Domain & Web forensics completed (domain age, DNS, SSL, web presence).
+   - `official`: Official Registry / government portal verification completed.
+   - `reputation`: Community complaints and OSINT search completed.
+   Returns `coverage: { checked: string[], notChecked: string[] }` containing the checked and not-checked signal types.
+3. **Eligible agents:** Results with status `ok` or `could_not_check`. Skipped agents are not eligible and not counted. Each `(agent, round)` counts once. If there are zero eligible agents, the outcome is `cannot_verify` with `low` confidence and reason code `no_eligible_agents`.
+4. **Ledger-backed flag points, groups, and caps:** Collect flags only from `ok` results, mapped to normalized `claimKey`s. Each `claimKey` counts once at its highest weight (no double counting). Weights come from `config.flagWeights[id]`, falling back to `config.severityWeights[severity]` if missing.
    - **Fee group (D1):** `scholarship_fee_demand` and `fee_demand` form group `fee`. Only the highest weight among present members counts toward points; others are suppressed (0 points, status `group_suppressed`). The `scholarship_fee_demand` hard rule still triggers on its own flag id.
    - **Fee / Equipment mutual exclusion group:** `fee_demand` and `equipment_advance` form exclusion group `fee_equipment`. Only the highest-weight flag from this group counts; others are suppressed (0 points, status `group_suppressed`), and `rulesFired` records `"exclusion:fee_equipment"`.
    - **Correlation groups (per-group cap of 20 points):**
      - `hiring_process`: `chat_only_interview`, `no_interview_selection`, and `candidate_picks_hours` form group `hiring_process`. Their combined contribution is capped at 20 points; when the cap is applied, `rulesFired` records `"correlation_cap:hiring_process"`.
      - `pay`: `pay_too_high` and `unusual_pay_schedule` form group `pay`. Their combined contribution is capped at 20 points; when the cap is applied, `rulesFired` records `"correlation_cap:pay"`.
-   - **Soft-flag cap (45 points):** Total points from all `low` and `medium` severity flags combined (after correlation caps) is capped at **45 points**. When applied, `rulesFired` records `"soft_flag_cap_applied"`.
+   - **Corroboration bonus:** When independent methods corroborate a claim (e.g. text quote and search result both pointing to scam complaints or fee demands), a configurable bonus is added (default +5 points, capped at +10 points across the check). Recorded in `rulesFired` as `"corroboration_bonus"`.
+   - **Soft-flag cap (45 points):** Total points from all `low` and `medium` severity flags combined (after correlation caps and corroboration bonuses) is capped at **45 points**. When applied, `rulesFired` records `"soft_flag_cap_applied"`.
    - **No-high-evidence cap (59 points):** If the result has no high-severity flag, no hard rule, and no graph match, the final score (flags plus classifier) is capped at **59**. When this cap applies, `rulesFired` records `"no_high_evidence_cap"`. This ensures that for any `classifierMaxPoints` value (10 or 25), soft flags plus classifier points can never reach 60 (the High threshold) without high-severity corroboration.
-3. **Classifier scaling (D4):** Scoring takes `classifierMaxPoints` as an input parameter (default 25; 10 when provenance is synthetic or real test rows < 60). When `classifier_client` returns status `ok` with `classifierResult`, points are calculated explicitly as:
+5. **Classifier scaling and non-override invariant (D4):** Scoring takes `classifierMaxPoints` as an input parameter (default 25; 10 when provenance is synthetic or real test rows < 60). When `classifier_client` returns status `ok` with `classifierResult`, points are calculated explicitly as:
    `classifierPoints = Math.round(classifierMaxPoints * Math.max(0, (probability - 0.5) / 0.5))`
    Scaling linearly from 0 at p=0.5 to `classifierMaxPoints` at p=1.0. If no `ok` classifier result exists, classifier points are 0.
-   Raw score is clamped: `score = Math.min(100, Math.max(0, Math.round(sum of flag points + classifierPoints)))`.
+   **Non-override invariant:** The classifier never lowers the score and never overrides evidence established by agents or hard rules.
+   Raw score is clamped: `score = Math.min(100, Math.max(0, Math.round(sum of flag points + corroborationBonus + classifierPoints)))`.
    If no high-severity flag, hard rule, or graph match is present, the final score is capped at 59 (`score = Math.min(score, 59)`), and `rulesFired` records `"no_high_evidence_cap"` if the raw score exceeded 59.
-4. **Hard rules (D5):** `scholarship_fee_demand`, `mule_account_request`, and `graph_match` (from `ok` results). If any hard rule fires:
+6. **Hard rules (D5):** `scholarship_fee_demand`, `mule_account_request`, and `graph_match` (from `ok` results). If any hard rule fires:
    - Risk level is forced to `high`.
    - Score floor is raised to the high threshold: `score = Math.max(score, config.thresholds.high)` (60 by default).
    - Rules that fired are recorded in `rulesFired`.
    - `cannot_verify` is never applied.
-5. **Thresholds:** If no hard rule fired:
-   - Below 25: `low`.
-   - 25 up to below 60: `medium`.
-   - 60 and above: `high`.
-6. **Cannot verify rule:** If fewer than 40% of eligible checks completed (`completedCount / eligibleCount < 0.40`) AND score is below 60 AND no hard rule fired, the risk level is `cannot_verify`.
-7. **Critical agents rule (default: `message_analyst`):** If a critical agent was eligible and has no ok result in any round, the level can never be low. A would-be low becomes cannot_verify with low confidence and reason code critical_agent_failed. A medium or high level is kept (more suspicious evidence is never downgraded). Skipped critical agents (no message text) are not failures.
-8. **Confidence and confidence cap (D2):**
-   - Base confidence is the share of eligible checks that completed: `>= 0.80` is `high`, `>= 0.50` is `medium`, otherwise `low`.
-   - **Cap:** Confidence is capped at `medium` unless at least one external-evidence agent (`website_forensics`, `official_verifier`, `reputation_osint`, `payment_entity`) completed with status `ok`. A text-only Low result stays Low; the cap only affects confidence.
-   - If the final level is `cannot_verify`, confidence is `low`.
+7. **Big Brand or Institution without Official Channel Rule:**
+   If the check claims a known major organization or brand (e.g. Google, TCS, Infosys, Microsoft, Amazon, Government ministries, or known scheme) and NO official channel is supplied or verified (no official corporate/portal domain present, contact is a personal UPI ID, social handle, free-mail address, or chat app only), the level is forced to at least `medium` (score raised to at least 25 if below), and `rulesFired` records `"big_brand_no_official_channel"`.
+8. **High & Medium Flag Baselines:**
+   - Any high-severity flag forces the risk level to at least `medium`.
+   - Any medium-severity flag with no positive verified signal forces the risk level to at least `medium`, even if the numeric score is below 25.
+9. **Low Risk Strict Gate (Low allowed ONLY when ALL hold):**
+   A check is classified as `low` only when ALL of the following hold:
+   - No flag of severity `medium` or `high` is present.
+   - At least 2 independent signal types were checked successfully (`coverage.checked.length >= 2`).
+   - At least one positive verified signal exists (e.g. official domain matched claimed company, valid established domain, known official source) OR at least 3 eligible checks completed with no flags.
+10. **Thin Coverage Rule (Cannot Verify):**
+   If no flags are found but evidence coverage is thin (fewer than 2 signal types checked), the risk level is `cannot_verify` with reason `"thin_coverage"` and plain-language explanation ("Insufficient evidence coverage: fewer than 2 signal types could be checked").
+11. **Cannot Verify Completeness Rule:**
+   If fewer than 40% of eligible checks completed (`completedCount / eligibleCount < 0.40`) AND score is below 60 AND no hard rule fired, the risk level is `cannot_verify`.
+12. **Critical agents rule (default: `message_analyst`):**
+   If a critical agent was eligible and has no `ok` result in any round, the level can never be low. A would-be low becomes `cannot_verify` with low confidence and reason code `critical_agent_failed`. A medium or high level is kept. Skipped critical agents (no message text) are not failures.
+13. **Coverage-Based Confidence:**
+   Confidence is determined by evidence coverage and completion health:
+   - `high`: At least 4 signal types checked (`coverage.checked.length >= 4`) AND no critical agent failed AND eligible completion ratio `>= 0.80`.
+   - `medium`: 2 to 3 signal types checked (`coverage.checked.length >= 2`) AND eligible completion ratio `>= 0.50`.
+   - `low`: Fewer than 2 signal types checked (`coverage.checked.length < 2`), OR completion ratio `< 0.50`, OR final risk level is `cannot_verify`.
+   - Skipped agents never lower confidence; failed eligible agents lower confidence.
+   - Hard rules yielding High with thin evidence still yield High.
+14. **Plain Language Explanations:** Every outcome lists the exact rules that fired in plain human-readable language in `rulesFired`.
+15. **Traceability:** Every flag in the report is traceable to an evidence ledger entry (`evidenceId`, `sourceAgent`, `quoteOrLink`).
 
 ### 10.2 Weight Table
 - **High flags (17):**
@@ -311,15 +339,28 @@ The report returned by `GET /checks/:id/report` contains these fields:
 | scamTypeGuess | scholarship, internship, task job, mule offer, competition, overseas agent or unknown |
 | summary | Plain-language summary in the chosen language |
 | flags | List of flags, each with title, severity, explanation and evidence (quote or source link) |
-| verified | Things that checked out (for example valid SSL) |
+| verified | Things that checked out (for example valid SSL or official domain match) |
 | couldNotCheck | Checks that failed or timed out. Checks that did not apply (skipped) are listed separately as not applicable |
+| notApplicable | Checks that did not apply given the supplied inputs |
+| coverage | Evidence coverage `{ checked: string[], notChecked: string[] }` detailing signal types checked and not checked |
+| improveCheck | Actionable list of inputs the user can add to strengthen the check (link, UPI ID, recruiter email, handle, official website) |
 | checklist | What to verify next, step by step |
+| entityChecks | "Entities and what was checked" table: (entity, agent, status, reason) covering every confirmed entity |
+| whereDisagreed | Plain-language notes where specialists, rules, or the ML model differed |
 | actions | Buttons to show: college email, fraud help |
-| disclaimer | Risk assessment based on public information, not a legal verdict |
+| disclaimer | Risk assessment based on public information, not a legal verdict. "Nothing found is not the same as safe." |
 
-Report page sections: risk badge with confidence, summary, flag cards (each expandable with sources), what we could not check, the "what to verify next" checklist, action buttons, feedback buttons, disclaimer.
+Report page sections:
+1. Risk badge with confidence banner and plain explanation of rules that fired.
+2. Evidence Coverage Card: "What we looked at / What we could not look at / Add this to get a stronger result" displaying `coverage.checked`, `coverage.notChecked`, and `improveCheck`.
+3. Narrative summary (bilingual: English / Hindi).
+4. Flag cards (each expandable with sources and evidence quotes).
+5. What we could not check and where checks disagreed.
+6. "Entities and what was checked" verification table.
+7. Action checklist ("What to Verify Next") with interactive checkboxes and copy button.
+8. Action buttons (College Email, Fraud Help), feedback, and safety disclaimer ("Nothing found is not the same as safe").
 
-The report writer must only use evidence supplied by the agents. If the evidence is thin, it says so.
+The report writer must only use evidence supplied by the agents. If the evidence is thin, it explicitly states so.
 For `medium` risk results, the report writer must use neutral, objective wording ("some warning signs, verify these items") and never use accusatory phrases like "likely scam".
 
 ## 12. Scam intelligence graph

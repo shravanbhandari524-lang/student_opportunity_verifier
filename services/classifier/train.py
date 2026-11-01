@@ -17,6 +17,7 @@ Trains Opportunity Verifier text classifier with:
 """
 
 import os
+import sys
 import csv
 import re
 import json
@@ -24,9 +25,13 @@ import time
 import joblib
 import numpy as np
 
+# Ensure project root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.metrics import (
     classification_report,
@@ -94,11 +99,17 @@ def build_unified_groups(rows: list) -> list:
 
 
 def load_dataset_records(data_dir: str):
-    """Load training records from maindataset.csv, falling back to dataset.csv."""
+    """Load training records from final_train.csv, falling back to maindataset.csv or dataset.csv."""
+    final_path = os.path.join(data_dir, "final_train.csv")
     main_path = os.path.join(data_dir, "maindataset.csv")
     fallback_path = os.path.join(data_dir, "dataset.csv")
 
-    chosen_path = main_path if os.path.exists(main_path) else fallback_path
+    if os.path.exists(final_path):
+        chosen_path = final_path
+    elif os.path.exists(main_path):
+        chosen_path = main_path
+    else:
+        chosen_path = fallback_path
     print(f"Loading classifier training dataset from: {chosen_path}")
 
     records = []
@@ -114,6 +125,8 @@ def load_dataset_records(data_dir: str):
             pid = row.get("pair_id", "").strip() or extract_pair_id(notes)
             gid = row.get("group_id", "").strip()
             src = row.get("source_type", "").strip().lower() or "synthetic"
+            fam = row.get("source_family", "MAIN").strip() or "MAIN"
+            src_file = row.get("source_file", os.path.basename(chosen_path)).strip()
 
             records.append({
                 "line": line_num,
@@ -122,6 +135,8 @@ def load_dataset_records(data_dir: str):
                 "normalized_text": normalize_text(raw_text),
                 "label": label,
                 "source_type": src,
+                "source_family": fam,
+                "source_file": src_file,
                 "group_id": gid,
                 "pair_id": pid,
                 "notes": notes,
@@ -282,6 +297,61 @@ def evaluate_real_test_set(model, data_dir: str):
     return real_test_metrics
 
 
+def evaluate_formal_held_out(model, data_dir: str):
+    """Evaluates the model on formal_held_out_eval.csv (30 formal scams, 30 formal genuine notices)."""
+    formal_path = os.path.join(data_dir, "formal_held_out_eval.csv")
+    if not os.path.exists(formal_path):
+        return None
+
+    rows = []
+    with open(formal_path, "r", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            rows.append(r)
+
+    norm_texts = [normalize_text(r["text"]) for r in rows]
+    y_true = [r["label"] for r in rows]
+    y_pred = model.predict(norm_texts)
+
+    target_names = ["benign", "suspicious"]
+    cm = confusion_matrix(y_true, y_pred, labels=target_names).tolist()
+
+    tp = sum(1 for yt, yp in zip(y_true, y_pred) if yt == "suspicious" and yp == "suspicious")
+    tn = sum(1 for yt, yp in zip(y_true, y_pred) if yt == "benign" and yp == "benign")
+    fp = sum(1 for yt, yp in zip(y_true, y_pred) if yt == "benign" and yp == "suspicious")
+    fn = sum(1 for yt, yp in zip(y_true, y_pred) if yt == "suspicious" and yp == "benign")
+
+    print("\n=== Formal Held-Out Evaluation (60 independent rows) ===")
+    print(f"Total Evaluated: {len(rows)} (30 benign, 30 suspicious)")
+    print(f"True Positives:  {tp:2d} / 30")
+    print(f"True Negatives:  {tn:2d} / 30")
+    print(f"False Positives: {fp:2d} / 30")
+    print(f"False Negatives: {fn:2d} / 30")
+    print(f"Confusion Matrix: {cm}")
+
+    fps = [(r["id"], r["text"]) for r, yt, yp in zip(rows, y_true, y_pred) if yt == "benign" and yp == "suspicious"]
+    fns = [(r["id"], r["text"]) for r, yt, yp in zip(rows, y_true, y_pred) if yt == "suspicious" and yp == "benign"]
+
+    if fps:
+        print("\nFalse Positives (Formal Genuine marked as Suspicious):")
+        for rid, txt in fps:
+            print(f"  [{rid}]: {txt[:90]}...")
+    if fns:
+        print("\nFalse Negatives (Formal Scam marked as Benign):")
+        for rid, txt in fns:
+            print(f"  [{rid}]: {txt[:90]}...")
+
+    return {
+        "provenance": "synthetic, author-written, not evidence of accuracy",
+        "note": "synthetic, author-written, not evidence of accuracy",
+        "total": len(rows),
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "confusion_matrix": cm,
+    }
+
+
 def load_extra_training_data(data_dir: str, main_normalized_texts: set, real_test_path: str):
     """Load optional real_train_extra.csv.
     
@@ -367,14 +437,34 @@ def train():
     real_test_path = os.path.join(data_dir, "real_test.csv")
 
     source_path, records = load_dataset_records(data_dir)
-    for r in records:
-        r["sample_weight"] = 1.0
-
     # Optional Extra Training Data (real_train_extra.csv)
     main_normalized_texts = set(r["normalized_text"] for r in records)
     extra_records = load_extra_training_data(data_dir, main_normalized_texts, real_test_path)
     if extra_records:
         records.extend(extra_records)
+
+    # Compute balanced source family weights with 30% cap
+    family_weights = {"benign": {}, "suspicious": {}}
+    for r in records:
+        lbl = r["label"]
+        fam = r.get("source_family", "MAIN")
+        src_type = r.get("source_type", "synthetic")
+        w = 2.0 if src_type == "real_advisory" else (0.5 if fam == "MAIN" else 1.0)
+        family_weights[lbl][fam] = family_weights[lbl].get(fam, 0.0) + w
+
+    sample_weights = np.zeros(len(records))
+    for lbl in ("benign", "suspicious"):
+        tot = sum(family_weights[lbl].values())
+        cap = 0.30 * tot
+        scale_map = {}
+        for fam, raw_w in family_weights[lbl].items():
+            scale_map[fam] = min(raw_w, cap) / raw_w if raw_w > 0 else 1.0
+        for i, r in enumerate(records):
+            if r["label"] == lbl:
+                fam = r.get("source_family", "MAIN")
+                src_type = r.get("source_type", "synthetic")
+                base_w = 2.0 if src_type == "real_advisory" else (0.5 if fam == "MAIN" else 1.0)
+                sample_weights[i] = base_w * scale_map.get(fam, 1.0)
 
     print(f"Total training dataset: {len(records)} records (suspicious: {sum(1 for r in records if r['label'] == 'suspicious')}, benign: {sum(1 for r in records if r['label'] == 'benign')})")
 
@@ -420,22 +510,21 @@ def train():
         pid_overlap = train_pid_set.intersection(val_pid_set)
         assert len(pid_overlap) == 0, f"Fold {fold}: pair_id overlap between train and val: {pid_overlap}"
 
-        fold_pipe = Pipeline([
-            ("features", FeatureUnion([
-                ("word", TfidfVectorizer(ngram_range=(1, 2), analyzer="word", sublinear_tf=True, min_df=1, lowercase=True)),
-                ("char", TfidfVectorizer(ngram_range=(2, 5), analyzer="char", sublinear_tf=True, min_df=1, lowercase=True))
-            ])),
-            ("clf", LogisticRegression(random_state=RANDOM_SEED, C=1.0, class_weight="balanced", max_iter=500))
+        fold_features = FeatureUnion([
+            ("word", TfidfVectorizer(ngram_range=(1, 2), analyzer="word", sublinear_tf=True, min_df=1, lowercase=True)),
+            ("char", TfidfVectorizer(ngram_range=(2, 5), analyzer="char", sublinear_tf=True, min_df=1, lowercase=True))
         ])
 
-        X_train_f = [norm_texts[i] for i in train_idx]
+        X_train_f = fold_features.fit_transform([norm_texts[i] for i in train_idx])
         y_train_f = [labels[i] for i in train_idx]
         w_train_f = sample_weights[train_idx]
-        X_val_f = [norm_texts[i] for i in val_idx]
+        X_val_f = fold_features.transform([norm_texts[i] for i in val_idx])
         y_val_f = [labels[i] for i in val_idx]
 
-        fold_pipe.fit(X_train_f, y_train_f, clf__sample_weight=w_train_f)
-        val_preds = fold_pipe.predict(X_val_f)
+        base_lr = LogisticRegression(random_state=RANDOM_SEED, C=1.0, class_weight="balanced", max_iter=500)
+        calibrated_fold = CalibratedClassifierCV(base_lr, method="sigmoid", cv=3)
+        calibrated_fold.fit(X_train_f, y_train_f, sample_weight=w_train_f)
+        val_preds = calibrated_fold.predict(X_val_f)
 
         _, _, macro_f1, _ = precision_recall_fscore_support(y_val_f, val_preds, average="macro")
         acc = accuracy_score(y_val_f, val_preds)
@@ -452,30 +541,47 @@ def train():
     print(f"\n5-Fold Grouped CV Macro F1: {mean_macro_f1:.4f} +/- {std_macro_f1:.4f}")
     print(f"5-Fold Grouped CV Accuracy: {mean_acc:.4f} +/- {std_acc:.4f}")
 
-    # 3. FIT PRODUCTION MODEL ON FULL DATASET
-    prod_pipe = Pipeline([
-        ("features", FeatureUnion([
-            ("word", TfidfVectorizer(ngram_range=(1, 2), analyzer="word", sublinear_tf=True, min_df=1, lowercase=True)),
-            ("char", TfidfVectorizer(ngram_range=(2, 5), analyzer="char", sublinear_tf=True, min_df=1, lowercase=True))
-        ])),
-        ("clf", LogisticRegression(random_state=RANDOM_SEED, C=1.0, class_weight="balanced", max_iter=500))
+    # 3. FIT PRODUCTION MODEL ON FULL DATASET WITH CALIBRATION
+    features = FeatureUnion([
+        ("word", TfidfVectorizer(ngram_range=(1, 2), analyzer="word", sublinear_tf=True, min_df=1, lowercase=True)),
+        ("char", TfidfVectorizer(ngram_range=(2, 5), analyzer="char", sublinear_tf=True, min_df=1, lowercase=True))
     ])
 
-    prod_pipe.fit(norm_texts, labels, clf__sample_weight=sample_weights)
+    X = features.fit_transform(norm_texts)
+    base_lr = LogisticRegression(random_state=RANDOM_SEED, C=1.0, class_weight="balanced", max_iter=500)
+    calibrated_clf = CalibratedClassifierCV(base_lr, method="sigmoid", cv=5)
+    calibrated_clf.fit(X, labels, sample_weight=sample_weights)
+
+    prod_pipe = Pipeline([
+        ("features", features),
+        ("clf", calibrated_clf)
+    ])
+
     joblib.dump(prod_pipe, model_path)
     print(f"\nProduction model successfully saved to {model_path}")
 
-    # 4. OPTIONAL REAL TEST SET EVALUATION
+    # 4. OPTIONAL REAL TEST SET EVALUATION AND FORMAL HELD-OUT EVALUATION
     real_test_metrics = evaluate_real_test_set(prod_pipe, data_dir)
+    formal_held_out_metrics = evaluate_formal_held_out(prod_pipe, data_dir)
 
     # 5. TOP 30 PREDICTIVE TOKENS & SHORTCUT AUDIT
     union_features = prod_pipe.named_steps["features"]
     feature_names = union_features.get_feature_names_out()
-    coefs = prod_pipe.named_steps["clf"].coef_[0]
     classes = list(prod_pipe.named_steps["clf"].classes_)
     susp_idx = classes.index("suspicious")
-    if susp_idx == 0:
-        coefs = -coefs
+
+    clf_step = prod_pipe.named_steps["clf"]
+    if hasattr(clf_step, "coef_"):
+        coefs = clf_step.coef_[0]
+        if susp_idx == 0:
+            coefs = -coefs
+    else:
+        sub_coefs = []
+        for cc in clf_step.calibrated_classifiers_:
+            est = getattr(cc, "estimator", None)
+            c = est.coef_[0]
+            sub_coefs.append(-c if susp_idx == 0 else c)
+        coefs = np.mean(sub_coefs, axis=0)
 
     top_susp_idx = np.argsort(coefs)[-30:][::-1]
     top_benign_idx = np.argsort(coefs)[:30]
@@ -529,9 +635,8 @@ def train():
     print(f"\nTotal training run time: {training_duration:.2f} seconds")
 
     # 6. METRICS ARTIFACT
-    is_real_reportable = real_test_metrics is not None and real_test_metrics.get("row_count", 0) >= 60
-    final_provenance = "real" if is_real_reportable else "synthetic"
-    final_warning = None if is_real_reportable else warning_msg
+    final_provenance = "mixed_synthetic_and_public"
+    final_warning = warning_msg
 
     metrics = {
         "data_provenance": final_provenance,
@@ -572,6 +677,9 @@ def train():
 
     if real_test_metrics is not None:
         metrics["real_test_metrics"] = real_test_metrics
+
+    if formal_held_out_metrics is not None:
+        metrics["formal_held_out_metrics"] = formal_held_out_metrics
 
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)

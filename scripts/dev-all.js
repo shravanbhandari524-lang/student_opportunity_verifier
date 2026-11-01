@@ -7,7 +7,7 @@
  * on SIGINT / SIGTERM.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
 import path from "node:path";
 import fs from "node:fs";
@@ -15,6 +15,22 @@ import fs from "node:fs";
 const rootDir = process.cwd();
 const venvPython = path.join(rootDir, "services", "classifier", ".venv", "bin", "python");
 const pythonCmd = fs.existsSync(venvPython) ? venvPython : "python3";
+const modelFile = path.join(rootDir, "services", "classifier", "model.joblib");
+
+if (!fs.existsSync(modelFile)) {
+  console.log("[dev:all] Classifier model.joblib missing. Training model automatically...");
+  const trainPy = path.join(rootDir, "services", "classifier", "train.py");
+  const trainRes = spawnSync(pythonCmd, [trainPy], {
+    cwd: rootDir,
+    stdio: "inherit",
+    env: { ...process.env, PYTHONPATH: rootDir },
+  });
+  if (trainRes.status !== 0) {
+    console.error("[dev:all] Classifier model training failed with exit code:", trainRes.status);
+    process.exit(1);
+  }
+  console.log("[dev:all] Classifier model trained successfully.");
+}
 
 console.log("[dev:all] Starting Python classifier service...");
 const classifierProc = spawn(pythonCmd, [
