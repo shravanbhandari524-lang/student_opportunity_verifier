@@ -1,0 +1,42 @@
+{
+  "pages": [
+    {
+      "url": "http://portal.test/",
+      "finalUrl": "http://portal.test/",
+      "status": 200,
+      "title": "Portal Home",
+      "textExcerpt": "WelcomeLearn More",
+      "linkCount": 1
+    },
+    {
+      "url": "http://portal.test/page2",
+      "finalUrl": "http://portal.test/page2",
+      "status": 200,
+      "title": "Page 2",
+      "textExcerpt": "About OpportunitiesStudent internships and verified scholarship details.Partner Link",
+      "linkCount": 1
+    }
+  ],
+  "forms": [
+    {
+      "actionHost": "payments.portal.test",
+      "method": "POST",
+      "fieldTypes": [],
+      "hasPassword": true,
+      "hasOtp": false,
+      "hasUpi": true,
+      "hasPayment": false
+    }
+  ],
+  "externalDomains": [
+    "external-partner.org"
+  ],
+  "truncated": false,
+  "limitsUsed": {
+    "maxPages": 3,
+    "maxDepth": 1,
+    "totalTimeSec": 2,
+    "totalBytesReceived": 970,
+    "sameHostOnly": true
+  }
+}

@@ -25,7 +25,7 @@ The system is built **layer by layer, bottom-up**. Each layer is finished, teste
 |---|---|---|---|---|
 | L0 | Foundation | Repo, Next.js init, env validation, logging, lint, test runner, folder structure | nothing | Dev server, lint and tests run; missing env variables fail with a clear message |
 | L1 | Contracts and data | zod schemas for every shared shape (Check, CheckInput, Entity, Flag, AgentResult with `skipped` status and `newEntities`, CaseFile, ScoreResult, Report, progress events), a fixed flag registry, fixtures for each, SQLite schema and versioned migrations, state machine, repositories, cache | L0 | Every fixture validates; invalid data is rejected; invalid state transitions are rejected; a CaseFile snapshot can be assembled from the database and rendered as markdown |
-| L2 | Services | LLM layer (`generate`), tools (domain, payments, search, fetchPage with SSRF guard, youtubeComments), scam graph, classifier service and client | L0, L1 | Each service has mocked tests plus a runnable script proving one real call; failures return error results and never throw |
+| L2 | Services | LLM layer (`generate`), tools (domain, payments, search, fetchPage with SSRF guard, youtubeComments), scam graph, classifier service and client, crawler service (`services/crawler` with pinned-IP safeProxy and adapter) | L0, L1 | Each service has mocked tests plus a runnable script proving one real call; failures return error results and never throw |
 | L3 | Decision | Scoring engine: weights, hard rules, thresholds, confidence (counted over eligible agents only). Pure code | L1 | Fixture tests: clear scam gives High, genuine gives Low, thin evidence gives Cannot verify; skipped agents do not lower confidence; every result lists the rules that fired |
 | L4 | Agents | Six agents (Message Analyst, Website Forensics, Official Verifier, Reputation / OSINT, Payment and Entity, plus the classifier client wrapper), each with a `canRun(snapshot)` rule and a `run(snapshot)` function, and the agent registry | L1, L2 | Each agent passes tests with mocked tools and LLM; canRun is correct on every fixture; every flag has evidence; timeout and failure produce could_not_check; nothing is written to the database |
 | L5 | Pipeline | Extraction (regex and vision), the coordinator (main agent) with its round loop, report writer, progress events, cleanup job | L1 to L4 | `scripts/run-check.js` runs a full check from the command line on fixtures and on a live example, using rounds and skipping ineligible agents, and produces a valid report |
@@ -344,6 +344,7 @@ Sequence:
 | `graph_edges` | id (integer, pk, autoincrement), node_a (integer, fk), node_b (integer, fk), check_ref (text, not null, deliberately not a foreign key), created_at |
 | `feedback` | id (integer, pk, autoincrement), check_id (text, nullable, set to null when check is deleted), verdict ("right" \| "wrong"), risk_level_shown, comment (max 500 characters), created_at |
 | `lookup_cache` | key (text, pk), result_json, fetched_at (integer, epoch seconds), ttl_seconds (integer) |
+| `crawl_results` | id (text, pk), check_id (text, fk, REFERENCES checks(id) ON DELETE CASCADE), entity_id (text), result_json (text), status (text), created_at (text, ISO), updated_at (text, ISO) |
 
 A cleanup job runs on startup and hourly: deletes expired checks and everything attached to them. Graph rows and feedback persist. Feedback stores no check content.
 
@@ -362,6 +363,12 @@ To support granular live trace observation and lossless replay:
 - **Repository Methods (`lib/db/index.js`):**
   - `appendEvent(checkId, event, db = getDb())`: Persists a validated event with sequence number `seq`, basic columns (`round`, `type`, `agent`, `status`, `summary`), and full `payload_json`. Enforces a 4 KB maximum serialized event payload limit (truncates long excerpt/string fields, never drops a valid event).
   - `listEventsAfter(checkId, seq = 0, db = getDb())`: Queries events for `check_id` where `seq > :seq` ordered by `seq ASC`. Deserializes `payload_json` and returns full `TraceEvent` objects for replay or polling.
+
+### 9.3 Crawl Results Storage (Migration 012)
+
+- **Database Schema Migration:** `crawl_results` stores full `CrawlResult` JSON objects linked to checks with `FOREIGN KEY (check_id) REFERENCES checks(id) ON DELETE CASCADE`.
+- **Indices:** `idx_crawl_results_check_id` on `crawl_results(check_id)` and `idx_crawl_results_entity_id` on `crawl_results(entity_id)`.
+- **Lifecycle & Cleanup:** When a check is deleted (by 24-hour expiration or test teardown), SQLite foreign key cascades automatically delete all associated `crawl_results` rows.
 
 ## 10. LLM layer
 
@@ -391,8 +398,17 @@ Plain async functions that return structured results and never throw (they retur
 | `fetchPage` | Safe page fetch and text extraction | 1 hour |
 | `youtubeComments` | Deferred, built last: official API plus comment heuristics | 6 hours |
 | `payments` | UPI format validation, phone validation, consistency checks | none |
+| `crawler` | Read-only deep crawl for pages, forms, and external domains (user-initiated, informational only) | 24 hours |
 
 `fetchPage` protections: allow only http and https, resolve and block private, loopback and link-local addresses (including after redirects), enforce a timeout and a response size limit, strip scripts and return plain text.
+
+### 11.1 External Services & Microservices
+
+| Service | Protocol / Transport | Auth | Role | Fallback / Degradation Policy |
+|---|---|---|---|---|
+| Classifier Service | HTTP POST to `CLASSIFIER_URL/classify` | Optional token | Predicts scam probability and top contributing terms | Returns `could_not_check`; scoring degrades gracefully without classifier weight |
+| Crawler Service | HTTP POST/GET to `CRAWLER_URL/api/crawl` | `CRAWLER_API_KEY` header (`x-api-key`) | Read-only shallow crawl of target domain, form extraction, external link tree | Returns `CRAWLER_UNAVAILABLE` (503); crawl is purely informational and NEVER affects score or flags |
+
 
 ## 12. Agents
 
@@ -818,6 +834,13 @@ The routes and payloads are defined in PRD.md section 6. Technical notes:
 - **Event Retention & Log Privacy:**
   - Events in `check_events` are strictly scoped to the check lifecycle and are automatically deleted alongside the check during the 24-hour cleanup job.
   - Application and access logs must NEVER record raw event payloads or user-supplied content.
+- **Crawler Service Architecture & Endpoints (`/api/checks/:id/crawl`):**
+  - **Read-Only Invariant:** The crawler operates strictly in read-only inspection mode. It never types into input elements, never clicks submit buttons, never executes form submissions, and rejects downloads (`acceptDownloads: false`).
+  - **Pinned-IP Forward Proxy (`safeProxy.js`):** Chromium routes all network requests through an internal pinned-IP forward proxy listening on `127.0.0.1`. The proxy validates target ports (80 and 443 only), resolves DNS once, and pins the target IP address. Requests to private, loopback, link-local, carrier-grade NAT, or cloud metadata ranges return HTTP 403 Forbidden without opening an outbound connection, eliminating DNS rebinding (TOCTOU) and unintercepted redirect bypasses.
+  - **Browser Sandboxing & Isolation:** Launched with args `--disable-quic` and `--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"`, `serviceWorkers: 'block'`, and popup window suppression. A second defensive layer in `context.route` aborts any non-GET/HEAD method (`route.abort('blockedbyclient')`).
+  - **Informational Status:** Crawl results are purely informational and are stored in `crawl_results` table. They are NEVER evaluated by the scoring engine and never emit fraud flags.
+  - `POST /api/checks/:id/crawl`: Triggers a background crawl job for the check's target domain/URL entity. Validates caller rate limits (`RATE_LIMIT_ACTION_MAX`) and checks preconditions. Returns `202 Accepted` with crawl status or existing result.
+  - `GET /api/checks/:id/crawl`: Retrieves stored or in-progress `CrawlResult`. Returns 404 if no crawl has been performed for the check.
 - Rate limiting:
   - If `TRUST_PROXY=false` (default): all client-supplied proxy and IP headers are ignored, and `request.ip` is not used. All clients share a single `"unknown"` bucket. Rate limits are configurable via env vars: `RATE_LIMIT_WINDOW_MS` (default 900000ms), `RATE_LIMIT_CREATE_MAX` (default 10), `RATE_LIMIT_CONFIRM_MAX` (default 10), `RATE_LIMIT_READ_MAX` (default 60), `RATE_LIMIT_STREAM_MAX` (default 10), `RATE_LIMIT_ACTION_MAX` (default 15), and `RATE_LIMIT_GUIDE_MAX` (default 60).
   - If `TRUST_PROXY=true`: extracts client IP strictly from `X-Forwarded-For` counting hops from the right by `TRUSTED_PROXY_HOPS` (default 1). Never uses the leftmost entry. Valid IPv6 addresses are grouped by their `/64` prefix. Missing, short, or invalid values fall back to the `"unknown"` bucket.
@@ -844,7 +867,8 @@ The routes and payloads are defined in PRD.md section 6. Technical notes:
 |---|---|
 | Prompt injection from messages, screenshots or web pages | Delimited untrusted blocks, instructions to ignore embedded commands, agents have no action-taking tools, LLM does not decide the risk level |
 | Planted entities from fetched pages or messages | Discovered entities are capped at 5 per agent per round (domain, handle, company only) by the discovered-entity limiter (`limitNewEntities`), normalized, deduplicated, and pass a synchronous SSRF host check before any fetch |
-| SSRF through user-supplied URLs | `fetchPage` blocks private addresses and unsafe schemes, including after redirects, with timeout and size limits |
+| SSRF through user-supplied URLs | `fetchPage` blocks private addresses and unsafe schemes, including after redirects, with timeout and size limits; Crawler service enforces a local pinned-IP forward proxy (`safeProxy.js`) with `<-loopback>` bypass mapping |
+| Active crawler execution risks | Crawler is read-only (no clicks, no form submits, no file downloads, non-GET methods aborted, in-memory jobs only, 24-hour check cascade deletion) |
 | Third-party lookups | URLs from user input or comments are looked up in threat feeds and never fetched or opened; discovered-entity caps and the SSRF guard still apply |
 | Abuse and quota exhaustion | Rate limiting, per-run query budgets, caching |
 | Data exposure | Images deleted after extraction, checks expire in 24 hours, only identifiers persist with consent, no content in logs |

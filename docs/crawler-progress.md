@@ -79,13 +79,17 @@
 ---
 
 ## Part 3: Docs and Contracts
-- [ ] Update ARCHITECTURE.md, PRD.md, docs/contracts.md (NOT VERIFIED).
-- [ ] Define `CrawlResult` contract (NOT VERIFIED).
-- [ ] Add `crawl_results` table migration 006 (or next forward migration) with ON DELETE CASCADE (NOT VERIFIED).
-- [ ] Add `CRAWLER_URL` and `CRAWLER_API_KEY` in `lib/env.js` (NOT VERIFIED).
-- [ ] Add error codes `CRAWLER_UNAVAILABLE` and `CRAWL_NOT_ALLOWED` (NOT VERIFIED).
-- [ ] Service adapter mapping crawler output to `CrawlResult` (NOT VERIFIED).
-- [ ] Fixtures and tests with realistic data (NOT VERIFIED).
+- [x] Update ARCHITECTURE.md (layer table in section 2; external services table in section 11; crawler service architecture in section 17; migration 012 in section 19 & data model section 9).
+- [x] Update PRD.md (deep web crawler feature, informational read-only user flow step 8, API routes `POST /api/checks/:id/crawl` and `GET /api/checks/:id/crawl`).
+- [x] Update docs/contracts.md (section 11: `CrawlResultSchema`, `CrawlPageSchema`, `CrawlFormSchema`, `CrawlLimitsUsedSchema`, error codes, `crawl_results` table).
+- [x] Define `CrawlResultSchema` in `lib/contracts/crawl.js` and re-export in `lib/contracts/index.js`.
+- [x] Add migration 012 (`lib/db/migrations/012_create_crawl_results.js` and `.sql`) creating `crawl_results` table with `ON DELETE CASCADE` and index definitions.
+- [x] Add `CRAWLER_URL` (default `http://127.0.0.1:3001`) and `CRAWLER_API_KEY` (optional) in `lib/env.js`.
+- [x] Add error codes `CRAWLER_UNAVAILABLE` (503) and `CRAWL_NOT_ALLOWED` (400) to `API_ERROR_CODES` in `lib/contracts/enums.js`.
+- [x] Service adapter `services/crawler/src/adapter.js` implemented without importing from root `lib/`.
+- [x] Generated and committed real JSON fixture in `services/crawler/tests/fixtures/real-crawl-result.json`.
+- [x] Root test in `tests/crawler-contracts.test.js` validating fixture with `CrawlResultSchema`, error codes, env vars, and migration 012 up/down/cascade.
+- [x] All 20 tests pass in `services/crawler`, 1047 tests pass in root, lint and build pass.
 
 ---
 

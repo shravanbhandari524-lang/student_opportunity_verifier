@@ -99,7 +99,8 @@ A check moves through these states: `created`, `extracting`, `awaiting_confirmat
 5. **Scoring.** When agents finish or time out, the scoring engine combines flags and the classifier output into a risk level.
 6. **Report.** The report writer produces the explanation, checklist and recommended actions in the chosen language.
 7. **Act.** The user can open any source link, copy the checklist, generate a draft email to the college or placement cell, open the "I already paid" help, or mark the report as right or wrong.
-8. **Optional save.** If the user agrees, identifiers (UPI ID, domain, handle) from a High-risk report are saved to the scam graph. Screenshots and message text are not saved.
+8. **Deep Web Crawl (Optional & Informational).** The user can trigger a shallow, read-only web crawl of the opportunity's verified domain directly from the report view. The crawl maps visited pages, extracts form field types (such as password, UPI, or payment fields), and discovers external links without submitting forms or downloading files. The crawl output is strictly informational: it never emits fraud flags and never alters the final risk level or score.
+9. **Optional save.** If the user agrees, identifiers (UPI ID, domain, handle) from a High-risk report are saved to the scam graph. Screenshots and message text are not saved.
 
 ## 6. Backend API
 
@@ -118,6 +119,8 @@ All routes are JSON unless stated. Base path `/api`.
 | `POST /checks/:id/fraud-summary` | Pre-filled complaint summary | optional amount, date, paymentMethod | text |
 | `POST /fraud-summary` | Standalone complaint summary (no check ID) | optional amount, date, paymentMethod, language | title, narrative, victimSteps, reportingChannels |
 | `GET /guides/:type` | Guide content | none | guide content |
+| `POST /checks/:id/crawl` | Trigger read-only shallow crawl for confirmed domain (user-initiated) | optional entityId | 202 Accepted { jobId, status } or 200 OK |
+| `GET /checks/:id/crawl` | Retrieve stored crawl result | none | CrawlResult object |
 
 Internal service (not public): `POST classifier/classify` takes the message text and returns a label, a probability and the top contributing terms.
 
