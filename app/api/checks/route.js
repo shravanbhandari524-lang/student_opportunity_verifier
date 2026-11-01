@@ -13,6 +13,7 @@ import { validateImageBuffer } from "../../../lib/uploads.js";
 import { runExtraction } from "../../../lib/extract.js";
 import { buildDefaultDeps } from "../../../lib/coordinator.js";
 import { env } from "../../../lib/env.js";
+import { getAuthSession } from "../../../lib/auth.js";
 
 
 export const runtime = "nodejs";
@@ -149,9 +150,13 @@ export async function POST(request, context = {}) {
     const checkId = crypto.randomUUID();
     reqLogger.setCheckId(checkId);
 
+    const auth = await getAuthSession(request, db, env);
+    const userId = auth?.user?.id || null;
+
     createCheck(
       {
         id: checkId,
+        userId,
         language: validated.language,
         status: "created",
       },
