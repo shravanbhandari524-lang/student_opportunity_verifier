@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
 
 import { runMigrations, MIGRATIONS } from "../lib/db/migrations/index.js";
@@ -255,7 +257,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
 
   // Check version
   const versions = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
 
   // Check graph_nodes preserved and last_seen populated
   const node = migratedDb.prepare(`SELECT * FROM graph_nodes WHERE value = 'scammer.example'`).get();
@@ -360,7 +362,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
   // 3. Test idempotency: running migrations again changes nothing
   runMigrations(migratedDb);
   const versionsAgain = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
 
   const fkCheckAgain = migratedDb.prepare("PRAGMA foreign_key_check").all();
   assert.deepEqual(fkCheckAgain, [], "PRAGMA foreign_key_check after rerun must return empty array");
@@ -412,9 +414,9 @@ test("migration 003 applies on a DB already at migration 002 containing rows", (
   // 2. Run runMigrations (which applies 003)
   runMigrations(db);
 
-  // 3. Verify schema_migrations now has version 13
+  // 3. Verify schema_migrations now has version 14
   const versionsAt3 = db.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
 
   // 4. Verify classifier_result_json column exists and existing row has NULL
   const colInfoAfter = db.prepare(`PRAGMA table_info(agent_results)`).all();
@@ -500,4 +502,55 @@ test("migration 010 creates evidence_ledger table with cascade deletion", () => 
 
   db.close();
   if (fs.existsSync(TEST_010_DB)) fs.unlinkSync(TEST_010_DB);
+});
+
+test("migration 014 creates users, sessions, and adds user_id to checks with cascade/SET NULL", () => {
+  const TEST_014_DB = path.join(tmpdir(), `test-014-${Date.now()}.db`);
+  if (fs.existsSync(TEST_014_DB)) fs.unlinkSync(TEST_014_DB);
+
+  const db = getDb(TEST_014_DB);
+
+  // Check tables exist
+  const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all().map(t => t.name);
+  assert.ok(tables.includes("users"), "users table should exist");
+  assert.ok(tables.includes("sessions"), "sessions table should exist");
+
+  // Check checks table has user_id
+  const checkCols = db.prepare(`PRAGMA table_info(checks)`).all().map(c => c.name);
+  assert.ok(checkCols.includes("user_id"), "checks table must have user_id column");
+
+  // Insert user
+  const userId = "11111111-2222-4333-8444-555555555555";
+  db.prepare(`
+    INSERT INTO users (id, google_sub, email, name, avatar_url, created_at, last_login_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  `).run(userId, "google-sub-123", "test@example.com", "Test User", "https://example.com/avatar.png");
+
+  // Insert session
+  db.prepare(`
+    INSERT INTO sessions (id, user_id, expires_at, created_at)
+    VALUES (?, ?, datetime('now', '+7 days'), datetime('now'))
+  `).run("sess-1", userId);
+
+  // Insert check with user_id
+  db.prepare(`
+    INSERT INTO checks (id, user_id, status, language, created_at, updated_at, expires_at)
+    VALUES ('chk-user-1', ?, 'created', 'en', datetime('now'), datetime('now'), datetime('now', '+1 day'))
+  `).run(userId);
+
+  const checkRow = db.prepare(`SELECT * FROM checks WHERE id = 'chk-user-1'`).get();
+  assert.equal(checkRow.user_id, userId);
+
+  // When user is deleted, sessions cascade and checks.user_id is set to null
+  db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
+
+  const sessAfter = db.prepare(`SELECT * FROM sessions WHERE id = 'sess-1'`).get();
+  assert.equal(sessAfter, undefined, "Session should cascade delete");
+
+  const checkAfter = db.prepare(`SELECT * FROM checks WHERE id = 'chk-user-1'`).get();
+  assert.ok(checkAfter, "Check should still exist");
+  assert.equal(checkAfter.user_id, null, "user_id on check should be SET NULL");
+
+  db.close();
+  if (fs.existsSync(TEST_014_DB)) fs.unlinkSync(TEST_014_DB);
 });
