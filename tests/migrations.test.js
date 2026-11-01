@@ -257,7 +257,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
 
   // Check version
   const versions = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  assert.deepEqual(versions.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
   // Check graph_nodes preserved and last_seen populated
   const node = migratedDb.prepare(`SELECT * FROM graph_nodes WHERE value = 'scammer.example'`).get();
@@ -362,7 +362,7 @@ test("Database Migrations: L0 seed data preserves graph, feedback, and cache acr
   // 3. Test idempotency: running migrations again changes nothing
   runMigrations(migratedDb);
   const versionsAgain = migratedDb.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  assert.deepEqual(versionsAgain.map((v) => v.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
   const fkCheckAgain = migratedDb.prepare("PRAGMA foreign_key_check").all();
   assert.deepEqual(fkCheckAgain, [], "PRAGMA foreign_key_check after rerun must return empty array");
@@ -414,9 +414,9 @@ test("migration 003 applies on a DB already at migration 002 containing rows", (
   // 2. Run runMigrations (which applies 003)
   runMigrations(db);
 
-  // 3. Verify schema_migrations now has version 14
+  // 3. Verify schema_migrations now has version 15
   const versionsAt3 = db.prepare(`SELECT version FROM schema_migrations ORDER BY version`).all();
-  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  assert.deepEqual(versionsAt3.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
   // 4. Verify classifier_result_json column exists and existing row has NULL
   const colInfoAfter = db.prepare(`PRAGMA table_info(agent_results)`).all();
@@ -553,4 +553,24 @@ test("migration 014 creates users, sessions, and adds user_id to checks with cas
 
   db.close();
   if (fs.existsSync(TEST_014_DB)) fs.unlinkSync(TEST_014_DB);
+});
+
+test("migration 015 creates run_records table and index", () => {
+  const TEST_015_DB = "./test_migration_015.db";
+  if (fs.existsSync(TEST_015_DB)) fs.unlinkSync(TEST_015_DB);
+
+  const db = getDb(TEST_015_DB);
+
+  // Verify run_records exists
+  const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all().map((t) => t.name);
+  assert.ok(tables.includes("run_records"), "run_records table must exist");
+
+  const cols = db.prepare(`PRAGMA table_info(run_records)`).all().map((c) => c.name);
+  assert.ok(cols.includes("run_id"));
+  assert.ok(cols.includes("input_json"));
+  assert.ok(cols.includes("final_score"));
+  assert.ok(cols.includes("agents_json"));
+
+  db.close();
+  if (fs.existsSync(TEST_015_DB)) fs.unlinkSync(TEST_015_DB);
 });

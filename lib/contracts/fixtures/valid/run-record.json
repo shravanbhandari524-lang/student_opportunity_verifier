@@ -1,0 +1,42 @@
+{
+  "run_id": "test-run-1234-5678",
+  "created_at": "2026-11-02T04:00:00.000Z",
+  "input": {
+    "text": "Offer letter received for remote data analyst internship at Google paying 50,000 INR per month.",
+    "userNotes": "Received via Telegram message"
+  },
+  "final_score": 75,
+  "score_unavailable_reason": null,
+  "verdict": "high",
+  "final_summary": "Verification completed with HIGH risk. Identified telegram recruitment and domain mismatches.",
+  "agents": [
+    {
+      "agent_name": "message_analyst",
+      "purpose": "Analyzes message text for deception and unrealistic compensation",
+      "status": "completed",
+      "started_at": "2026-11-02T04:00:01.000Z",
+      "ended_at": "2026-11-02T04:00:03.000Z",
+      "input_received": {
+        "text": "Offer letter received for remote data analyst internship"
+      },
+      "steps": [
+        {
+          "timestamp": "2026-11-02T04:00:01.500Z",
+          "action": "Analysis: Evaluated message text for recruitment patterns",
+          "result": "Detected unrealistic compensation offer"
+        }
+      ],
+      "raw_output": {
+        "flags": [
+          {
+            "id": "unrealistic_stipend",
+            "title": "Unrealistic stipend guarantee"
+          }
+        ]
+      },
+      "summary": "Flagged unrealistic stipend guarantee.",
+      "score_contribution": 25,
+      "error": null
+    }
+  ]
+}
