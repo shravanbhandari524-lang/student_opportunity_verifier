@@ -601,24 +601,29 @@ export default function CheckDetailPage({ params }) {
             )}
           </section>
 
-          {/* Optional Link Content Extraction (PRD §8) */}
-          {entities.filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain")).length > 0 && (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-bold text-[#0A0A0A] dark:text-white">
-                {summaryLang === "hi" ? "वैकल्पिक लिंक सामग्री निष्कर्षण" : "Optional Link Content Extraction"}
-              </h2>
-              {entities
-                .filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain"))
-                .map((ent) => (
-                  <LinkExtractionCard
-                    key={ent.id}
-                    checkId={checkId}
-                    entity={ent}
-                    lang={summaryLang}
-                  />
-                ))}
-            </section>
-          )}
+          {/* Optional Link Content Extraction (Single card targeting user-submitted link) */}
+          {(() => {
+            const targetLinkEntity =
+              entities.find((e) => e.confirmed && e.source === "user" && e.kind === "url") ||
+              entities.find((e) => e.confirmed && e.source === "user" && e.kind === "domain") ||
+              entities.find((e) => e.confirmed && (e.kind === "url" || e.kind === "domain"));
+
+            if (!targetLinkEntity) return null;
+
+            return (
+              <section className="flex flex-col gap-2">
+                <h2 className="text-sm font-bold text-[#0A0A0A] dark:text-white">
+                  {summaryLang === "hi" ? "वैकल्पिक लिंक सामग्री निष्कर्षण" : "Optional Link Content Extraction"}
+                </h2>
+                <LinkExtractionCard
+                  key={targetLinkEntity.id}
+                  checkId={checkId}
+                  entity={targetLinkEntity}
+                  lang={summaryLang}
+                />
+              </section>
+            );
+          })()}
 
           {/* Section: Verified Facts */}
           {report.verified && report.verified.length > 0 && (
