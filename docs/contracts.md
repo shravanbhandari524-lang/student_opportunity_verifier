@@ -1075,3 +1075,71 @@ To support deterministic offline test suites, scenario replay, and regression ha
    - `GET /api/health` reports `{ replayMode: "off" | "record" | "replay" }` matching the active configuration.
 4. **Save-to-Graph Replay Guard**:
    - When the server is operating in `"replay"` or `"record"` mode, `POST /api/checks/:id/save-to-graph` returns `409 STATE_CONFLICT` with reason `"replay_mode_active"` to prevent saving synthetic or replayed identifiers to the persistent scam intelligence graph without changing database schemas or contracts.
+
+---
+
+## 11. Deep Web Crawler Contracts (`CrawlResult`)
+
+The crawler service provides an informational, read-only shallow crawl of verified domains linked to a check.
+
+1. **`CrawlPageSchema`**:
+   - `url`: string (valid HTTP/HTTPS URL).
+   - `finalUrl`: string (valid HTTP/HTTPS URL after redirects).
+   - `status`: integer HTTP status code or null.
+   - `title`: string (trimmed, default "").
+   - `textExcerpt`: string (maximum 2,000 characters).
+   - `linkCount`: non-negative integer.
+
+2. **`CrawlFormSchema`**:
+   - `actionHost`: string (target domain or host).
+   - `method`: string (e.g. "GET", "POST").
+   - `fieldTypes`: array of strings (e.g. `["text", "password", "email"]`).
+   - `hasPassword`: boolean.
+   - `hasOtp`: boolean.
+   - `hasUpi`: boolean.
+   - `hasPayment`: boolean.
+
+3. **`CrawlLimitsUsedSchema`**:
+   - `maxPages`: integer (positive).
+   - `maxDepth`: integer (non-negative).
+   - `totalTimeSec`: integer (non-negative).
+   - `totalBytesReceived`: integer (non-negative).
+   - `sameHostOnly`: boolean.
+
+4. **`CrawlResultSchema`**:
+   - `pages`: array of `CrawlPageSchema`.
+   - `forms`: array of `CrawlFormSchema`.
+   - `externalDomains`: array of unique domain strings.
+   - `truncated`: boolean.
+   - `limitsUsed`: `CrawlLimitsUsedSchema`.
+   - `errorCode`: optional enum `["TIMEOUT", "DNS_FAILED", "BLOCKED_HOST", "BYTE_LIMIT", "TOO_MANY_PAGES", "ROBOTS_DENIED", "UPSTREAM_ERROR"]`.
+
+5. **API Error Codes**:
+   - `CRAWLER_UNAVAILABLE`: HTTP 503 Service Unavailable when the crawler service cannot be reached.
+   - `CRAWL_NOT_ALLOWED`: HTTP 400 Bad Request when the check has no eligible domain or the entity violates safety policies.
+
+6. **Database Table (`crawl_results` - Migrations 012 & 013)**:
+   - `id`: TEXT PRIMARY KEY (UUID).
+   - `check_id`: TEXT NOT NULL REFERENCES `checks(id)` ON DELETE CASCADE.
+   - `entity_id`: TEXT NOT NULL.
+   - `status`: TEXT NOT NULL CHECK (`status` IN ('running', 'done', 'failed')).
+   - `result_json`: TEXT (nullable while running).
+   - `error_code`: TEXT (nullable, set on failure).
+   - `started_at`: TEXT NOT NULL (ISO 8601).
+   - `finished_at`: TEXT (nullable).
+   - `created_at`: TEXT NOT NULL (ISO 8601).
+   - `updated_at`: TEXT NOT NULL (ISO 8601).
+   - Constraints: `UNIQUE(check_id, entity_id)`.
+   - Indices: `idx_crawl_results_check_id` ON `crawl_results(check_id)`, `idx_crawl_results_entity_id` ON `crawl_results(entity_id)`.
+
+7. **API Request & Response Contracts**:
+   - `POST /api/checks/:id/crawl`:
+     - Request body: `{ entityId: string }`
+     - Response (accepted/running): `{ status: "running", checkId: string, entityId: string }` (HTTP 202 or 200 on replay)
+     - Response (already completed): `{ status: "done", checkId: string, entityId: string, result: CrawlResult }` (HTTP 200)
+   - `GET /api/checks/:id/crawl?entityId=...`:
+     - Response: `{ status: "not_started" | "running" | "done" | "failed", result?: CrawlResult, errorCode?: string }`
+   - Progress model: Not sent through SSE/TraceEvent; polled via `GET /api/checks/:id/crawl`.
+   - Known limit: Target domain sees egress server IP and runs arbitrary scripts within sandboxed browser; forward proxy enforces network and protocol boundaries.
+   - Stale threshold: Crawls in `running` status exceeding 5 minutes are transitioned to `failed` (`server_restart`) by maintenance cleanup.
+

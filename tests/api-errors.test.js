@@ -78,11 +78,11 @@ describe("lib/api/errors.js", () => {
     });
   });
 
-  it("supports all 10 API_ERROR_CODES conforming to ApiErrorSchema", async () => {
+  it("supports all 12 API_ERROR_CODES conforming to ApiErrorSchema", async () => {
     const { API_ERROR_CODES } = await import("../lib/contracts/enums.js");
     const { ApiErrorSchema } = await import("../lib/contracts/api-error.js");
 
-    assert.equal(API_ERROR_CODES.length, 10);
+    assert.equal(API_ERROR_CODES.length, 12);
     for (const code of API_ERROR_CODES) {
       const err = apiError(code, `Test error message for ${code}`, 400);
       const res = toResponse(err);

@@ -18,7 +18,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import swc from "next/dist/build/swc/index.js";
 
-async function loadComponent(relPath) {
+async function loadComponent(relPath, returnFullModule = false) {
   const fullPath = path.resolve(relPath);
   const code = fs.readFileSync(fullPath, "utf8");
   const transformed = await swc.transform(code, {
@@ -33,6 +33,7 @@ async function loadComponent(relPath) {
   fs.writeFileSync(targetFile, transformed.code, "utf8");
   try {
     const mod = await import(targetFile);
+    if (returnFullModule) return mod;
     return mod.default || mod;
   } finally {
     try {
@@ -50,6 +51,8 @@ let CoverageCard;
 let EntitiesEditor;
 let Header;
 let Footer;
+let LinkExtractionCard;
+let getHostFromEntity;
 
 describe("UI Shared Components: RiskBadge", () => {
   before(async () => {
@@ -60,6 +63,9 @@ describe("UI Shared Components: RiskBadge", () => {
     EntitiesEditor = await loadComponent("components/EntitiesEditor.js");
     Header = await loadComponent("components/Header.js");
     Footer = await loadComponent("components/Footer.js");
+    const linkModule = await loadComponent("components/LinkExtractionCard.js", true);
+    LinkExtractionCard = linkModule.default;
+    getHostFromEntity = linkModule.getHostFromEntity;
   });
 
   test("renders HIGH risk level with score and rules", () => {
@@ -229,5 +235,170 @@ describe("UI Shared Components: Header & Footer", () => {
     assert.ok(html.includes("Nothing found is not the same as safe"));
     assert.ok(html.includes("/about"));
     assert.ok(html.includes("1930"));
+  });
+});
+
+describe("UI Shared Components: LinkExtractionCard", () => {
+  test("Host sanitization strips paths, queries, and fragments", () => {
+    assert.equal(
+      getHostFromEntity({ kind: "url", value: "https://portal.scholarship-gov.in/apply?token=secret#section" }),
+      "portal.scholarship-gov.in"
+    );
+    assert.equal(
+      getHostFromEntity({ kind: "domain", value: "legit-college.edu.in" }),
+      "legit-college.edu.in"
+    );
+  });
+
+  test("Prompt state: renders host only, note, 44px buttons with labels, no full URL", () => {
+    const entity = {
+      id: "ent_42",
+      kind: "url",
+      value: "https://portal.scholarship-gov.in/secret/apply?token=xyz",
+      confirmed: true,
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_123",
+        entity,
+        lang: "en",
+        initialState: { state: "prompt" },
+      })
+    );
+
+    // Shows host only, never the full URL
+    assert.ok(html.includes("portal.scholarship-gov.in"));
+    assert.equal(html.includes("/secret/apply"), false, "Must never render path or query string");
+    assert.ok(html.includes("Do you want to extract the content of this link?"));
+    assert.ok(html.includes("We open the link from our server, read the pages, and delete the result after 24 hours. Nothing is saved to the scam graph."));
+    assert.ok(html.includes("Yes, extract"));
+    assert.ok(html.includes("No, skip"));
+    // Accessible button touch targets
+    assert.ok(html.includes("min-height:44px"));
+  });
+
+  test("Bilingual: renders Hindi text when lang='hi'", () => {
+    const entity = {
+      id: "ent_42",
+      kind: "domain",
+      value: "pm-scholarship.org",
+      confirmed: true,
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_123",
+        entity,
+        lang: "hi",
+        initialState: { state: "prompt" },
+      })
+    );
+
+    assert.ok(html.includes("क्या आप इस लिंक की सामग्री निकालना चाहते हैं?"));
+    assert.ok(html.includes("हाँ, निकालें"));
+    assert.ok(html.includes("नहीं, छोड़ें"));
+  });
+
+  test("Skipped state: renders collapsed skipped text and Extract anyway button", () => {
+    const entity = { id: "ent_1", kind: "domain", value: "target-portal.com" };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_1",
+        entity,
+        initialState: { state: "skipped" },
+      })
+    );
+
+    assert.ok(html.includes("Link content extraction skipped for target-portal.com"));
+    assert.ok(html.includes("Extract anyway"));
+  });
+
+  test("Running state: renders status role and aria-live polite", () => {
+    const entity = { id: "ent_1", kind: "domain", value: "target-portal.com" };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_1",
+        entity,
+        initialState: { state: "running" },
+      })
+    );
+
+    assert.ok(html.includes('role="status"'));
+    assert.ok(html.includes('aria-live="polite"'));
+    assert.ok(html.includes("Extracting content from target-portal.com"));
+  });
+
+  test("Failed state: renders error message and Retry button", () => {
+    const entity = { id: "ent_1", kind: "domain", value: "target-portal.com" };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_1",
+        entity,
+        initialState: {
+          state: "failed",
+          errorMessage: "The crawler is not available right now. The rest of your report is not affected.",
+        },
+      })
+    );
+
+    assert.ok(html.includes("The crawler is not available right now. The rest of your report is not affected."));
+    assert.ok(html.includes("Retry extraction"));
+  });
+
+  test("Done state & Security: plain text only, XSS script tags escaped, form text labels present", () => {
+    const maliciousTitle = "<script>alert('xss')</script>";
+    const entity = { id: "ent_1", kind: "domain", value: "secure-portal.org" };
+    const result = {
+      pages: [
+        {
+          url: "https://secure-portal.org/",
+          status: 200,
+          title: maliciousTitle,
+          linkCount: 3,
+          textExcerpt: "Confidential scholarship application details.",
+        },
+      ],
+      forms: [
+        {
+          method: "POST",
+          actionHost: "pay.secure-portal.org",
+          fieldTypes: ["password", "text"],
+          hasPassword: true,
+          hasOtp: true,
+          hasUpi: true,
+          hasPayment: true,
+        },
+      ],
+      externalDomains: ["external-auth.net"],
+      truncated: true,
+      limitsUsed: { maxPages: 5 },
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(LinkExtractionCard, {
+        checkId: "chk_1",
+        entity,
+        initialState: { state: "done", result },
+      })
+    );
+
+    // 1. Mandatory PRD line
+    assert.ok(html.includes("This is information only. It does not change the risk level."));
+    // 2. Truncated badge
+    assert.ok(html.includes("Results limited to 5 pages"));
+    // 3. XSS Security: script tag escaped into plain text entity, never raw HTML
+    assert.ok(html.includes("&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"));
+    assert.equal(html.includes("<script>alert"), false, "Must never render unescaped script tag");
+    // 4. Form text labels for accessible identification
+    assert.ok(html.includes("[Password Required]"));
+    assert.ok(html.includes("[OTP Field]"));
+    assert.ok(html.includes("[UPI Payment ID]"));
+    assert.ok(html.includes("[Payment Method]"));
+    // 5. External domain
+    assert.ok(html.includes("external-auth.net"));
   });
 });

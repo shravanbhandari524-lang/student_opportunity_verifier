@@ -268,6 +268,7 @@ test("cleanup: running twice in a row is idempotent and safe", async () => {
     cacheRowsPurged: 0,
     filesDeleted: 0,
     staleChecksRecovered: 0,
+    staleCrawlsRecovered: 0,
     errors: [],
   });
 });
