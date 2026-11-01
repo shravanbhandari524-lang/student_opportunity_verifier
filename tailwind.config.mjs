@@ -91,8 +91,8 @@ const tailwindConfig = {
         "space-lg": "1.25rem",
       },
       fontFamily: {
-        sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-        mono: ["JetBrains Mono", "SF Mono", "Menlo", "Consolas", "monospace"],
+        sans: ["var(--font-geist)", "Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "SF Mono", "Menlo", "Consolas", "monospace"],
         "code-base": ["JetBrains Mono", "monospace"],
         "body-strong": ["Geist", "sans-serif"],
         "headline-sm": ["Geist", "sans-serif"],

@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Aegis Telemetry Core - Operational Intelligence</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#FFFFFF",
+            "surface-container-low": "#F9FAFB",
+            "surface-container": "#F3F4F6",
+            "surface-container-high": "#E5E7EB",
+            "surface-container-highest": "#D1D5DB",
+            primary: "#0A0A0A",
+            "on-primary": "#FFFFFF",
+            secondary: "#10B981",
+            "secondary-container": "#ECFDF5",
+            "on-secondary-container": "#065F46",
+            error: "#DC2626",
+            "error-container": "#FEF2F2",
+            "on-error-container": "#991B1B",
+            warning: "#D97706",
+            "warning-container": "#FFFBEB",
+            "on-warning-container": "#92400E",
+            outline: "#E5E7EB",
+            "outline-variant": "#F3F4F6",
+            "on-surface": "#111827",
+            "on-surface-variant": "#4B5563"
+          },
+          fontFamily: {
+            "display-hero": ["Geist", "sans-serif"],
+            "headline-lg": ["Geist", "sans-serif"],
+            "headline-md": ["Geist", "sans-serif"],
+            "headline-sm": ["Geist", "sans-serif"],
+            "body-default": ["Geist", "sans-serif"],
+            "body-strong": ["Geist", "sans-serif"],
+            "body-muted": ["Geist", "sans-serif"],
+            "label-mono-xs": ["JetBrains Mono", "monospace"],
+            "label-mono-sm": ["JetBrains Mono", "monospace"],
+            "code-base": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .metallic-title {
+      background: linear-gradient(135deg, #0A0A0A 0%, #374151 70%, #4B5563 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(1.15); }
+    }
+    .pulse-live {
+      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#FFFFFF] text-on-surface font-body-default antialiased selection:bg-neutral-100 selection:text-black min-h-screen flex">
+<!-- Minimal Precision Sidebar -->
+<aside class="w-64 border-r border-outline flex flex-col justify-between shrink-0 bg-[#FFFFFF] sticky top-0 h-screen select-none z-20">
+<div class="flex flex-col">
+<!-- App Brand Anchor -->
+<div class="h-16 flex items-center px-6 gap-3 border-b border-outline">
+<div class="w-6 h-6 flex items-center justify-center text-primary">
+<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 48 48">
+<path d="M44 11.2727C44 14.0109 39.8386 16.3957 33.69 17.6364C39.8386 18.877 44 21.2618 44 24C44 26.7382 39.8386 29.123 33.69 30.3636C39.8386 31.6043 44 33.9891 44 36.7273C44 40.7439 35.0457 44 24 44C12.9543 44 4 40.7439 4 36.7273C4 33.9891 8.16144 31.6043 14.31 30.3636C8.16144 29.123 4 26.7382 4 24C4 21.2618 8.16144 18.877 14.31 17.6364C8.16144 16.3957 4 14.0109 4 11.2727C4 7.25611 12.9543 4 24 4C35.0457 4 44 7.25611 44 11.2727Z"></path>
+</svg>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold tracking-tight text-primary">Aegis Core</span>
+<span class="text-[10px] font-label-mono-xs tracking-wider text-neutral-400 uppercase">Forensic OS v2.4</span>
+</div>
+</div>
+<!-- Navigation Menu -->
+<nav class="p-3 space-y-1"><a class="flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded bg-surface-container-low text-primary border border-outline" href="#"><span class="material-symbols-outlined text-[18px]">grid_view</span><span class="">Home</span></a><a class="flex items-center justify-between px-3 py-2 text-sm font-medium text-neutral-600 hover:text-black hover:bg-surface-container-low rounded transition-colors group" href="#new-check"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px] text-neutral-400 group-hover:text-black">add_circle</span><span class="">New Check</span></div><span class="text-[10px] font-label-mono-xs px-1.5 py-0.5 rounded bg-surface-container-high text-neutral-600 font-medium">Cmd+N</span></a><a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-600 hover:text-black hover:bg-surface-container-low rounded transition-colors" href="#history"><span class="material-symbols-outlined text-[18px] text-neutral-400">history</span><span class="">History</span></a><a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-600 hover:text-black hover:bg-surface-container-low rounded transition-colors" href="#guides"><span class="material-symbols-outlined text-[18px] text-neutral-400">menu_book</span><span class="">Guides</span></a><a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-600 hover:text-black hover:bg-surface-container-low rounded transition-colors" href="#report-fraud"><span class="material-symbols-outlined text-[18px] text-neutral-400">report</span><span class="">Report Fraud</span></a></nav>
+</div>
+<!-- Sidebar Bottom Operational State -->
+<div class="p-4 border-t border-outline flex flex-col gap-3 bg-[#FFFFFF]">
+<div class="flex items-center justify-between text-xs text-neutral-500 font-label-mono-xs">
+<span class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary pulse-live"></span>
+          NODE MUM-01
+        </span>
+<span class="text-neutral-400">STABLE</span>
+</div>
+<div class="flex items-center gap-3 pt-2">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-mono-xs text-xs font-semibold text-primary border border-outline">
+          SK
+        </div>
+<div class="flex flex-col overflow-hidden">
+<span class="text-xs font-semibold text-primary truncate">Shreyas K.</span>
+<span class="text-[11px] text-neutral-400 truncate font-label-mono-xs">Lead Analyst</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Primary Canvas -->
+<main class="flex-1 flex flex-col min-w-0 bg-[#FFFFFF]">
+<!-- Top System Header Bar -->
+<header class="h-16 border-b border-outline px-8 flex items-center justify-between bg-[#FFFFFF] sticky top-0 z-10"><div class="flex items-center gap-3 text-xs font-label-mono-sm text-neutral-500"><span class="text-primary font-semibold tracking-tight">DASHBOARD</span><span class="text-neutral-300">/</span><span class="">OVERVIEW</span></div><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-mono-xs text-xs font-semibold text-primary border border-outline">SK</div></div></header>
+<!-- Main Content Stream -->
+<div class="p-8 max-w-7xl mx-auto w-full space-y-8">
+<!-- Greeting & Header Overview (No Start Check button) -->
+<section class="space-y-1.5"><h1 class="text-3xl font-extrabold tracking-tight metallic-title">Good morning, Shreyas</h1><p class="text-sm text-neutral-500 font-body-default">System operational • All security checks up to date</p></section>
+<!-- System Metrics Overview (4 Minimal Stat Blocks) -->
+<section class="grid grid-cols-1 md:grid-cols-4 border border-outline rounded bg-[#FFFFFF] divide-y md:divide-y-0 md:divide-x divide-outline overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.03)]"><div class="p-5 flex flex-col justify-between space-y-2"><div class="flex items-center justify-between text-xs font-medium text-neutral-500"><span class="">Total Checks</span><span class="text-xs font-label-mono-xs font-semibold text-secondary">+100%</span></div><div class="flex items-baseline justify-between"><span class="text-3xl font-bold font-display-hero text-primary tracking-tight">14</span></div></div><div class="p-5 flex flex-col justify-between space-y-2"><div class="flex items-center justify-between text-xs font-medium text-neutral-500"><span class="">Threats Neutralized</span><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-label-mono-xs font-semibold bg-error-container text-on-error-container">HIGH RISK</span></div><div class="flex items-baseline justify-between"><span class="text-3xl font-bold font-display-hero text-primary tracking-tight">3</span><span class="text-xs font-label-mono-xs font-semibold text-error">21.4%</span></div></div><div class="p-5 flex flex-col justify-between space-y-2"><div class="flex items-center justify-between text-xs font-medium text-neutral-500"><span class="">Legitimate Verified</span><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-label-mono-xs font-semibold bg-secondary-container text-on-secondary-container">CLEARED</span></div><div class="flex items-baseline justify-between"><span class="text-3xl font-bold font-display-hero text-primary tracking-tight">10</span><span class="text-xs font-label-mono-xs font-semibold text-secondary">71.4%</span></div></div><div class="p-5 flex flex-col justify-between space-y-2"><div class="flex items-center justify-between text-xs font-medium text-neutral-500"><span class="">Pending Audits</span><span class="text-[10px] font-label-mono-xs text-neutral-400">Queued</span></div><div class="flex items-baseline justify-between"><span class="text-3xl font-bold font-display-hero text-primary tracking-tight">1</span></div></div></section>
+<!-- Quick Action Guidance Card (Redirecting users to sidebar New Check, strictly no start check button) -->
+<div class="flex items-center justify-between p-5 bg-[#FFFFFF] border border-outline rounded shadow-[0_1px_2px_rgba(0,0,0,0.02)]"><div class="space-y-1"><h2 class="text-base font-bold text-primary tracking-tight">Run New Verification</h2><p class="text-xs text-neutral-500">Upload documents, suspicious URLs, offer letters, or UPI identifiers for instant multi-agent forensic analysis.</p></div><a href="#new-check" class="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-primary text-on-primary font-medium text-sm hover:bg-neutral-800 transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">add</span><span class="">New Check</span></a></div>
+<!-- Agent Fleet Telemetry Grid -->
+
+<!-- Recent Forensic Checks Table -->
+<section class="space-y-3.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<h2 class="text-lg font-bold tracking-tight metallic-title">Recent Forensic Checks</h2>
+<span class="text-xs font-label-mono-xs text-neutral-400">LEDGER ENTRIES</span>
+</div>
+<a class="text-xs font-medium text-neutral-500 hover:text-black transition-colors flex items-center gap-1" href="#">
+<span class="">View Complete Ledger</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+<div class="border border-outline rounded overflow-hidden bg-[#FFFFFF] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline bg-surface-container-low text-[11px] font-label-mono-xs text-neutral-500 uppercase tracking-wider">
+<th class="py-3 px-4 font-semibold">Target Dossier</th>
+<th class="py-3 px-4 font-semibold">Threat Category</th>
+<th class="py-3 px-4 font-semibold">Timestamp</th>
+<th class="py-3 px-4 font-semibold">Verdict</th>
+<th class="py-3 px-4 font-semibold text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline text-xs">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-primary">ONGC Graduate Trainee Selection Letter</span>
+<span class="font-label-mono-xs text-[10px] text-neutral-400">PDF • SHA256: 4e81a7d8...</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-neutral-600">
+                  Fake PSU Offer &amp; Security Deposit
+                </td>
+<td class="py-3.5 px-4 text-neutral-500 font-label-mono-xs text-[11px]">
+                  Today, 08:42 IST
+                </td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-label-mono-xs font-bold bg-error-container text-on-error-container">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                    HIGH RISK
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="font-medium text-neutral-700 hover:text-black transition-colors inline-flex items-center gap-0.5" href="#">
+<span class="">Inspect report</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-primary">Tata Trusts Higher Education Grant 2025</span>
+<span class="font-label-mono-xs text-[10px] text-neutral-400">Portal URL • DOMAIN: grants-tata.in</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-neutral-600">
+                  Scholarship Disbursement Portal
+                </td>
+<td class="py-3.5 px-4 text-neutral-500 font-label-mono-xs text-[11px]">
+                  Yesterday, 19:15 IST
+                </td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-label-mono-xs font-bold bg-secondary-container text-on-secondary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    CLEARED
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="font-medium text-neutral-700 hover:text-black transition-colors inline-flex items-center gap-0.5" href="#">
+<span class="">Inspect report</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-primary">Cognizant Off-Campus Recruiter WhatsApp Text</span>
+<span class="font-label-mono-xs text-[10px] text-neutral-400">Raw text • SENDER: +91 98210...</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-neutral-600">
+                  Unverified Recruiting Channel
+                </td>
+<td class="py-3.5 px-4 text-neutral-500 font-label-mono-xs text-[11px]">
+                  18 Feb 2025
+                </td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-label-mono-xs font-bold bg-warning-container text-on-warning-container">
+<span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                    MEDIUM RISK
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="font-medium text-neutral-700 hover:text-black transition-colors inline-flex items-center gap-0.5" href="#">
+<span class="">Inspect report</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-primary">NSP Pre-Matric Processing Fee Demand</span>
+<span class="font-label-mono-xs text-[10px] text-neutral-400">UPI QR • VPA: nsp-fee-verify@icici</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-neutral-600">
+                  UPI VPA Extortion Scheme
+                </td>
+<td class="py-3.5 px-4 text-neutral-500 font-label-mono-xs text-[11px]">
+                  16 Feb 2025
+                </td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-label-mono-xs font-bold bg-error-container text-on-error-container">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                    HIGH RISK
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="font-medium text-neutral-700 hover:text-black transition-colors inline-flex items-center gap-0.5" href="#">
+<span class="">Inspect report</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Bottom Intel Snippets (Clean borderless guidance cards) -->
+
+<!-- Footer Metadata -->
+<footer class="pt-8 pb-4 border-t border-outline flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-400 font-label-mono-xs gap-3">
+<div class="flex items-center gap-2">
+<span class="">AEGIS TELEMETRY CORE</span>
+<span class="">•</span>
+<span class="">REVISION 24.8.1-PROD</span>
+</div>
+<div>
+<span class="">FEDERATED CONSENSUS STATUS: NORMAL</span>
+</div>
+</footer>
+</div>
+</main>
+
+
+</body></html>

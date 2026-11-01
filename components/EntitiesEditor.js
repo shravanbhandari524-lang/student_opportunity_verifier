@@ -16,20 +16,24 @@ const KIND_LABELS = {
   youtube_url: "YouTube Link",
 };
 
-export default function EntitiesEditor({ initialEntities = [], onConfirm, confirming = false, error = null }) {
+export default function EntitiesEditor({ initialEntities = [], onConfirm, confirming = false, disabled = false, error = null }) {
   const [entities, setEntities] = useState(initialEntities);
   const [newKind, setNewKind] = useState("company");
   const [newValue, setNewValue] = useState("");
   const [newPlatform, setNewPlatform] = useState("telegram");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+
+  const isBusy = confirming || disabled || localSubmitting;
 
   function handleRemove(index) {
+    if (isBusy) return;
     setEntities((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleAdd(e) {
     e.preventDefault();
-    if (!newValue.trim()) return;
+    if (isBusy || !newValue.trim()) return;
 
     const newEntity = {
       kind: newKind,
@@ -45,6 +49,8 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
   }
 
   function handleStartInvestigation() {
+    if (isBusy) return;
+    setLocalSubmitting(true);
     onConfirm(entities);
   }
 
@@ -52,22 +58,22 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
     <div className="panel" aria-labelledby="confirm-entities-title">
       <div className="panel-header">
         <div>
-          <h2 id="confirm-entities-title" style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
+          <h2 id="confirm-entities-title" style={{ fontSize: "16.5px", fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.015em" }}>
             Confirm Extracted Identifiers
           </h2>
-          <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+          <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", marginTop: "2px" }}>
             Review what was read from your text and screenshots. Remove inaccurate items or add missing links before running specialist checks.
           </p>
         </div>
-        <span className="badge badge-low">
+        <span className="badge badge-low" style={{ fontVariantNumeric: "tabular-nums" }}>
           {entities.length} Detected
         </span>
       </div>
 
       {/* Entity Chips List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "1.25rem" }}>
         {entities.length === 0 ? (
-          <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "13px", backgroundColor: "var(--bg-subtle)", borderRadius: "var(--radius-sm)", border: "1px dashed var(--border-primary)" }}>
             No specific entities were extracted. You can add a company, domain, or payment handle below.
           </div>
         ) : (
@@ -83,15 +89,16 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
                 border: "1px solid var(--border-primary)",
                 borderRadius: "var(--radius-sm)",
                 gap: "8px",
+                transition: "background-color var(--dur-fast) var(--ease-out)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flexWrap: "wrap" }}>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
                     fontSize: "11px",
                     fontWeight: 600,
-                    padding: "2px 6px",
+                    padding: "2px 7px",
                     backgroundColor: "var(--bg-muted)",
                     borderRadius: "var(--radius-xs)",
                     color: "var(--text-secondary)",
@@ -104,7 +111,8 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
                 <span
                   style={{
                     fontFamily: ent.kind === "domain" || ent.kind === "upi" || ent.kind === "phone" ? "var(--font-mono)" : "inherit",
-                    fontSize: "13px",
+                    fontSize: "13.5px",
+                    fontWeight: 500,
                     color: "var(--text-primary)",
                     wordBreak: "break-all",
                   }}
@@ -116,9 +124,9 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
                   <span
                     style={{
                       fontFamily: "var(--font-mono)",
-                      fontSize: "10px",
+                      fontSize: "10.5px",
                       color: "var(--text-muted)",
-                      padding: "1px 4px",
+                      padding: "1px 5px",
                       backgroundColor: "var(--bg-muted)",
                       borderRadius: "var(--radius-xs)",
                     }}
@@ -133,10 +141,13 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
                 onClick={() => handleRemove(idx)}
                 className="btn btn-ghost btn-sm"
                 aria-label={`Remove ${ent.kind} ${ent.value}`}
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: "var(--text-muted)", padding: "3px 6px" }}
                 title="Remove entity"
               >
-                ✕
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
           ))
@@ -148,17 +159,17 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
         <form
           onSubmit={handleAdd}
           style={{
-            padding: "10px 12px",
+            padding: "12px 14px",
             backgroundColor: "var(--bg-muted)",
             border: "1px solid var(--border-primary)",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "var(--radius-md)",
             display: "flex",
             flexDirection: "column",
-            gap: "8px",
+            gap: "10px",
             marginBottom: "1.25rem",
           }}
         >
-          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
+          <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-primary)" }}>
             Add Identifier Manually
           </span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
@@ -220,21 +231,21 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
       )}
 
       {error && (
-        <div style={{ padding: "8px 12px", backgroundColor: "var(--status-crimson-bg)", border: "1px solid var(--status-crimson-border)", color: "var(--status-crimson-text)", borderRadius: "var(--radius-sm)", fontSize: "13px", marginBottom: "1rem" }}>
+        <div style={{ padding: "9px 13px", backgroundColor: "var(--status-crimson-bg)", border: "1px solid var(--status-crimson-border)", color: "var(--status-crimson-text)", borderRadius: "var(--radius-sm)", fontSize: "13px", marginBottom: "1rem" }}>
           {error}
         </div>
       )}
 
       {/* Confirm & Start Button */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid var(--border-divider)", paddingTop: "1rem" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid var(--border-divider)", paddingTop: "1.25rem" }}>
         <button
           type="button"
           onClick={handleStartInvestigation}
-          disabled={confirming}
+          disabled={isBusy}
           className="btn btn-primary"
-          style={{ padding: "8px 20px", fontSize: "14px", fontWeight: 600 }}
+          style={{ padding: "9px 22px", fontSize: "14px", fontWeight: 600 }}
         >
-          {confirming ? (
+          {isBusy ? (
             <>
               <span className="spinner" />
               <span>Starting Investigation...</span>
@@ -242,7 +253,10 @@ export default function EntitiesEditor({ initialEntities = [], onConfirm, confir
           ) : (
             <>
               <span>Confirm &amp; Start Multi-Agent Check</span>
-              <span aria-hidden="true">→</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
             </>
           )}
         </button>

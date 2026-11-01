@@ -69,10 +69,11 @@ async function run() {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // 1. Static Pages: Home, Check Form, Guides, Guide Detail, Report Fraud, About
+  // 1. Static Pages: Home, Check Form, History, Guides, Guide Detail, Report Fraud, About
   const staticPages = [
     { name: "home", path: "/" },
     { name: "check_form", path: "/check" },
+    { name: "history", path: "/history" },
     { name: "guides_index", path: "/guides" },
     { name: "guide_detail", path: "/guides/internship_scam" },
     { name: "report_fraud", path: "/report-fraud" },

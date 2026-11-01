@@ -65,11 +65,11 @@ export default function AgentActivityDrawer({ agent, onClose }) {
         style={{
           position: "fixed",
           inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.65)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
+          backgroundColor: "rgba(0, 0, 0, 0.45)",
+          backdropFilter: "blur(12px) saturate(180%)",
+          WebkitBackdropFilter: "blur(12px) saturate(180%)",
           zIndex: 100,
-          animation: "fadeIn 150ms ease-out",
+          animation: "fadeIn var(--dur-fast) var(--ease-out)",
         }}
       />
 
@@ -88,13 +88,12 @@ export default function AgentActivityDrawer({ agent, onClose }) {
           width: "100%",
           maxWidth: "580px",
           backgroundColor: "var(--bg-card)",
-          borderLeft: "1px solid var(--border-subtle)",
-          boxShadow: "var(--shadow-lg)",
+          borderLeft: "1px solid var(--border-primary)",
+          boxShadow: "var(--shadow-float)",
           zIndex: 101,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          animation: "slideInRight 180ms ease-out",
         }}
       >
         {/* Drawer Header */}
@@ -154,10 +153,8 @@ export default function AgentActivityDrawer({ agent, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close activity log"
+            className="btn btn-ghost btn-sm"
             style={{
-              background: "none",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-sm)",
               width: "32px",
               height: "32px",
               display: "flex",
@@ -165,12 +162,15 @@ export default function AgentActivityDrawer({ agent, onClose }) {
               justifyContent: "center",
               cursor: "pointer",
               color: "var(--text-secondary)",
-              fontSize: "1rem",
               flexShrink: 0,
               padding: 0,
+              borderRadius: "var(--radius-sm)",
             }}
           >
-            ✕
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 

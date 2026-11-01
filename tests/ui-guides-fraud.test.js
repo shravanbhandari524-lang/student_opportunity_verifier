@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
 // Environment setup for testing
@@ -6,20 +6,49 @@ process.env.LLM_PROVIDER = process.env.LLM_PROVIDER || "mock";
 process.env.LLM_API_KEY = process.env.LLM_API_KEY || "mock-key";
 process.env.LLM_MODEL = process.env.LLM_MODEL || "mock-model";
 
+import fs from "node:fs";
+import path from "node:path";
+import swc from "next/dist/build/swc/index.js";
 import { POST as standaloneFraudSummaryPost } from "../app/api/fraud-summary/route.js";
 import { FraudSummaryResponseSchema } from "../lib/contracts/actions.js";
 import { setRuntimeForTests, resetRuntime, getRuntime } from "../lib/api/runtime.js";
 import { createRateLimiter } from "../lib/api/rate-limit.js";
-import GuideDetailPage, {
-  generateMetadata,
-  generateStaticParams,
-} from "../app/guides/[type]/page.js";
 import { listGuides } from "../lib/guides/index.js";
 import { getReportFraudErrorMessage } from "../app/report-fraud/errors.js";
+
+async function loadGuidePage() {
+  const fullPath = path.resolve("app/guides/[type]/page.jsx");
+  const code = fs.readFileSync(fullPath, "utf8");
+  const transformed = await swc.transform(code, {
+    jsc: {
+      parser: { syntax: "ecmascript", jsx: true },
+      transform: { react: { runtime: "automatic" } },
+    },
+  });
+  const targetFile = path.resolve("app/guides/[type]/page.test-built.mjs");
+  fs.writeFileSync(targetFile, transformed.code, "utf8");
+  try {
+    const mod = await import(targetFile);
+    return mod;
+  } finally {
+    try {
+      fs.unlinkSync(targetFile);
+    } catch {}
+  }
+}
+
+let GuideDetailPage, generateMetadata, generateStaticParams;
 
 const GUIDE_TYPES = listGuides().map((g) => g.type);
 
 describe("UI Step U1 & Standalone Fraud Summary Tests", () => {
+  before(async () => {
+    const mod = await loadGuidePage();
+    GuideDetailPage = mod.default;
+    generateMetadata = mod.generateMetadata;
+    generateStaticParams = mod.generateStaticParams;
+  });
+
   beforeEach(() => {
     const baseRuntime = getRuntime();
     setRuntimeForTests({
