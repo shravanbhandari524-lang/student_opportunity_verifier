@@ -7,6 +7,7 @@ import AgentActivityDrawer from "../../../components/AgentActivityDrawer.js";
 import Checklist from "../../../components/Checklist.js";
 import CoverageCard from "../../../components/CoverageCard.js";
 import EntitiesEditor from "../../../components/EntitiesEditor.js";
+import LinkExtractionCard from "../../../components/LinkExtractionCard.js";
 import { CollegeEmailModal, FeedbackModal } from "../../../components/ActionModals.js";
 import Card from "../../../components/ui/Card.jsx";
 import Button from "../../../components/ui/Button.jsx";
@@ -20,6 +21,7 @@ export default function CheckDetailPage({ params }) {
   const [entities, setEntities] = useState([]);
   const [extractedText, setExtractedText] = useState("");
   const [report, setReport] = useState(null);
+  const [scoreBreakdown, setScoreBreakdown] = useState(null);
   const [status, setStatus] = useState("loading"); // loading, extracting, awaiting_confirmation, investigating, scoring, report_ready, failed
   const [error, setError] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -89,9 +91,26 @@ export default function CheckDetailPage({ params }) {
       const res = await fetch(`/api/checks/${checkId}/report`);
       if (res.ok) {
         const data = await res.json();
-        setReport(data);
+        const rep = data.report || data;
+        setReport(rep);
+        if (data.scoreBreakdown) {
+          setScoreBreakdown(data.scoreBreakdown);
+        }
         setStatus("report_ready");
-        updateLocalHistory(checkRef.current, data);
+        updateLocalHistory(checkRef.current, rep);
+      } else if (res.status === 409) {
+        if (checkRef.current?.status === "failed") {
+          setStatus("failed");
+          setError("Analysis failed, retry");
+        } else {
+          setTimeout(fetchReport, 1500);
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        if (checkRef.current?.status === "failed") {
+          setStatus("failed");
+          setError(errJson.error || "Analysis failed, retry");
+        }
       }
     } catch {}
   }, [checkId, updateLocalHistory]);
@@ -132,7 +151,7 @@ export default function CheckDetailPage({ params }) {
         fetchAgentsCards();
       } else if (currentStatus === "failed") {
         setStatus("failed");
-        setError(checkData.failure_reason || "Verification could not be completed.");
+        setError(checkData.failure_reason || "Analysis failed, retry");
       } else if (currentStatus === "created" || currentStatus === "extracting") {
         setStatus("extracting");
         setTimeout(() => fetchCheck(0), 1200);
@@ -145,7 +164,7 @@ export default function CheckDetailPage({ params }) {
   useEffect(() => {
     if (!checkId) return;
     fetchCheck();
-  }, [checkId]);
+  }, [checkId, fetchCheck]);
 
   // Polling fallback while investigating
   useEffect(() => {
@@ -270,6 +289,43 @@ export default function CheckDetailPage({ params }) {
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
             Parsing offer text and screenshot attachments to extract payment handles, companies, links, and contact information.
           </p>
+        </Card>
+      )}
+
+      {/* STATE 5: FAILED ANALYSIS */}
+      {status === "failed" && (
+        <Card className="text-center py-12 px-6 border-rose-200 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10">
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
+            Analysis failed, retry
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-6 leading-relaxed">
+            {error || "An unexpected error occurred during multi-agent verification. No public registry verdict could be finalized."}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button
+              type="button"
+              onClick={() => {
+                setStatus("extracting");
+                setError(null);
+                fetchCheck(0);
+              }}
+              className="px-4 py-2 text-xs font-semibold"
+            >
+              Retry Analysis
+            </Button>
+            <Link
+              href="/check"
+              className="px-4 py-2 text-xs font-mono font-medium rounded-md border border-[#E5E7EB] dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
+            >
+              Start New Check
+            </Link>
+          </div>
         </Card>
       )}
 
@@ -402,7 +458,9 @@ export default function CheckDetailPage({ params }) {
                       ? "bg-amber-500"
                       : report.riskLevel === "low"
                       ? "bg-emerald-600"
-                      : "bg-neutral-500"
+                      : report.riskLevel === "cannot_verify"
+                      ? "bg-neutral-500"
+                      : "bg-rose-500"
                   }`}
                   id="verdict-dot"
                 />
@@ -413,7 +471,9 @@ export default function CheckDetailPage({ params }) {
                     ? "MEDIUM RISK"
                     : report.riskLevel === "low"
                     ? "LOW RISK"
-                    : "CANNOT VERIFY"}
+                    : report.riskLevel === "cannot_verify"
+                    ? "CANNOT VERIFY"
+                    : "Analysis failed, retry"}
                 </h1>
               </div>
 
@@ -540,6 +600,25 @@ export default function CheckDetailPage({ params }) {
               </div>
             )}
           </section>
+
+          {/* Optional Link Content Extraction (PRD §8) */}
+          {entities.filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain")).length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-bold text-[#0A0A0A] dark:text-white">
+                {summaryLang === "hi" ? "वैकल्पिक लिंक सामग्री निष्कर्षण" : "Optional Link Content Extraction"}
+              </h2>
+              {entities
+                .filter((e) => e.confirmed && (e.kind === "url" || e.kind === "domain"))
+                .map((ent) => (
+                  <LinkExtractionCard
+                    key={ent.id}
+                    checkId={checkId}
+                    entity={ent}
+                    lang={summaryLang}
+                  />
+                ))}
+            </section>
+          )}
 
           {/* Section: Verified Facts */}
           {report.verified && report.verified.length > 0 && (
