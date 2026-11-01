@@ -140,17 +140,17 @@ test("trace instrumentation: redacts secrets and auth tokens from inputs and lab
   const events = [];
   const emit = (e) => events.push(e);
 
-  const secretApiKey = "sk-live-abcdef1234567890abcdef1234567890";
+  const sampleSecret = "sk-live-abcdef1234567890abcdef1234567890";
   const mockTools = {
     search: async () => ({ ok: true, data: { results: [] } }),
   };
 
   const instrumented = instrumentTools(mockTools, emit, "reputation_osint", 1);
-  await instrumented.search(`api_key=${secretApiKey} look for scam`);
+  await instrumented.search(`api_key=${sampleSecret} look for scam`);
 
   for (const ev of events) {
     const serialized = JSON.stringify(ev);
-    assert.equal(serialized.includes(secretApiKey), false, "Raw secret was present in serialized event");
+    assert.equal(serialized.includes(sampleSecret), false, "Raw secret was present in serialized event");
   }
 
   // Unit check on redactSecretText helper
