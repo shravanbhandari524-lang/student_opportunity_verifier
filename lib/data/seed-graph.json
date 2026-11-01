@@ -1,0 +1,38 @@
+[
+  {
+    "_comment": "placeholder, fake, replace from public advisories",
+    "checkId": "seed-check-0001",
+    "riskLevel": "high",
+    "consent": true,
+    "identifiers": [
+      { "kind": "domain", "value": "fake-scholarship-portal.com" },
+      { "kind": "upi", "value": "scholarship.scam@okaxis" },
+      { "kind": "phone", "value": "+919876543210" },
+      { "kind": "handle", "value": "fast_scholarship_offers" },
+      { "kind": "company", "value": "Fake India Scholarship Trust" }
+    ]
+  },
+  {
+    "checkId": "seed-check-0002",
+    "riskLevel": "high",
+    "consent": true,
+    "identifiers": [
+      { "kind": "domain", "value": "task-job-earning.xyz" },
+      { "kind": "upi", "value": "task.payment@paytm" },
+      { "kind": "phone", "value": "+919123456789" },
+      { "kind": "handle", "value": "daily_task_earning_bot" },
+      { "kind": "company", "value": "Global Task Marketing Ltd" }
+    ]
+  },
+  {
+    "checkId": "seed-check-0003",
+    "riskLevel": "high",
+    "consent": true,
+    "identifiers": [
+      { "kind": "domain", "value": "mule-account-recruit.net" },
+      { "kind": "upi", "value": "hr.recruiter@okhdfcbank" },
+      { "kind": "phone", "value": "+919988776655" },
+      { "kind": "company", "value": "Apex International HR Services" }
+    ]
+  }
+]
