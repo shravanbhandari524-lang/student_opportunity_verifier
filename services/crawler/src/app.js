@@ -1,6 +1,6 @@
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
-import crawlRouter, { serveScreenshot } from './routes/crawl.js';
+import crawlRouter from './routes/crawl.js';
 import { CONFIG } from './config.js';
 
 export function createApp() {
@@ -9,27 +9,23 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
 
-  // Optional API key middleware
+  // Strict API Key authorization on every route
   app.use((req, res, next) => {
-    const configuredKey = process.env.API_KEY || CONFIG.API_KEY;
+    const configuredKey = process.env.CRAWLER_API_KEY || CONFIG.CRAWLER_API_KEY;
     if (!configuredKey) {
-      return next();
+      // If no key is configured in env, refuse external requests for safety
+      return res.status(500).json({ error: 'CRAWLER_API_KEY not configured on service' });
     }
 
-    // /api/health is always public
-    if (req.path === '/api/health') {
-      return next();
-    }
-
-    const clientKey = req.header('x-api-key');
+    const clientKey = req.header('x-api-key') || (req.header('authorization') || '').replace(/^Bearer\s+/i, '');
     if (!clientKey || clientKey !== configuredKey) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid or missing x-api-key header' });
+      return res.status(401).json({ error: 'Unauthorized: Invalid or missing x-api-key' });
     }
 
     return next();
   });
 
-  // Rate limiter: 20 requests/min per IP
+  // Rate limiter: 30 requests/min per IP
   const limiter = rateLimit({
     windowMs: CONFIG.RATE_LIMIT_WINDOW_MS,
     max: CONFIG.RATE_LIMIT_MAX_REQUESTS,
@@ -43,9 +39,6 @@ export function createApp() {
   // Mount API endpoints
   app.use('/api', crawlRouter);
 
-  // Screenshot image serving
-  app.get('/screenshots/:jobId/:file', serveScreenshot);
-
   // 404 handler
   app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
@@ -53,7 +46,7 @@ export function createApp() {
 
   // Global error handler
   app.use((err, req, res, next) => {
-    console.error('[API Error]', err);
+    console.error('[Crawler API Error]', err);
     res.status(500).json({ error: 'Internal server error' });
   });
 

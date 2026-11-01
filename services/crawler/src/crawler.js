@@ -3,11 +3,10 @@ import {
   normalizeUrl,
   isSafeUrlAsync,
   isAllowedByRobotsTxt,
-  isCrawlTrap,
-  discoverSitemapUrls
+  isCrawlTrap
 } from './urlGuard.js';
-import { scrollPage, extractPageData, captureScreenshot } from './extract.js';
-import { planFormSubmissions, isFormSafe } from './llm.js';
+import { scrollPage, extractPageData } from './extract.js';
+import { isSameDomain } from './urlUtils.js';
 import { CONFIG } from './config.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +42,8 @@ export function buildTree(pages, startUrl) {
 
 /**
  * Core reusable crawl function.
+ * Strictly read-only: never fills forms, never submits forms, never takes screenshots,
+ * rejects downloads, enforces hard caps and SSRF guards.
  */
 export async function crawl(options = {}, { onProgress, signal } = {}) {
   const startRaw = options.url || options.startUrl;
@@ -60,71 +61,79 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     throw new Error(`Cannot crawl URL: ${startCheck.reason}`);
   }
 
-  const useLLM = options.useLLM === true;
-  if (useLLM) {
-    const hasKey = Boolean(process.env.OPENAI_API_KEY || CONFIG.OPENAI_API_KEY);
-    const hasBase = Boolean(process.env.OPENAI_BASE_URL || CONFIG.OPENAI_BASE_URL);
-    const isMock = process.env.LLM_MOCK === '1';
-    if (!hasKey && !hasBase && !isMock) {
-      throw new Error('OPENAI_API_KEY or OPENAI_BASE_URL must be configured when useLLM is enabled');
-    }
-  }
-
-  const maxDepth = typeof options.maxDepth === 'number' ? Math.max(0, options.maxDepth) : 3;
-  const maxPages = typeof options.maxPages === 'number' ? Math.max(1, options.maxPages) : 30;
-  const concurrency = Math.min(5, Math.max(1, typeof options.concurrency === 'number' ? options.concurrency : 3));
-  const maxScrolls = typeof options.maxScrolls === 'number' ? Math.max(0, options.maxScrolls) : 10;
-  const enableScreenshots = options.screenshots !== false;
+  // Hard limits from env / config with safe defaults
+  const maxDepth = Math.min(
+    typeof options.maxDepth === 'number' ? options.maxDepth : CONFIG.MAX_DEPTH,
+    CONFIG.MAX_DEPTH_LIMIT
+  );
+  const maxPages = Math.min(
+    typeof options.maxPages === 'number' ? options.maxPages : CONFIG.MAX_PAGES,
+    CONFIG.MAX_PAGES_LIMIT
+  );
+  const concurrency = Math.min(
+    typeof options.concurrency === 'number' ? options.concurrency : CONFIG.DEFAULT_CONCURRENCY,
+    CONFIG.MAX_CONCURRENCY_LIMIT
+  );
+  const totalTimeLimitMs = (options.totalTimeSec || CONFIG.TOTAL_TIME_SEC) * 1000;
+  const maxTotalBytes = options.maxTotalBytes || CONFIG.MAX_TOTAL_BYTES;
+  const sameHostOnly = options.sameHostOnly !== undefined ? options.sameHostOnly : CONFIG.SAME_HOST_ONLY;
   const enableScroll = options.scrollPage !== false;
-  const useSitemap = options.useSitemap !== false;
-  const jobId = options.jobId || 'cli';
-  const storageDir = options.storageDir || 'storage';
-  const navTimeout = options.navigationTimeoutMs || 30000;
-  const llmMaxCalls = typeof options.llmMaxCalls === 'number' ? options.llmMaxCalls : CONFIG.LLM_MAX_CALLS;
-  const llmMaxSubmitsPerPage = typeof options.llmMaxSubmitsPerPage === 'number' ? options.llmMaxSubmitsPerPage : CONFIG.LLM_MAX_SUBMITS_PER_PAGE;
+  const maxScrolls = typeof options.maxScrolls === 'number' ? options.maxScrolls : 3;
+  const navTimeout = options.navigationTimeoutMs || 15000;
+
+  const jobErrors = [];
+  let blockedRequestsCount = 0;
+  let totalBytesReceived = 0;
+  let truncated = false;
+
+  const startTime = Date.now();
 
   let browser = null;
   let context = null;
 
-  const jobErrors = [];
-  let blockedRequestsCount = 0;
-  let llmCallsCount = 0;
-  let llmSubmitsCount = 0;
-
   async function setupBrowserContext() {
-    if (context) {
-      try { await context.close(); } catch {}
-    }
     if (browser) {
-      try { await browser.close(); } catch {}
+      await browser.close().catch(() => {});
     }
-
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-extensions'
+      ]
     });
 
     context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
+      acceptDownloads: false, // Disallow all downloads
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 deepcrawl/1.0'
     });
 
-    // Revalidate every sub-request and redirect
+    // Revalidate every request (main frame, subframes, redirects, xhr/fetch) against SSRF
     await context.route('**/*', async (route) => {
       try {
-        const reqUrl = route.request().url();
+        const req = route.request();
+        const reqUrl = req.url();
+
+        // Check protocol
         if (!reqUrl.startsWith('http://') && !reqUrl.startsWith('https://')) {
           blockedRequestsCount++;
           jobErrors.push(`Blocked request: ${reqUrl} (Disallowed protocol)`);
           return route.abort('blockedbyclient');
         }
+
+        // Validate SSRF
         const safe = await isSafeUrlAsync(reqUrl);
         if (!safe.safe) {
           blockedRequestsCount++;
           jobErrors.push(`Blocked request: ${reqUrl} (${safe.reason})`);
           return route.abort('blockedbyclient');
         }
+
         return route.continue();
       } catch {
         blockedRequestsCount++;
@@ -144,31 +153,9 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     patternCounts.set(initPatternCheck.pattern, 1);
   }
 
-  // Sitemap seeding
-  if (useSitemap) {
-    try {
-      const sitemapUrls = await discoverSitemapUrls(normalizedStart, 500);
-      for (const sUrl of sitemapUrls) {
-        if (!enqueuedUrls.has(sUrl)) {
-          const trapCheck = isCrawlTrap(sUrl, patternCounts, 50);
-          if (!trapCheck.trap && trapCheck.pattern) {
-            patternCounts.set(trapCheck.pattern, (patternCounts.get(trapCheck.pattern) || 0) + 1);
-            enqueuedUrls.add(sUrl);
-            queue.push({
-              url: sUrl,
-              depth: 1,
-              parentUrl: normalizedStart,
-              isPagination: false
-            });
-          }
-        }
-      }
-    } catch (smErr) {
-      jobErrors.push(`Sitemap discovery error: ${smErr.message}`);
-    }
-  }
-
   const pages = [];
+  const allForms = [];
+  const externalDomainsSet = new Set();
   let failedCount = 0;
   let maxDepthReached = 0;
   let stopReason = 'queueEmpty';
@@ -182,28 +169,44 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     }
   }
 
-  function waitTurn() {
-    return new Promise((resolve) => {
-      wakeWaiters.push(resolve);
-    });
-  }
+  async function processUrl(current) {
+    if (signal?.aborted) {
+      stopReason = 'aborted';
+      return;
+    }
 
-  async function processItem(current) {
-    maxDepthReached = Math.max(maxDepthReached, current.depth);
+    if (Date.now() - startTime >= totalTimeLimitMs) {
+      stopReason = 'timeLimit';
+      truncated = true;
+      return;
+    }
 
-    const pageErrors = [];
-    const llmActions = [];
+    if (pages.length >= maxPages) {
+      stopReason = 'maxPages';
+      truncated = true;
+      return;
+    }
+
+    if (totalBytesReceived >= maxTotalBytes) {
+      stopReason = 'byteLimit';
+      truncated = true;
+      return;
+    }
+
+    if (current.depth > maxDepthReached) {
+      maxDepthReached = current.depth;
+    }
+
     let finalUrl = current.url;
     let statusCode = null;
     let title = '';
     let description = '';
     let headings = { h1: [], h2: [], h3: [] };
     let text = '';
-    let images = [];
     let links = { internal: [], external: [] };
-    let screenshot = null;
+    const pageErrors = [];
 
-    // SSRF Check
+    // Pre-navigation safety check
     const safetyCheck = await isSafeUrlAsync(current.url);
     if (!safetyCheck.safe) {
       blockedRequestsCount++;
@@ -219,25 +222,15 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
         description,
         headings,
         text,
-        images,
         links,
         depth: current.depth,
         parentUrl: current.parentUrl,
-        screenshot,
-        errors: pageErrors,
-        llmActions
-      });
-      onProgress?.({
-        pagesVisited: pages.length,
-        pending: queue.length,
-        failed: failedCount,
-        currentUrl: current.url,
-        depth: current.depth
+        errors: pageErrors
       });
       return;
     }
 
-    // Robots.txt Check
+    // Robots.txt check
     const robotsAllowed = await isAllowedByRobotsTxt(current.url);
     if (!robotsAllowed) {
       blockedRequestsCount++;
@@ -253,20 +246,10 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
         description,
         headings,
         text,
-        images,
         links,
         depth: current.depth,
         parentUrl: current.parentUrl,
-        screenshot,
-        errors: pageErrors,
-        llmActions
-      });
-      onProgress?.({
-        pagesVisited: pages.length,
-        pending: queue.length,
-        failed: failedCount,
-        currentUrl: current.url,
-        depth: current.depth
+        errors: pageErrors
       });
       return;
     }
@@ -289,10 +272,17 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
           timeout: navTimeout
         });
 
-        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
         finalUrl = normalizeUrl(page.url()) || page.url();
         statusCode = response ? response.status() : null;
+
+        if (response) {
+          const bodyBuf = await response.body().catch(() => null);
+          if (bodyBuf) {
+            totalBytesReceived += bodyBuf.length;
+          }
+        }
 
         if (statusCode && statusCode >= 400) {
           pageErrors.push(`HTTP status ${statusCode}`);
@@ -304,12 +294,10 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
           pageErrors.push(`Redirected to unsafe URL: ${finalSafety.reason}`);
           jobErrors.push(`Blocked request: ${finalUrl} (${finalSafety.reason})`);
         } else {
-          // Scroll for lazy loading
           if (enableScroll) {
-            await scrollPage(page, maxScrolls, 200);
+            await scrollPage(page, maxScrolls, 150);
           }
 
-          // Extract DOM data
           let extracted = null;
           try {
             extracted = await extractPageData(page, finalUrl, normalizedStart);
@@ -317,25 +305,31 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
             description = extracted.description;
             headings = extracted.headings;
             text = extracted.text;
-            images = extracted.images;
             links = extracted.links;
+
+            if (extracted.forms && extracted.forms.length > 0) {
+              allForms.push(...extracted.forms);
+            }
+
+            for (const extLink of links.external) {
+              try {
+                externalDomainsSet.add(new URL(extLink).hostname);
+              } catch {
+                // Ignore invalid external URLs
+              }
+            }
           } catch (extErr) {
             pageErrors.push(`Extraction failed: ${extErr.message}`);
           }
 
-          // Capture screenshot
-          if (enableScreenshots) {
-            try {
-              screenshot = await captureScreenshot(page, finalUrl, pages.length + 1, jobId, storageDir);
-            } catch (shotErr) {
-              pageErrors.push(`Screenshot failed: ${shotErr.message}`);
-            }
-          }
-
-          // Queue discovered internal links
+          // Queue internal links
           if (extracted && !signal?.aborted) {
             for (const nextUrl of links.internal) {
               if (enqueuedUrls.has(nextUrl)) continue;
+
+              if (sameHostOnly && !isSameDomain(nextUrl, normalizedStart)) {
+                continue;
+              }
 
               const isPagination = extracted.paginationLinks.has(nextUrl);
               const nextDepth = isPagination ? current.depth : current.depth + 1;
@@ -357,171 +351,13 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
               }
             }
           }
-
-          // LLM Form-Filling Step (if enabled and forms exist)
-          if (useLLM && extracted?.forms?.length > 0 && llmCallsCount < llmMaxCalls && !signal?.aborted) {
-            llmCallsCount++;
-            try {
-              const llmPlan = await planFormSubmissions({
-                forms: extracted.forms,
-                pageText: text,
-                config: CONFIG
-              });
-
-              if (llmPlan.valid && Array.isArray(llmPlan.forms)) {
-                let submitsThisPage = 0;
-                for (const proposal of llmPlan.forms) {
-                  const formDef = extracted.forms.find((f) => f.selector === proposal.selector);
-                  if (!formDef) continue;
-
-                  const safeCheck = isFormSafe(formDef);
-                  if (!safeCheck.safe) {
-                    llmActions.push({
-                      formSelector: proposal.selector,
-                      status: 'skipped',
-                      reason: safeCheck.reason
-                    });
-                    continue;
-                  }
-
-                  if (!proposal.submit) {
-                    llmActions.push({
-                      formSelector: proposal.selector,
-                      status: 'skipped',
-                      reason: 'Model suggested not submitting'
-                    });
-                    continue;
-                  }
-
-                  if (submitsThisPage >= llmMaxSubmitsPerPage) {
-                    llmActions.push({
-                      formSelector: proposal.selector,
-                      status: 'skipped',
-                      reason: `Exceeded per-page submits limit (${llmMaxSubmitsPerPage})`
-                    });
-                    continue;
-                  }
-
-                  submitsThisPage++;
-                  llmSubmitsCount++;
-
-                  try {
-                    // Fill form values
-                    await page.evaluate(({ sel, vals }) => {
-                      const form = document.querySelector(sel);
-                      if (!form) return;
-                      for (const [k, v] of Object.entries(vals)) {
-                        const el = form.querySelector(`[name="${k}"], #${k}`);
-                        if (el) {
-                          el.value = v;
-                          el.dispatchEvent(new Event('input', { bubbles: true }));
-                          el.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                      }
-                    }, { sel: proposal.selector, vals: proposal.values });
-
-                    // Submit form
-                    await Promise.all([
-                      page.waitForURL((u) => u.href !== current.url, { timeout: 8000 }).catch(() => {}),
-                      page.evaluate((sel) => {
-                        const form = document.querySelector(sel);
-                        const submitBtn = form?.querySelector('button[type="submit"], input[type="submit"]');
-                        if (submitBtn) {
-                          submitBtn.click();
-                        } else if (form) {
-                          form.submit();
-                        }
-                      }, proposal.selector).catch((e) => {
-                        // Execution context destroyed indicates fast navigation
-                        if (!e.message.includes('Execution context was destroyed')) {
-                          throw e;
-                        }
-                      })
-                    ]);
-
-                    await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
-
-                    const resultUrl = normalizeUrl(page.url()) || page.url();
-                    const postSubmitSafety = await isSafeUrlAsync(resultUrl);
-
-                    if (!postSubmitSafety.safe) {
-                      blockedRequestsCount++;
-                      jobErrors.push(`Blocked request after form submit: ${resultUrl} (${postSubmitSafety.reason})`);
-                      llmActions.push({
-                        formSelector: proposal.selector,
-                        valuesUsed: proposal.values,
-                        resultUrl,
-                        status: 'blocked'
-                      });
-                    } else {
-                      llmActions.push({
-                        formSelector: proposal.selector,
-                        valuesUsed: proposal.values,
-                        resultUrl,
-                        status: 'success'
-                      });
-
-                      // Extract resulting page as a child if new
-                      if (!enqueuedUrls.has(resultUrl) && pages.length < maxPages && current.depth + 1 <= maxDepth) {
-                        enqueuedUrls.add(resultUrl);
-                        let childShot = null;
-                        if (enableScreenshots) {
-                          try {
-                            childShot = await captureScreenshot(page, resultUrl, pages.length + 2, jobId, storageDir);
-                          } catch {}
-                        }
-                        const childExtracted = await extractPageData(page, resultUrl, normalizedStart).catch(() => null);
-
-                        pages.push({
-                          url: resultUrl,
-                          finalUrl: resultUrl,
-                          statusCode: 200,
-                          title: childExtracted?.title || '',
-                          description: childExtracted?.description || '',
-                          headings: childExtracted?.headings || { h1: [], h2: [], h3: [] },
-                          text: childExtracted?.text || '',
-                          images: childExtracted?.images || [],
-                          links: childExtracted?.links || { internal: [], external: [] },
-                          depth: current.depth + 1,
-                          parentUrl: current.url,
-                          screenshot: childShot,
-                          errors: [],
-                          llmActions: []
-                        });
-                      }
-                    }
-                  } catch (subErr) {
-                    llmActions.push({
-                      formSelector: proposal.selector,
-                      valuesUsed: proposal.values,
-                      status: 'error',
-                      reason: subErr.message
-                    });
-                    pageErrors.push(`LLM submit error: ${subErr.message}`);
-                  }
-                }
-              } else if (llmPlan.error) {
-                pageErrors.push(`LLM error: ${llmPlan.error}`);
-              }
-            } catch (llmErr) {
-              pageErrors.push(`LLM execution error: ${llmErr.message}`);
-            }
-          }
         }
       } catch (navErr) {
         pageErrors.push(navErr.message);
-        if (!browser.isConnected()) {
-          await setupBrowserContext().catch(() => {});
-        }
+        failedCount++;
       } finally {
-        try {
-          await page.close();
-        } catch {}
+        await page.close().catch(() => {});
       }
-    }
-
-    if (pageErrors.length > 0) {
-      failedCount++;
     }
 
     pages.push({
@@ -532,13 +368,10 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
       description,
       headings,
       text,
-      images,
       links,
       depth: current.depth,
       parentUrl: current.parentUrl,
-      screenshot,
-      errors: pageErrors,
-      llmActions
+      errors: pageErrors
     });
 
     onProgress?.({
@@ -553,43 +386,42 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
   async function worker() {
     while (true) {
       if (signal?.aborted) {
-        if (!stopReason || stopReason === 'queueEmpty') {
-          stopReason = signal.reason === 'timeout' ? 'timeout' : 'cancelled';
-        }
+        stopReason = 'aborted';
         break;
       }
-
+      if (Date.now() - startTime >= totalTimeLimitMs) {
+        stopReason = 'timeLimit';
+        truncated = true;
+        break;
+      }
       if (pages.length >= maxPages) {
         stopReason = 'maxPages';
+        truncated = true;
         break;
       }
-
-      // Check if starting another page would exceed maxPages
-      if (pages.length + activeWorkers >= maxPages) {
-        if (activeWorkers === 0) {
-          stopReason = 'maxPages';
-          break;
-        }
-        await Promise.race([waitTurn(), sleep(80)]);
-        continue;
+      if (totalBytesReceived >= maxTotalBytes) {
+        stopReason = 'byteLimit';
+        truncated = true;
+        break;
       }
 
       if (queue.length === 0) {
         if (activeWorkers === 0) {
-          stopReason = 'queueEmpty';
           break;
         }
-        await Promise.race([waitTurn(), sleep(80)]);
+        await new Promise((resolve) => {
+          wakeWaiters.push(resolve);
+          setTimeout(resolve, 50);
+        });
         continue;
       }
 
       const item = queue.shift();
-      activeWorkers++;
+      if (!item) continue;
 
+      activeWorkers++;
       try {
-        await processItem(item);
-      } catch (err) {
-        jobErrors.push(`Worker error: ${err.message}`);
+        await processUrl(item);
       } finally {
         activeWorkers--;
         notifyWaiters();
@@ -597,42 +429,38 @@ export async function crawl(options = {}, { onProgress, signal } = {}) {
     }
   }
 
-  try {
-    const workers = Array.from({ length: concurrency }, () => worker());
-    await Promise.all(workers);
-  } finally {
-    if (context) {
-      try { await context.close(); } catch {}
-    }
-    if (browser) {
-      try { await browser.close(); } catch {}
-    }
+  const workerPromises = Array.from({ length: concurrency }, () => worker());
+  await Promise.all(workerPromises);
+
+  if (browser) {
+    await browser.close().catch(() => {});
   }
 
-  if (signal?.aborted && (!stopReason || stopReason === 'queueEmpty')) {
-    stopReason = signal.reason === 'timeout' ? 'timeout' : 'cancelled';
-  }
-
-  const partial = stopReason !== 'queueEmpty';
+  const durationMs = Date.now() - startTime;
   const tree = buildTree(pages, normalizedStart);
 
   return {
     startUrl: normalizedStart,
-    stopReason,
-    partial,
+    tree,
+    pages,
+    forms: allForms,
+    externalDomains: Array.from(externalDomainsSet),
+    truncated,
+    limitsUsed: {
+      maxPages,
+      maxDepth,
+      totalTimeSec: Math.round(durationMs / 1000),
+      totalBytesReceived,
+      sameHostOnly
+    },
     summary: {
       pagesVisited: pages.length,
-      failed: failedCount,
       maxDepthReached,
+      failed: failedCount,
       blockedRequests: blockedRequestsCount,
-      llmCalls: llmCallsCount,
-      llmSubmits: llmSubmitsCount
+      durationMs,
+      stopReason
     },
-    errors: jobErrors,
-    pages,
-    tree
+    errors: jobErrors
   };
 }
-
-// Backwards-compatible alias
-export const runCrawler = crawl;

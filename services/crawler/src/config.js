@@ -5,25 +5,20 @@ try {
 }
 
 export const CONFIG = {
-  PORT: parseInt(process.env.PORT, 10) || 3000,
-  API_KEY: process.env.API_KEY || null,
-  JOB_TTL_MINUTES: parseFloat(process.env.JOB_TTL_MINUTES) || 60,
-  MAX_DEPTH_LIMIT: 10,
-  DEFAULT_MAX_DEPTH: 3,
-  MAX_PAGES_LIMIT: 500,
-  DEFAULT_MAX_PAGES: 30,
-  DEFAULT_CONCURRENCY: 3,
-  MAX_CONCURRENCY_LIMIT: 5,
-  RATE_LIMIT_WINDOW_MS: 60 * 1000, // 1 minute
-  RATE_LIMIT_MAX_REQUESTS: 20,     // 20 requests/minute per IP
-  STORAGE_DIR: 'storage',
-  HARD_JOB_TIMEOUT_MS: 10 * 60 * 1000, // 10 minutes
-  MAX_JOBS_IN_MEMORY: 100,
-
-  // LLM form-filling settings
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
-  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || '',
-  LLM_MAX_CALLS: parseInt(process.env.LLM_MAX_CALLS, 10) || 30,
-  LLM_MAX_SUBMITS_PER_PAGE: parseInt(process.env.LLM_MAX_SUBMITS_PER_PAGE, 10) || 2
+  HOST: '127.0.0.1',
+  PORT: parseInt(process.env.CRAWLER_PORT || process.env.PORT, 10) || 3001,
+  CRAWLER_API_KEY: process.env.CRAWLER_API_KEY || process.env.API_KEY || '',
+  JOB_TTL_MINUTES: parseFloat(process.env.CRAWLER_JOB_TTL_MINUTES || process.env.JOB_TTL_MINUTES) || 10,
+  MAX_DEPTH: parseInt(process.env.CRAWLER_MAX_DEPTH, 10) || 2,
+  MAX_DEPTH_LIMIT: 5,
+  MAX_PAGES: parseInt(process.env.CRAWLER_MAX_PAGES, 10) || 10,
+  MAX_PAGES_LIMIT: 50,
+  DEFAULT_CONCURRENCY: 2,
+  MAX_CONCURRENCY_LIMIT: 3,
+  TOTAL_TIME_SEC: parseInt(process.env.CRAWLER_TOTAL_TIME_SEC, 10) || 60,
+  MAX_TOTAL_BYTES: parseInt(process.env.CRAWLER_MAX_BYTES, 10) || 10 * 1024 * 1024, // 10 MB
+  SAME_HOST_ONLY: process.env.CRAWLER_SAME_HOST_ONLY !== 'false', // default true
+  RATE_LIMIT_WINDOW_MS: 60 * 1000,
+  RATE_LIMIT_MAX_REQUESTS: 30,
+  MAX_JOBS_IN_MEMORY: 100
 };

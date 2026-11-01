@@ -1,13 +1,20 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { normalizeUrl, isSameDomain, shouldSkipUrl, sanitizeFilename } from './urlUtils.js';
+import { normalizeUrl, isSameDomain, shouldSkipUrl } from './urlUtils.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const PASSWORD_REGEX = /\b(password|pass|pwd)\b/i;
+const OTP_REGEX = /\b(otp|one[-_ ]?time[-_ ]?pass|verification[-_ ]?code)\b/i;
+const UPI_REGEX = /\b(upi|vpa|bhim|gpay|paytm|phonepe)\b/i;
+const PAYMENT_REGEX = /\b(card|credit|debit|cvv|expiry|bank|account[-_ ]?no|ifsc|payment|checkout)\b/i;
+
 /**
  * Scrolls the page incrementally until height stops growing or maxScrolls is reached.
+ *
+ * @param {import('playwright').Page} page
+ * @param {number} [maxScrolls=5]
+ * @param {number} [delayMs=200]
  */
-export async function scrollPage(page, maxScrolls = 10, delayMs = 200) {
+export async function scrollPage(page, maxScrolls = 5, delayMs = 200) {
   try {
     let lastHeight = 0;
     for (let i = 0; i < maxScrolls; i++) {
@@ -17,7 +24,7 @@ export async function scrollPage(page, maxScrolls = 10, delayMs = 200) {
       });
       await sleep(delayMs);
       if (currentHeight === lastHeight) {
-        break; // Height stopped growing
+        break;
       }
       lastHeight = currentHeight;
     }
@@ -27,8 +34,12 @@ export async function scrollPage(page, maxScrolls = 10, delayMs = 200) {
 }
 
 /**
- * Extracts page title, meta description, headings, visible content text, links,
- * page images (up to 100), and visible forms for potential LLM interaction.
+ * Extracts page title, meta description, visible content text, links,
+ * and form definitions for security analysis.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} currentUrl
+ * @param {string} startUrl
  */
 export async function extractPageData(page, currentUrl, startUrl) {
   const evaluated = await page.evaluate(() => {
@@ -50,8 +61,8 @@ export async function extractPageData(page, currentUrl, startUrl) {
       h3: getTexts('h3')
     };
 
-    // Extract cleaned visible text from main content (capped at 20,000 chars)
-    let contentRoot = document.querySelector('main') || document.querySelector('article') || document.body;
+    // Extract visible text capped at 20,000 characters
+    const contentRoot = document.querySelector('main') || document.querySelector('article') || document.body;
     let text = '';
     if (contentRoot) {
       const clone = contentRoot.cloneNode(true);
@@ -66,7 +77,7 @@ export async function extractPageData(page, currentUrl, startUrl) {
       text = text.slice(0, 20000);
     }
 
-    // Extract links and detect pagination
+    // Extract raw links
     const rawLinks = Array.from(document.querySelectorAll('a[href]')).map((a) => {
       const href = a.getAttribute('href') || '';
       const rel = (a.getAttribute('rel') || '').toLowerCase();
@@ -89,72 +100,34 @@ export async function extractPageData(page, currentUrl, startUrl) {
       };
     }).filter((item) => item.href.trim().length > 0);
 
-    // Extract images (including og:image)
-    const rawImages = [];
-    const ogImg = document.querySelector('meta[property="og:image"]');
-    if (ogImg && ogImg.getAttribute('content')) {
-      rawImages.push({
-        src: ogImg.getAttribute('content').trim(),
-        alt: 'og:image',
-        width: null,
-        height: null
-      });
-    }
-
-    const imgEls = Array.from(document.querySelectorAll('img'));
-    for (const img of imgEls) {
-      const src = img.currentSrc || img.getAttribute('src') || '';
-      if (!src) continue;
-      const alt = (img.getAttribute('alt') || '').trim();
-      const width = img.naturalWidth || parseInt(img.getAttribute('width'), 10) || null;
-      const height = img.naturalHeight || parseInt(img.getAttribute('height'), 10) || null;
-      rawImages.push({ src: src.trim(), alt, width, height });
-    }
-
-    // Extract visible forms
+    // Extract visible forms for security metadata analysis
     const rawForms = [];
-    const formEls = Array.from(document.querySelectorAll('form'));
-    formEls.forEach((form, idx) => {
-      const style = window.getComputedStyle(form);
-      if (style.display === 'none' || style.visibility === 'hidden') return;
-
-      const selector = form.id
-        ? `#${form.id}`
-        : (form.name ? `form[name="${form.name}"]` : `form:nth-of-type(${idx + 1})`);
+    document.querySelectorAll('form').forEach((form, idx) => {
+      const selector = form.id ? `form#${form.id}` : `form:nth-of-type(${idx + 1})`;
       const method = (form.getAttribute('method') || 'GET').toUpperCase();
       const action = form.getAttribute('action') || '';
 
       const fields = [];
-      const inputEls = Array.from(form.querySelectorAll('input, select, textarea'));
-      for (const el of inputEls) {
+      form.querySelectorAll('input, select, textarea').forEach((el) => {
         const tag = el.tagName.toLowerCase();
-        let type = (el.getAttribute('type') || (tag === 'textarea' ? 'textarea' : (tag === 'select' ? 'select' : 'text'))).toLowerCase();
-        if (type === 'hidden') continue;
+        const type = (el.getAttribute('type') || (tag === 'textarea' ? 'textarea' : 'text')).toLowerCase();
+        if (type === 'hidden') return;
 
         const name = el.getAttribute('name') || el.id || '';
-        if (!name) continue;
-
         const placeholder = el.getAttribute('placeholder') || '';
         const required = el.hasAttribute('required');
 
         let label = '';
         if (el.id) {
-          const lEl = document.querySelector(`label[for="${el.id}"]`);
-          if (lEl) label = lEl.textContent.trim();
+          const labelEl = document.querySelector(`label[for="${el.id}"]`);
+          if (labelEl) label = labelEl.textContent.trim();
         }
         if (!label) {
-          const parentL = el.closest('label');
-          if (parentL) label = parentL.textContent.replace(el.textContent, '').trim();
+          const parentLabel = el.closest('label');
+          if (parentLabel) label = parentLabel.textContent.trim();
         }
-        if (!label && el.getAttribute('aria-label')) {
+        if (!label && el.hasAttribute('aria-label')) {
           label = el.getAttribute('aria-label');
-        }
-
-        let options = undefined;
-        if (tag === 'select') {
-          options = Array.from(el.querySelectorAll('option'))
-            .map((o) => (o.value || o.textContent).trim())
-            .filter(Boolean);
         }
 
         fields.push({
@@ -162,10 +135,9 @@ export async function extractPageData(page, currentUrl, startUrl) {
           type,
           label,
           placeholder,
-          options,
           required
         });
-      }
+      });
 
       if (fields.length > 0) {
         rawForms.push({
@@ -177,7 +149,7 @@ export async function extractPageData(page, currentUrl, startUrl) {
       }
     });
 
-    return { title, description: description.trim(), headings, text, rawLinks, rawImages, rawForms };
+    return { title, description: description.trim(), headings, text, rawLinks, rawForms };
   });
 
   const internalSet = new Set();
@@ -199,35 +171,37 @@ export async function extractPageData(page, currentUrl, startUrl) {
     }
   }
 
-  // Dedupe and filter images (cap at 100, skip data URIs > 200 chars)
-  const images = [];
-  const seenImageSrcs = new Set();
-
-  for (const img of evaluated.rawImages) {
-    if (images.length >= 100) break;
-
-    let resolvedSrc = null;
-    if (img.src.startsWith('data:')) {
-      if (img.src.length > 200) continue;
-      resolvedSrc = img.src;
-    } else {
-      try {
-        resolvedSrc = new URL(img.src, currentUrl).href;
-      } catch {
-        continue;
+  // Parse form security flags
+  const forms = (evaluated.rawForms || []).map((f) => {
+    let actionHost = '';
+    try {
+      if (f.action) {
+        actionHost = new URL(f.action, currentUrl).hostname;
+      } else {
+        actionHost = new URL(currentUrl).hostname;
       }
+    } catch {
+      actionHost = '';
     }
 
-    if (seenImageSrcs.has(resolvedSrc)) continue;
-    seenImageSrcs.add(resolvedSrc);
+    const fieldTypes = f.fields.map((fld) => fld.type);
+    const allFieldNames = f.fields.map((fld) => `${fld.name} ${fld.label} ${fld.placeholder}`).join(' ');
 
-    images.push({
-      src: resolvedSrc,
-      alt: img.alt || '',
-      width: typeof img.width === 'number' && !Number.isNaN(img.width) ? img.width : null,
-      height: typeof img.height === 'number' && !Number.isNaN(img.height) ? img.height : null
-    });
-  }
+    const hasPassword = f.fields.some((fld) => fld.type === 'password') || PASSWORD_REGEX.test(allFieldNames);
+    const hasOtp = OTP_REGEX.test(allFieldNames);
+    const hasUpi = UPI_REGEX.test(allFieldNames);
+    const hasPayment = PAYMENT_REGEX.test(allFieldNames);
+
+    return {
+      actionHost,
+      method: f.method,
+      fieldTypes,
+      hasPassword,
+      hasOtp,
+      hasUpi,
+      hasPayment
+    };
+  });
 
   return {
     title: evaluated.title,
@@ -238,23 +212,7 @@ export async function extractPageData(page, currentUrl, startUrl) {
       internal: Array.from(internalSet),
       external: Array.from(externalSet)
     },
-    images,
-    forms: evaluated.rawForms,
+    forms,
     paginationLinks: paginationSet
   };
-}
-
-/**
- * Captures full-page screenshot and saves it to storage/screenshots/<jobId>/<file>.png.
- * Returns URL path /screenshots/<jobId>/<file>.png.
- */
-export async function captureScreenshot(page, url, pageIndex, jobId = 'cli', storageDir = 'storage') {
-  const screenshotsDir = path.join(storageDir, 'screenshots', jobId);
-  await fs.mkdir(screenshotsDir, { recursive: true });
-
-  const filename = sanitizeFilename(url, pageIndex);
-  const diskPath = path.resolve(path.join(screenshotsDir, filename));
-
-  await page.screenshot({ path: diskPath, fullPage: true });
-  return `/screenshots/${jobId}/${filename}`;
 }

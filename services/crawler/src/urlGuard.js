@@ -1,5 +1,5 @@
 import dns from 'node:dns/promises';
-import net from 'node:net';
+import ipaddr from 'ipaddr.js';
 
 const BLOCKED_EXTENSIONS = new Set([
   'pdf', 'zip', 'tar', 'gz', 'tgz', '7z', 'rar', 'exe', 'dmg',
@@ -10,68 +10,160 @@ const BLOCKED_EXTENSIONS = new Set([
 
 const SENSITIVE_KEYWORDS = ['logout', 'delete', 'checkout', 'payment'];
 
+const BLOCKED_HOSTNAMES = new Set([
+  'localhost',
+  'metadata.google.internal',
+  'instance-data',
+  'metadata'
+]);
+
+const BLOCKED_SOCIAL_DOMAINS = [
+  'instagram.com',
+  'facebook.com',
+  'linkedin.com'
+];
+
 // Cache robots.txt parsers per origin
 const robotsCache = new Map();
 
 /**
- * Checks if an IP string (v4, v6, or v4-mapped) belongs to private/reserved ranges.
+ * Checks if a hostname matches any blocked social media platform.
+ *
+ * @param {string} hostname
+ * @returns {boolean}
  */
-export function isPrivateIp(ip) {
-  if (!ip) return true;
-  let cleanIp = ip.toLowerCase().trim().replace(/^\[|\]$/g, '');
+export function isBlockedSocialDomain(hostname) {
+  if (!hostname) return false;
+  const host = hostname.toLowerCase().trim().replace(/^\[|\]$/g, '');
+  return BLOCKED_SOCIAL_DOMAINS.some(
+    (domain) => host === domain || host.endsWith('.' + domain)
+  );
+}
 
-  // Check IPv4-mapped IPv6 (e.g. ::ffff:192.168.1.1 or ::ffff:7f00:1)
-  if (cleanIp.startsWith('::ffff:')) {
-    const rest = cleanIp.slice(7);
-    if (net.isIPv4(rest)) {
-      cleanIp = rest;
+/**
+ * Checks whether two URLs belong to the same hostname/domain.
+ *
+ * @param {string} urlA
+ * @param {string} urlB
+ * @returns {boolean}
+ */
+export function isSameDomain(urlA, urlB) {
+  try {
+    const a = new URL(urlA);
+    const b = new URL(urlB);
+    return a.hostname.toLowerCase() === b.hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parses and unwraps an IP string into a canonical IPv4 or IPv6 representation.
+ * Handles decimal integers, hex, octal parts, and IPv4-mapped IPv6.
+ *
+ * @param {string} host
+ * @returns {ipaddr.IPv4 | ipaddr.IPv6 | null}
+ */
+export function parseAndUnwrapIp(host) {
+  if (!host) return null;
+  let cleaned = host.trim();
+  if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+    cleaned = cleaned.slice(1, -1);
+  }
+
+  // Pure integer / decimal notation like 2130706433
+  if (/^\d+$/.test(cleaned)) {
+    const num = Number(cleaned);
+    if (!Number.isNaN(num) && num >= 0 && num <= 0xffffffff) {
+      const part1 = (num >>> 24) & 255;
+      const part2 = (num >>> 16) & 255;
+      const part3 = (num >>> 8) & 255;
+      const part4 = num & 255;
+      cleaned = `${part1}.${part2}.${part3}.${part4}`;
     }
   }
 
-  // IPv4 Checks
-  if (net.isIPv4(cleanIp)) {
-    const parts = cleanIp.split('.').map((p) => parseInt(p, 10));
-    // 0.0.0.0/8
-    if (parts[0] === 0) return true;
-    // 127.0.0.0/8 (Loopback)
-    if (parts[0] === 127) return true;
-    // 10.0.0.0/8 (Private)
-    if (parts[0] === 10) return true;
-    // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-    // 192.168.0.0/16 (Private)
-    if (parts[0] === 192 && parts[1] === 168) return true;
-    // 169.254.0.0/16 (Link-local / Cloud metadata 169.254.169.254)
-    if (parts[0] === 169 && parts[1] === 254) return true;
-    // 100.64.0.0/10 (Shared address space / Alibaba metadata 100.100.100.200)
-    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
-    // 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 (Documentation)
-    if (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) return true;
-    if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return true;
-    if (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) return true;
-    // Broadcast
-    if (cleanIp === '255.255.255.255') return true;
-    return false;
+  // Hex or octal notation parts, e.g. 0x7f.0.0.1 or 0177.0.0.1
+  if (/^(0x[0-9a-fA-F]+|\d+)(\.(0x[0-9a-fA-F]+|\d+)){0,3}$/i.test(cleaned)) {
+    const parts = cleaned.split('.');
+    const normalizedParts = [];
+    for (const p of parts) {
+      let val;
+      if (p.startsWith('0x') || p.startsWith('0X')) {
+        val = parseInt(p, 16);
+      } else if (p.length > 1 && p.startsWith('0')) {
+        val = parseInt(p, 8);
+      } else {
+        val = parseInt(p, 10);
+      }
+      if (Number.isNaN(val) || val < 0 || val > 255) {
+        return null;
+      }
+      normalizedParts.push(val);
+    }
+    while (normalizedParts.length < 4) {
+      normalizedParts.push(0);
+    }
+    cleaned = normalizedParts.join('.');
   }
 
-  // IPv6 Checks
-  if (net.isIPv6(cleanIp)) {
-    // :: and ::1
-    if (cleanIp === '::' || cleanIp === '::1') return true;
-    // Unique local address fc00::/7 (fc00:: - fdff::)
-    if (/^[fF][cCdD]/.test(cleanIp)) return true;
-    // Link-local unicast fe80::/10 (fe80:: - febf::)
-    if (/^[fF][eE][89aAbB]/.test(cleanIp)) return true;
-    // Discard prefix 100::/64
-    if (cleanIp.startsWith('100::')) return true;
-    return false;
+  try {
+    if (ipaddr.IPv4.isValid(cleaned)) {
+      return ipaddr.IPv4.parse(cleaned);
+    }
+    if (ipaddr.IPv6.isValid(cleaned)) {
+      const addr = ipaddr.IPv6.parse(cleaned);
+      if (addr.isIPv4MappedAddress()) {
+        return addr.toIPv4Address();
+      }
+      return addr;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Checks if an IP string belongs to private, loopback, link-local, carrier-grade NAT,
+ * or cloud metadata ranges.
+ *
+ * @param {string} ip
+ * @returns {boolean}
+ */
+export function isPrivateIp(ip) {
+  if (!ip) return true;
+  const parsed = parseAndUnwrapIp(ip);
+  if (!parsed) return false;
+
+  const range = parsed.range();
+  if (
+    range === 'loopback' ||
+    range === 'private' ||
+    range === 'linkLocal' ||
+    range === 'uniqueLocal' ||
+    range === 'unspecified' ||
+    range === 'carrierGradeNat' ||
+    range === 'multicast' ||
+    range === 'reserved'
+  ) {
+    return true;
+  }
+
+  const normalized = parsed.toString();
+  // Cloud metadata addresses
+  if (normalized === '169.254.169.254' || normalized === '100.100.100.200') {
+    return true;
   }
 
   return false;
 }
 
 /**
- * Checks synchronous string safety (protocol and obvious localhost/IPs).
+ * Checks synchronous string safety (protocol, userinfo, blocked hostnames, social domains, raw IP ranges).
+ *
+ * @param {string} urlString
+ * @returns {{ safe: boolean, reason?: string }}
  */
 export function isBasicSafeUrl(urlString) {
   try {
@@ -79,13 +171,26 @@ export function isBasicSafeUrl(urlString) {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return { safe: false, reason: `Disallowed protocol: ${url.protocol}` };
     }
+
+    if (url.username || url.password) {
+      return { safe: false, reason: 'Credentials in URL are forbidden' };
+    }
+
     const host = url.hostname.toLowerCase().trim().replace(/^\[|\]$/g, '');
-    if (host === 'localhost' || host.endsWith('.localhost') || host === 'metadata.google.internal') {
+
+    if (BLOCKED_HOSTNAMES.has(host) || host.endsWith('.localhost')) {
       return { safe: false, reason: `Blocked hostname: ${host}` };
     }
-    if (net.isIP(host) && isPrivateIp(host)) {
-      return { safe: false, reason: `Blocked IP address: ${host}` };
+
+    if (isBlockedSocialDomain(host)) {
+      return { safe: false, reason: `Blocked social media platform: ${host}` };
     }
+
+    const parsedIp = parseAndUnwrapIp(host);
+    if (parsedIp && isPrivateIp(parsedIp.toString())) {
+      return { safe: false, reason: `Blocked private or loopback IP: ${host}` };
+    }
+
     return { safe: true };
   } catch (err) {
     return { safe: false, reason: `Invalid URL: ${err.message}` };
@@ -94,6 +199,9 @@ export function isBasicSafeUrl(urlString) {
 
 /**
  * Resolves DNS for the given URL and blocks private/reserved IPs.
+ *
+ * @param {string} urlString
+ * @returns {Promise<{ safe: boolean, reason?: string }>}
  */
 export async function isSafeUrlAsync(urlString) {
   const basic = isBasicSafeUrl(urlString);
@@ -103,9 +211,9 @@ export async function isSafeUrlAsync(urlString) {
     const url = new URL(urlString);
     const host = url.hostname.replace(/^\[|\]$/g, '');
 
-    // If host is already an IP
-    if (net.isIP(host)) {
-      if (isPrivateIp(host)) {
+    const parsedIp = parseAndUnwrapIp(host);
+    if (parsedIp) {
+      if (isPrivateIp(parsedIp.toString())) {
         return { safe: false, reason: `Blocked IP: ${host}` };
       }
       return { safe: true };
@@ -133,8 +241,12 @@ export async function isSafeUrlAsync(urlString) {
 }
 
 /**
- * Normalizes URL: resolves against base, strips hash, drops tracking params (utm_*, fbclid, gclid),
- * sorts query params alphabetically, and normalizes trailing slashes.
+ * Normalizes URL: resolves against base, strips hash, drops tracking params,
+ * and removes trailing slash if not root.
+ *
+ * @param {string} rawUrl
+ * @param {string} [baseUrl]
+ * @returns {string|null}
  */
 export function normalizeUrl(rawUrl, baseUrl) {
   try {
@@ -158,7 +270,6 @@ export function normalizeUrl(rawUrl, baseUrl) {
 
     parsed.hash = '';
 
-    // Drop tracking parameters
     const searchParams = parsed.searchParams;
     const keysToDelete = [];
     for (const key of searchParams.keys()) {
@@ -167,8 +278,8 @@ export function normalizeUrl(rawUrl, baseUrl) {
         k.startsWith('utm_') ||
         k === 'fbclid' ||
         k === 'gclid' ||
-        k === '_ga' ||
-        k === '_gl'
+        k === 'ref' ||
+        k === 'source'
       ) {
         keysToDelete.push(key);
       }
@@ -176,14 +287,13 @@ export function normalizeUrl(rawUrl, baseUrl) {
     for (const k of keysToDelete) {
       searchParams.delete(k);
     }
-
-    // Sort query parameters
     searchParams.sort();
 
-    // Normalize trailing slash for non-root paths
-    if (parsed.pathname.length > 1 && parsed.pathname.endsWith('/')) {
-      parsed.pathname = parsed.pathname.slice(0, -1);
+    let pathname = parsed.pathname;
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+      pathname = pathname.slice(0, -1);
     }
+    parsed.pathname = pathname;
 
     return parsed.href;
   } catch {
@@ -192,43 +302,30 @@ export function normalizeUrl(rawUrl, baseUrl) {
 }
 
 /**
- * Checks whether two URLs belong to the same hostname / domain.
- */
-export function isSameDomain(targetUrl, baseDomainUrl) {
-  try {
-    const t = new URL(targetUrl);
-    const b = new URL(baseDomainUrl);
-    return t.hostname.toLowerCase() === b.hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * URL skipping based on sensitive keywords or static file extensions.
+ * Checks whether URL points to a static file extension or sensitive keyword.
+ *
+ * @param {string} urlString
+ * @returns {boolean}
  */
 export function shouldSkipUrl(urlString) {
   try {
     const url = new URL(urlString);
-    const fullLower = url.href.toLowerCase();
-
-    for (const kw of SENSITIVE_KEYWORDS) {
-      if (fullLower.includes(kw)) {
-        return true;
-      }
-    }
-
     const pathname = url.pathname.toLowerCase();
-    const lastSlash = pathname.lastIndexOf('/');
-    const lastPart = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname;
-    const dotIndex = lastPart.lastIndexOf('.');
-    if (dotIndex > 0) {
-      const ext = lastPart.slice(dotIndex + 1);
+
+    const lastSegment = pathname.split('/').pop() || '';
+    if (lastSegment.includes('.')) {
+      const ext = lastSegment.split('.').pop();
       if (BLOCKED_EXTENSIONS.has(ext)) {
         return true;
       }
     }
 
+    for (const kw of SENSITIVE_KEYWORDS) {
+      if (pathname.includes(kw) || url.search.toLowerCase().includes(kw)) {
+        return true;
+      }
+    }
+
     return false;
   } catch {
     return true;
@@ -236,233 +333,149 @@ export function shouldSkipUrl(urlString) {
 }
 
 /**
- * Computes crawl-trap path pattern:
- * - Replaces digit sequences in path segments with {n}
- * - Ignores query values (formats query keys as key={v})
- * - Checks length limit (2000 chars) and path segment limit (10 segments)
+ * Detects repeating crawl trap patterns in URL paths or queries.
+ *
+ * @param {string} urlString
+ * @param {Map<string, number>} patternCounts
+ * @param {number} [threshold=50]
+ * @returns {{ trap: boolean, pattern?: string, reason?: string }}
  */
-export function getPathPattern(urlString) {
+export function isCrawlTrap(urlString, patternCounts, threshold = 50) {
   try {
-    if (typeof urlString !== 'string' || urlString.length > 2000) {
-      return { valid: false, reason: 'URL exceeds 2000 characters' };
-    }
-
     const url = new URL(urlString);
     const segments = url.pathname.split('/').filter(Boolean);
-    if (segments.length > 10) {
-      return { valid: false, reason: 'Path has more than 10 segments' };
+
+    // Check segment repetition
+    const segCounts = {};
+    for (const seg of segments) {
+      segCounts[seg] = (segCounts[seg] || 0) + 1;
+      if (segCounts[seg] >= 4) {
+        return { trap: true, reason: `Repeating path segment: "${seg}"` };
+      }
     }
 
-    const patternSegments = segments.map((seg) => seg.replace(/\d+/g, '{n}'));
-    const patternPath = '/' + patternSegments.join('/');
-
-    // Query values ignored, query keys sorted
     const queryKeys = Array.from(url.searchParams.keys()).sort();
-    const queryPattern = queryKeys.length > 0 ? '?' + queryKeys.map((k) => `${k}={v}`).join('&') : '';
+    const pattern = `${url.origin}/${segments.slice(0, 2).join('/')}?${queryKeys.join('&')}`;
+    const count = patternCounts.get(pattern) || 0;
+    if (count >= threshold) {
+      return { trap: true, pattern, reason: `Exceeded pattern threshold (${threshold}) for ${pattern}` };
+    }
 
-    return {
-      valid: true,
-      pattern: `${url.hostname}${patternPath}${queryPattern}`
-    };
-  } catch (err) {
-    return { valid: false, reason: err.message };
+    return { trap: false, pattern };
+  } catch {
+    return { trap: true, reason: 'Malformed URL' };
   }
 }
 
 /**
- * Checks if a URL exceeds the 50-page crawl-trap pattern cap.
+ * Parses robots.txt content into allow/disallow rules.
+ *
+ * @param {string} content
+ * @returns {{ disallows: string[], allows: string[], sitemaps: string[] }}
  */
-export function isCrawlTrap(urlString, patternCounts, cap = 50) {
-  const check = getPathPattern(urlString);
-  if (!check.valid) {
-    return { trap: true, reason: check.reason };
+export function parseRobotsTxt(content) {
+  const lines = (content || '').split('\n');
+  const disallows = [];
+  const allows = [];
+  const sitemaps = [];
+
+  let isTargetAgent = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.split('#')[0].trim();
+    if (!line) continue;
+
+    const [directive, ...valParts] = line.split(':');
+    const val = valParts.join(':').trim();
+    const key = (directive || '').trim().toLowerCase();
+
+    if (key === 'user-agent') {
+      const agent = val.toLowerCase();
+      isTargetAgent = agent === '*' || agent.includes('deepcrawl');
+    } else if (key === 'sitemap' && val) {
+      sitemaps.push(val);
+    } else if (isTargetAgent) {
+      if (key === 'disallow' && val) {
+        disallows.push(val);
+      } else if (key === 'allow' && val) {
+        allows.push(val);
+      }
+    }
   }
 
-  const currentCount = patternCounts.get(check.pattern) || 0;
-  if (currentCount >= cap) {
-    return { trap: true, pattern: check.pattern, reason: `Pattern "${check.pattern}" reached limit of ${cap} pages` };
-  }
-
-  return { trap: false, pattern: check.pattern };
+  return { disallows, allows, sitemaps };
 }
 
 /**
- * Fetches and parses robots.txt for an origin, returning allowed/disallowed status.
+ * Checks if a URL path is allowed by robots.txt rules.
+ *
+ * @param {string} urlString
+ * @param {{ disallows: string[], allows: string[] }} rules
+ * @returns {boolean}
  */
-export async function isAllowedByRobotsTxt(urlString) {
+export function matchesRobotsRules(urlString, rules) {
   try {
     const url = new URL(urlString);
-    const origin = url.origin;
+    const pathAndQuery = url.pathname + url.search;
 
-    if (!robotsCache.has(origin)) {
-      await loadRobotsTxt(origin);
+    for (const allow of rules.allows || []) {
+      if (pathAndQuery.startsWith(allow)) {
+        return true;
+      }
     }
 
-    const rules = robotsCache.get(origin);
-    if (!rules) return true;
+    for (const disallow of rules.disallows || []) {
+      if (pathAndQuery.startsWith(disallow)) {
+        return false;
+      }
+    }
 
-    const pathToCheck = url.pathname + (url.search || '');
-    return isPathAllowed(rules, pathToCheck);
-  } catch {
     return true;
+  } catch {
+    return false;
   }
 }
 
 /**
- * Returns sitemap URLs found in robots.txt for an origin.
+ * Fetches and checks robots.txt for a given URL.
+ *
+ * @param {string} targetUrl
+ * @returns {Promise<boolean>}
  */
-export async function getRobotsSitemaps(origin) {
-  if (!robotsCache.has(origin)) {
-    await loadRobotsTxt(origin);
-  }
-  const rules = robotsCache.get(origin);
-  return rules?.sitemaps || [];
-}
-
-async function loadRobotsTxt(origin) {
-  const robotsUrl = `${origin}/robots.txt`;
-  const safety = await isSafeUrlAsync(robotsUrl);
-  if (!safety.safe) {
-    robotsCache.set(origin, null);
-    return;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4000);
+export async function isAllowedByRobotsTxt(targetUrl) {
   try {
+    const url = new URL(targetUrl);
+    const origin = url.origin;
+
+    if (robotsCache.has(origin)) {
+      return matchesRobotsRules(targetUrl, robotsCache.get(origin));
+    }
+
+    const robotsUrl = `${origin}/robots.txt`;
+    const safeCheck = await isSafeUrlAsync(robotsUrl);
+    if (!safeCheck.safe) {
+      return false;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+
     const res = await fetch(robotsUrl, {
       signal: controller.signal,
       headers: { 'User-Agent': 'deepcrawl/1.0' }
     });
-    clearTimeout(timeout);
+    clearTimeout(timer);
+
     if (res.ok) {
       const text = await res.text();
-      robotsCache.set(origin, parseRobotsTxt(text));
-    } else {
-      robotsCache.set(origin, null);
+      const parsed = parseRobotsTxt(text);
+      robotsCache.set(origin, parsed);
+      return matchesRobotsRules(targetUrl, parsed);
     }
+
+    robotsCache.set(origin, { disallows: [], allows: [], sitemaps: [] });
+    return true;
   } catch {
-    clearTimeout(timeout);
-    robotsCache.set(origin, null);
-  }
-}
-
-/**
- * Minimal robots.txt parser for User-agent rules and Sitemap directives.
- */
-function parseRobotsTxt(content) {
-  const lines = content.split('\n');
-  const disallow = [];
-  const allow = [];
-  const sitemaps = [];
-  let applies = false;
-
-  for (let rawLine of lines) {
-    const line = rawLine.replace(/#.*$/, '').trim();
-    if (!line) continue;
-
-    const [directive, ...valParts] = line.split(':');
-    const key = (directive || '').trim().toLowerCase();
-    const val = valParts.join(':').trim();
-
-    if (key === 'user-agent') {
-      const ua = val.toLowerCase();
-      applies = ua === '*' || ua === 'deepcrawl';
-    } else if (key === 'sitemap' && val) {
-      sitemaps.push(val);
-    } else if (applies) {
-      if (key === 'disallow' && val) {
-        disallow.push(val);
-      } else if (key === 'allow' && val) {
-        allow.push(val);
-      }
-    }
-  }
-
-  return { disallow, allow, sitemaps };
-}
-
-function isPathAllowed(rules, pathToCheck) {
-  for (const a of rules.allow) {
-    if (pathToCheck.startsWith(a)) {
-      return true;
-    }
-  }
-  for (const d of rules.disallow) {
-    if (d === '/' || pathToCheck.startsWith(d)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Discovers and parses URLs from sitemap.xml and robots.txt Sitemaps (capped at maxUrls).
- */
-export async function discoverSitemapUrls(startUrl, maxUrls = 500) {
-  const discovered = new Set();
-  try {
-    const origin = new URL(startUrl).origin;
-    const robotsSitemaps = await getRobotsSitemaps(origin);
-    const sitemapsToFetch = new Set([...robotsSitemaps, `${origin}/sitemap.xml`]);
-
-    for (const sitemapUrl of sitemapsToFetch) {
-      if (discovered.size >= maxUrls) break;
-
-      const norm = normalizeUrl(sitemapUrl);
-      if (!norm) continue;
-
-      const safe = await isSafeUrlAsync(norm);
-      if (!safe.safe) continue;
-
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 2500);
-        const res = await fetch(norm, {
-          signal: controller.signal,
-          headers: { 'User-Agent': 'deepcrawl/1.0' }
-        });
-        clearTimeout(timeout);
-        if (!res.ok) continue;
-
-        const xmlText = await res.text();
-        // Match <loc>...</loc>
-        const matches = xmlText.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi);
-        for (const match of matches) {
-          if (discovered.size >= maxUrls) break;
-          const locUrl = normalizeUrl(match[1]);
-          if (!locUrl) continue;
-          if (!isSameDomain(locUrl, startUrl)) continue;
-          if (shouldSkipUrl(locUrl)) continue;
-
-          // If nested sitemap XML, add to queue if room
-          if (locUrl.endsWith('.xml') && !sitemapsToFetch.has(locUrl)) {
-            sitemapsToFetch.add(locUrl);
-            continue;
-          }
-
-          discovered.add(locUrl);
-        }
-      } catch {
-        // Ignore single sitemap fetch failure
-      }
-    }
-  } catch {
-    // Ignore sitemap discovery errors
-  }
-
-  return Array.from(discovered);
-}
-
-export function sanitizeFilename(urlStr, index) {
-  try {
-    const u = new URL(urlStr);
-    const raw = `${u.hostname}${u.pathname}${u.search}`;
-    const clean = raw.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').slice(0, 60);
-    const idx = String(index).padStart(3, '0');
-    return `${idx}_${clean || 'page'}.png`;
-  } catch {
-    const idx = String(index).padStart(3, '0');
-    return `${idx}_page.png`;
+    return true;
   }
 }
