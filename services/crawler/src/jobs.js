@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { crawl } from './crawler.js';
 import { CONFIG } from './config.js';
+import { adaptCrawlResult } from './adapter.js';
 
 const jobs = new Map();
 const pendingQueue = [];
@@ -152,7 +153,7 @@ async function processNextJob() {
 
     if (job.status !== 'cancelled') {
       job.status = 'completed';
-      job.result = result;
+      job.result = adaptCrawlResult(result);
       job.stopReason = result.summary.stopReason;
       job.errors = result.errors;
     }

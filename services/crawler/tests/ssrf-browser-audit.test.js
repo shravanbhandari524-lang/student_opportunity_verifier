@@ -95,6 +95,7 @@ test('Production path & Redirect control: Positive redirect (A -> B) succeeds; N
     assert.ok(allowedB, 'Hop 2 site-b.test must be allowed in decision log');
 
     // Control B: NEGATIVE CONTROL (redirect from stand-in host A to 127.0.0.1:<canaryPort> is blocked)
+    const logIndexBeforeNeg = decisionLog.length;
     const pageNeg = await context.newPage();
     let negRes = null;
     let negError = null;
@@ -113,8 +114,14 @@ test('Production path & Redirect control: Positive redirect (A -> B) succeeds; N
     }
     assert.equal(canaryHits, 0, 'Canary server on 127.0.0.1 must NEVER receive any hit via redirect');
 
-    // Check decision log for negative control: Hop 1 allowed, Hop 2 refused 403
-    const blockedLoopback = decisionLog.find(
+    // Check decision log specifically for negative control: Hop 1 MUST be allowed, Hop 2 refused 403
+    const negDecisions = decisionLog.slice(logIndexBeforeNeg);
+    const hop1Allowed = negDecisions.find(
+      (d) => d.host === 'site-a.test' && d.decision === 'allow' && d.status === 200
+    );
+    assert.ok(hop1Allowed, 'Hop 1 to site-a.test must be allowed and logged with status 200');
+
+    const blockedLoopback = negDecisions.find(
       (d) => d.host === '127.0.0.1' && d.decision === 'block' && d.status === 403
     );
     assert.ok(blockedLoopback, 'Hop 2 to 127.0.0.1 must be refused with 403 block in decision log');

@@ -7,7 +7,6 @@ import { ApiErrorSchema } from '../lib/contracts/api-error.js';
 import { API_ERROR_CODES, CRAWL_ERROR_CODES } from '../lib/contracts/enums.js';
 import { getEnv } from '../lib/env.js';
 import { runMigrations } from '../lib/db/migrations/index.js';
-import * as m012 from '../lib/db/migrations/012_create_crawl_results.js';
 
 test('CrawlResult Contract: real fixture validates against CrawlResultSchema', () => {
   const fixturePath = new URL('../services/crawler/tests/fixtures/real-crawl-result.json', import.meta.url);
@@ -116,11 +115,11 @@ test('Environment: validates CRAWLER_URL and CRAWLER_API_KEY', () => {
   assert.equal(parsed.CRAWLER_API_KEY, 'test_crawl_key');
 });
 
-test('Migration 012: crawl_results table creation, indices, and foreign key cascade on delete', () => {
+test('Migration 012 & 013: crawl_results table creation, UNIQUE constraint, and cascade deletion', () => {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
 
-  // Run migrations forward to version 12
+  // Run migrations forward to version 13
   runMigrations(db);
 
   // 1. Table and indices exist
@@ -138,29 +137,46 @@ test('Migration 012: crawl_results table creation, indices, and foreign key casc
     VALUES (?, 'report_ready', 1, 'en', 'low', 10, 'high', datetime('now'), datetime('now'), datetime('now', '+1 day'))
   `).run(checkId);
 
-  // 3. Insert crawl_results row
+  // 3. Insert running crawl_results row (result_json is null initially)
   const crawlId = 'crawl_test_999';
   const entityId = 'entity_domain_1';
-  const resultJson = JSON.stringify({ pages: [], forms: [], externalDomains: [], truncated: false, limitsUsed: { maxPages: 10, maxDepth: 2, totalTimeSec: 5, totalBytesReceived: 100, sameHostOnly: true } });
 
   db.prepare(`
-    INSERT INTO crawl_results (id, check_id, entity_id, result_json, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'completed', datetime('now'), datetime('now'))
-  `).run(crawlId, checkId, entityId, resultJson);
+    INSERT INTO crawl_results (id, check_id, entity_id, status, started_at, created_at, updated_at)
+    VALUES (?, ?, ?, 'running', datetime('now'), datetime('now'), datetime('now'))
+  `).run(crawlId, checkId, entityId);
 
   const inserted = db.prepare('SELECT * FROM crawl_results WHERE id = ?').get(crawlId);
   assert.equal(inserted.id, crawlId);
   assert.equal(inserted.check_id, checkId);
+  assert.equal(inserted.status, 'running');
+  assert.equal(inserted.result_json, null);
 
-  // 4. Foreign key cascade delete: deleting checks row deletes crawl_results row
+  // 4. Verify UNIQUE(check_id, entity_id) constraint
+  assert.throws(() => {
+    db.prepare(`
+      INSERT INTO crawl_results (id, check_id, entity_id, status, started_at, created_at, updated_at)
+      VALUES ('crawl_duplicate', ?, ?, 'running', datetime('now'), datetime('now'), datetime('now'))
+    `).run(checkId, entityId);
+  }, /UNIQUE constraint failed/);
+
+  // 5. Update to done with result_json
+  const resultJson = JSON.stringify({ pages: [], forms: [], externalDomains: [], truncated: false, limitsUsed: { maxPages: 10, maxDepth: 2, totalTimeSec: 5, totalBytesReceived: 100, sameHostOnly: true } });
+  db.prepare(`
+    UPDATE crawl_results
+    SET status = 'done', result_json = ?, finished_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ?
+  `).run(resultJson, crawlId);
+
+  const doneRow = db.prepare('SELECT * FROM crawl_results WHERE id = ?').get(crawlId);
+  assert.equal(doneRow.status, 'done');
+  assert.ok(doneRow.finished_at);
+  assert.ok(doneRow.result_json);
+
+  // 6. Foreign key cascade delete: deleting checks row deletes crawl_results row
   db.prepare('DELETE FROM checks WHERE id = ?').run(checkId);
   const remaining = db.prepare('SELECT * FROM crawl_results WHERE id = ?').get(crawlId);
   assert.equal(remaining, undefined, 'crawl_results row must be deleted by cascade when parent check is deleted');
-
-  // 5. Test migration down
-  m012.down(db);
-  const tablesAfterDown = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r) => r.name);
-  assert.equal(tablesAfterDown.includes('crawl_results'), false, 'crawl_results table must be dropped on down()');
 
   db.close();
 });

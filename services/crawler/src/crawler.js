@@ -111,10 +111,11 @@ export async function launchCrawlBrowser(options = {}) {
   });
 
   // Block popups and new pages opened by pages
-  context.on('page', async (p) => {
-    const opener = await p.opener().catch(() => null);
+  context.on('page', async (newPage) => {
+    newPage.on('popup', (popup) => popup.close().catch(() => {}));
+    const opener = await newPage.opener().catch(() => null);
     if (opener) {
-      await p.close().catch(() => {});
+      await newPage.close().catch(() => {});
     }
   });
 
