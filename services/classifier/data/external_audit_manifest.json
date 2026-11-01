@@ -1,0 +1,302 @@
+{
+  "random_seed": 42,
+  "input_files": {
+    "dataset.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/dataset.csv",
+      "sha256": "0a749ac68c894ce3c3a961e3d91440df780c93a509c86d5a604eadf525746513"
+    },
+    "india_fraud_detection_FINAL.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/india_fraud_detection_FINAL.csv",
+      "sha256": "6ceee60c412ff5856e8d9247713f95cd8d0f4dcbd943899d180232d62e900833"
+    },
+    "internet_scams_archive.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/internet_scams_archive.csv",
+      "sha256": "7963eb373eac99703cdd408ee913847c77710185a216b486da0d18167f57e1cd"
+    },
+    "spam.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/spam.csv",
+      "sha256": "440e6ea9fa825578abfdd7b7932ef8393d72ef86c0c33f64676705ce40b1dfc2"
+    },
+    "maindataset.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/maindataset.csv",
+      "sha256": "56345ce6eda992e21fd8611dc1553902405ca4ee8a3ed53b6124e6b87f19b6bf",
+      "note": "Untouched reference"
+    },
+    "real_test.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/real_test.csv",
+      "sha256": "48430d5842f4e7d715a01c670ef06f41ad2ff88796369bd17443fc105dc5125b",
+      "note": "Untouched reference"
+    }
+  },
+  "drop_counts_by_rule": {
+    "india_fraud_non_target_category": 1600,
+    "india_fraud_yoyour_typo_fixed": 66,
+    "india_fraud_synth_exact_dedup": 164,
+    "india_fraud_synth_near_dupe_clustering": 25,
+    "archive_non_english_or_non_job": 22080,
+    "archive_exact_dedup": 575,
+    "archive_template_cap_exceeded": 758,
+    "archive_sampling_cap_drop": 187,
+    "spam_class_discarded": 747,
+    "spam_ham_exact_dedup": 309,
+    "spam_ham_sampling_cap_drop": 4216,
+    "train_pruned_holdout_near_dupes": 264
+  },
+  "source_row_counts": {
+    "dataset.csv": 89,
+    "india_fraud_detection_FINAL.csv": 3200,
+    "internet_scams_archive.csv": 24000,
+    "spam.csv": 5572
+  },
+  "top_30_artifacts": [
+    {
+      "token": "pan",
+      "count": 69,
+      "class": "suspicious",
+      "source": "KYC_Suspension"
+    },
+    {
+      "token": "msedcl",
+      "count": 36,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    },
+    {
+      "token": "engineer",
+      "count": 36,
+      "class": "benign",
+      "source": "Job_Legitimate"
+    },
+    {
+      "token": "winner",
+      "count": 32,
+      "class": "suspicious",
+      "source": "Lottery_Scam"
+    },
+    {
+      "token": "but",
+      "count": 32,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "cut",
+      "count": 31,
+      "class": "suspicious",
+      "source": "Electricity_Scam"
+    },
+    {
+      "token": "blocked",
+      "count": 31,
+      "class": "suspicious",
+      "source": "KYC_Suspension"
+    },
+    {
+      "token": "naukri",
+      "count": 28,
+      "class": "benign",
+      "source": "Job_Legitimate"
+    },
+    {
+      "token": "paytm",
+      "count": 28,
+      "class": "benign",
+      "source": "Lottery_Legitimate"
+    },
+    {
+      "token": "vpa",
+      "count": 23,
+      "class": "benign",
+      "source": "KYC_Legitimate"
+    },
+    {
+      "token": "discount",
+      "count": 22,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    },
+    {
+      "token": "tangedco",
+      "count": 22,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    },
+    {
+      "token": "mahadiscom",
+      "count": 21,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    },
+    {
+      "token": "then",
+      "count": 21,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "meter",
+      "count": 20,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    },
+    {
+      "token": "lnkd",
+      "count": 20,
+      "class": "benign",
+      "source": "Job_Legitimate"
+    },
+    {
+      "token": "debited",
+      "count": 20,
+      "class": "benign",
+      "source": "KYC_Legitimate"
+    },
+    {
+      "token": "when",
+      "count": 20,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "previous",
+      "count": 19,
+      "class": "suspicious",
+      "source": "Electricity_Scam"
+    },
+    {
+      "token": "what",
+      "count": 19,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "monsoon",
+      "count": 18,
+      "class": "suspicious",
+      "source": "Lottery_Scam"
+    },
+    {
+      "token": "snapdeal",
+      "count": 18,
+      "class": "suspicious",
+      "source": "Lottery_Scam"
+    },
+    {
+      "token": "nkr",
+      "count": 17,
+      "class": "benign",
+      "source": "Job_Legitimate"
+    },
+    {
+      "token": "cloud",
+      "count": 17,
+      "class": "benign",
+      "source": "Job_Legitimate"
+    },
+    {
+      "token": "its",
+      "count": 17,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "how",
+      "count": 17,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "take",
+      "count": 17,
+      "class": "benign",
+      "source": "spam.csv"
+    },
+    {
+      "token": "expired",
+      "count": 16,
+      "class": "suspicious",
+      "source": "KYC_Suspension"
+    },
+    {
+      "token": "kbc",
+      "count": 16,
+      "class": "suspicious",
+      "source": "Lottery_Scam"
+    },
+    {
+      "token": "bescom",
+      "count": 15,
+      "class": "benign",
+      "source": "Electricity_Legitimate"
+    }
+  ],
+  "output_files": {
+    "external_train_candidates.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/external_train_candidates.csv",
+      "sha256": "de5b68b347f182bab7ddc965e6e9d0f078b7b2c2235745f7fe1db76df719b825",
+      "rows": 1821,
+      "label_counts": {
+        "suspicious": 882,
+        "benign": 939
+      },
+      "source_counts": {
+        "dataset.csv": 89,
+        "india_fraud_detection_FINAL.csv": 1032,
+        "internet_scams_archive.csv": 400,
+        "spam.csv": 300
+      },
+      "source_type_counts": {
+        "synthetic": 89,
+        "real_advisory": 116,
+        "public_synthetic": 1316,
+        "public_real_sms": 300
+      },
+      "language_counts": {
+        "en": 1821
+      },
+      "scam_type_counts": {
+        "scholarship": 5,
+        "internship": 6,
+        "competition": 172,
+        "job": 423,
+        "task_job": 5,
+        "mule_offer": 5,
+        "overseas_agent": 1,
+        "none": 939,
+        "bank_alert": 265
+      }
+    },
+    "external_real_holdout_candidates.csv": {
+      "path": "/home/shreyas_95/Documents/PROJECTS/MY PROJECTS/DEM/services/classifier/data/external_real_holdout_candidates.csv",
+      "sha256": "a846c7746f1b662c514b61070af6736591b83a810a0e803c3b49967b57df4048",
+      "rows": 115,
+      "label_counts": {
+        "suspicious": 52,
+        "benign": 63
+      },
+      "source_counts": {
+        "india_fraud_detection_FINAL.csv": 115
+      },
+      "source_type_counts": {
+        "real_advisory": 115
+      },
+      "unique_source_urls": 1
+    }
+  },
+  "pii_counts": {
+    "upis": 39,
+    "accounts": 154,
+    "aadhaars": 40,
+    "phones": 88,
+    "names": 63,
+    "emails": 68
+  },
+  "leakage_assertions": {
+    "exact_train_vs_real_test": 0,
+    "exact_holdout_vs_real_test": 0,
+    "exact_train_vs_holdout": 0,
+    "near_dupes_train_vs_real_test": 0,
+    "near_dupes_holdout_vs_real_test": 0,
+    "near_dupes_train_vs_holdout": 0
+  }
+}

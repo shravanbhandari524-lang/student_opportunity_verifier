@@ -1,0 +1,535 @@
+{
+  "data_provenance": "synthetic",
+  "datasetProvenance": "synthetic",
+  "warning": "Metrics not reportable. Pipeline validation only.",
+  "dataset_source": "maindataset.csv",
+  "dataset_size": 600,
+  "synthetic_count": 600,
+  "real_count": 0,
+  "unified_super_groups_count": 138,
+  "normalization_applied": true,
+  "normalized_tokens": [
+    "<URL>",
+    "<EMAIL>",
+    "<UPI>",
+    "<PHONE>",
+    "<AMT>",
+    "<NUM>"
+  ],
+  "model_settings": {
+    "C": 1.0,
+    "class_weight": "balanced",
+    "word_min_df": 1,
+    "char_min_df": 1,
+    "ngram_word": [
+      1,
+      2
+    ],
+    "ngram_char": [
+      2,
+      5
+    ]
+  },
+  "cv_5fold_grouped": {
+    "macro_f1_mean": 0.9920377839680162,
+    "macro_f1_std": 0.008054343604494018,
+    "accuracy_mean": 0.9921253219610884,
+    "accuracy_std": 0.00802785231754466,
+    "per_fold_macro_f1": [
+      0.9780601078311002,
+      1.0,
+      1.0,
+      0.9914504932407746,
+      0.9906783187682064
+    ],
+    "per_fold_accuracy": [
+      0.9781021897810219,
+      1.0,
+      1.0,
+      0.9914529914529915,
+      0.9910714285714286
+    ]
+  },
+  "test_set_metrics": null,
+  "top_suspicious_tokens": [
+    {
+      "feature": "word__amt",
+      "token": "amt",
+      "weight": 1.6028
+    },
+    {
+      "feature": "word__upi",
+      "token": "upi",
+      "weight": 1.5259
+    },
+    {
+      "feature": "word__to upi",
+      "token": "to upi",
+      "weight": 0.8889
+    },
+    {
+      "feature": "word__to",
+      "token": "to",
+      "weight": 0.8109
+    },
+    {
+      "feature": "word__transfer",
+      "token": "transfer",
+      "weight": 0.7732
+    },
+    {
+      "feature": "word__candidate",
+      "token": "candidate",
+      "weight": 0.7313
+    },
+    {
+      "feature": "char__> ",
+      "token": "> ",
+      "weight": 0.7082
+    },
+    {
+      "feature": "word__daily",
+      "token": "daily",
+      "weight": 0.6842
+    },
+    {
+      "feature": "word__password",
+      "token": "password",
+      "weight": 0.6612
+    },
+    {
+      "feature": "word__liye",
+      "token": "liye",
+      "weight": 0.6406
+    },
+    {
+      "feature": "word__ke liye",
+      "token": "ke liye",
+      "weight": 0.6406
+    },
+    {
+      "feature": "word__num",
+      "token": "num",
+      "weight": 0.6344
+    },
+    {
+      "feature": "word__your",
+      "token": "your",
+      "weight": 0.6321
+    },
+    {
+      "feature": "word__email",
+      "token": "email",
+      "weight": 0.6179
+    },
+    {
+      "feature": "word__fee amt",
+      "token": "fee amt",
+      "weight": 0.617
+    },
+    {
+      "feature": "char__amt> ",
+      "token": "amt> ",
+      "weight": 0.6146
+    },
+    {
+      "feature": "char__t> ",
+      "token": "t> ",
+      "weight": 0.6146
+    },
+    {
+      "feature": "char__mt> ",
+      "token": "mt> ",
+      "weight": 0.6146
+    },
+    {
+      "feature": "word__credentials",
+      "token": "credentials",
+      "weight": 0.5854
+    },
+    {
+      "feature": "word__upi before",
+      "token": "upi before",
+      "weight": 0.5853
+    },
+    {
+      "feature": "char__ <am",
+      "token": " <am",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__amt>",
+      "token": "amt>",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__<amt",
+      "token": "<amt",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__mt",
+      "token": "mt",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__<amt>",
+      "token": "<amt>",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__<a",
+      "token": "<a",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__t>",
+      "token": "t>",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__ <a",
+      "token": " <a",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__ <amt",
+      "token": " <amt",
+      "weight": 0.5818
+    },
+    {
+      "feature": "char__<am",
+      "token": "<am",
+      "weight": 0.5818
+    }
+  ],
+  "top_benign_tokens": [
+    {
+      "feature": "word__the",
+      "token": "the",
+      "weight": -0.708
+    },
+    {
+      "feature": "word__\u0932\u092f",
+      "token": "\u0932\u092f",
+      "weight": -0.6274
+    },
+    {
+      "feature": "word__notice",
+      "token": "notice",
+      "weight": -0.5674
+    },
+    {
+      "feature": "word__office",
+      "token": "office",
+      "weight": -0.5496
+    },
+    {
+      "feature": "word__open",
+      "token": "open",
+      "weight": -0.5369
+    },
+    {
+      "feature": "word__work study",
+      "token": "work study",
+      "weight": -0.5017
+    },
+    {
+      "feature": "word__department",
+      "token": "department",
+      "weight": -0.4876
+    },
+    {
+      "feature": "word__to the",
+      "token": "to the",
+      "weight": -0.4805
+    },
+    {
+      "feature": "word__room",
+      "token": "room",
+      "weight": -0.472
+    },
+    {
+      "feature": "word__students",
+      "token": "students",
+      "weight": -0.4592
+    },
+    {
+      "feature": "word__campus",
+      "token": "campus",
+      "weight": -0.4414
+    },
+    {
+      "feature": "word__room num",
+      "token": "room num",
+      "weight": -0.4296
+    },
+    {
+      "feature": "word__cell",
+      "token": "cell",
+      "weight": -0.4193
+    },
+    {
+      "feature": "word__academic",
+      "token": "academic",
+      "weight": -0.4173
+    },
+    {
+      "feature": "word__hai",
+      "token": "hai",
+      "weight": -0.4033
+    },
+    {
+      "feature": "word__applications",
+      "token": "applications",
+      "weight": -0.3996
+    },
+    {
+      "feature": "word__am",
+      "token": "am",
+      "weight": -0.3938
+    },
+    {
+      "feature": "word__report",
+      "token": "report",
+      "weight": -0.3926
+    },
+    {
+      "feature": "word__guidelines",
+      "token": "guidelines",
+      "weight": -0.381
+    },
+    {
+      "feature": "word__are",
+      "token": "are",
+      "weight": -0.3773
+    },
+    {
+      "feature": "char__he",
+      "token": "he",
+      "weight": -0.3656
+    },
+    {
+      "feature": "char__s ",
+      "token": "s ",
+      "weight": -0.3606
+    },
+    {
+      "feature": "word__details url",
+      "token": "details url",
+      "weight": -0.3549
+    },
+    {
+      "feature": "char__ic",
+      "token": "ic",
+      "weight": -0.3464
+    },
+    {
+      "feature": "word__me",
+      "token": "me",
+      "weight": -0.3457
+    },
+    {
+      "feature": "word__on",
+      "token": "on",
+      "weight": -0.3457
+    },
+    {
+      "feature": "word__scholars",
+      "token": "scholars",
+      "weight": -0.3427
+    },
+    {
+      "feature": "word__campus banking",
+      "token": "campus banking",
+      "weight": -0.3359
+    },
+    {
+      "feature": "word__work",
+      "token": "work",
+      "weight": -0.3347
+    },
+    {
+      "feature": "word__international",
+      "token": "international",
+      "weight": -0.3341
+    }
+  ],
+  "flagged_shortcuts_in_top_30": {
+    "suspicious": [
+      {
+        "token": "upi",
+        "flagged_term": "upi",
+        "weight": 1.5259
+      },
+      {
+        "token": "to upi",
+        "flagged_term": "upi",
+        "weight": 0.8889
+      },
+      {
+        "token": "transfer",
+        "flagged_term": "transfer",
+        "weight": 0.7732
+      },
+      {
+        "token": "candidate",
+        "flagged_term": "candidate",
+        "weight": 0.7313
+      },
+      {
+        "token": "daily",
+        "flagged_term": "daily",
+        "weight": 0.6842
+      },
+      {
+        "token": "ke liye",
+        "flagged_term": "ke liye",
+        "weight": 0.6406
+      },
+      {
+        "token": "upi before",
+        "flagged_term": "upi",
+        "weight": 0.5853
+      }
+    ],
+    "benign": []
+  },
+  "training_time_seconds": 9.34,
+  "real_test_metrics": {
+    "row_count": 25,
+    "small_sample": true,
+    "previous_run": {
+      "macro_f1": 0.4283,
+      "confusion_matrix": [
+        [
+          13,
+          9
+        ],
+        [
+          2,
+          1
+        ]
+      ]
+    },
+    "benign": {
+      "precision": 0.8571428571428571,
+      "recall": 0.5454545454545454,
+      "f1": 0.6666666666666666,
+      "support": 22
+    },
+    "suspicious": {
+      "precision": 0.09090909090909091,
+      "recall": 0.3333333333333333,
+      "f1": 0.14285714285714285,
+      "support": 3
+    },
+    "macro_avg": {
+      "precision": 0.474025974025974,
+      "recall": 0.43939393939393934,
+      "f1": 0.40476190476190477
+    },
+    "weighted_avg": {
+      "precision": 0.7651948051948052,
+      "recall": 0.52,
+      "f1": 0.6038095238095238
+    },
+    "accuracy": 0.52,
+    "confusion_matrix": [
+      [
+        12,
+        10
+      ],
+      [
+        2,
+        1
+      ]
+    ],
+    "misclassified": [
+      {
+        "id": "REAL-013",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Debit Transaction Alert: Your A/C XXXXXX1234 has been debited with INR 1,250.00 on 28-10-26 by VPA merchant@upi. Availbale Bal: INR 45,600.50. - HDFCBank",
+        "diagnosis": "Legitimate financial transaction alert triggered remaining transaction n-grams."
+      },
+      {
+        "id": "REAL-014",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Credit Transaction Alert: Your A/C XXXXXX1234 has been credited with INR 15,000.00 on 27-10-26 by NEFT-P2A-SALARY. Availbale Bal: INR 60,600.50. - ICICIBank",
+        "diagnosis": "Legitimate financial transaction alert triggered remaining transaction n-grams."
+      },
+      {
+        "id": "REAL-015",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "OTP Verification Alert: 9XXXXX is your OTP to complete your online card transaction of INR 499.00 at Amazon. Do not share this OTP with anyone, including bank staff. - SBIBANK",
+        "diagnosis": "Legitimate security/OTP alert mistaken for credential harvesting."
+      },
+      {
+        "id": "REAL-016",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Card Limit / Security Alert: Your Debit Card ending 5678 has been enabled for International / Online transactions as per your request. If not done by you, call 1800-XXX-XXXX immediately. - AXISBANK",
+        "diagnosis": "Legitimate security/OTP alert mistaken for credential harvesting."
+      },
+      {
+        "id": "REAL-017",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Your account XX1234 is credited by Rs.5000.00 on 26-10-26 by UPI/merchantname. The Available balance is Rs.25,000.00. - HDFCBANK",
+        "diagnosis": "Legitimate financial transaction alert triggered remaining transaction n-grams."
+      },
+      {
+        "id": "REAL-018",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Rs 1,250.00 credited to A/c XX5678 on 28-10-26 by IMPS-P2A. Avl Bal Rs 18,750.25. - AXISBK",
+        "diagnosis": "Legitimate financial transaction alert triggered remaining transaction n-grams."
+      },
+      {
+        "id": "REAL-019",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Dear Customer, Rs.3,000.00 has been credited to your account XX9012 on 25-10-26 towards refund from merchant. Available balance: Rs.42,300.00. - SBIBANK",
+        "diagnosis": "Legitimate financial transaction alert triggered remaining transaction n-grams."
+      },
+      {
+        "id": "REAL-020",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "9XXXXX is the OTP for your ICICI Bank transaction of Rs.1,299.00 at Flipkart. Do not share this OTP with anyone. - ICICIBANK",
+        "diagnosis": "Legitimate security/OTP alert mistaken for credential harvesting."
+      },
+      {
+        "id": "REAL-021",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "Your Axis Bank OTP for online transaction of Rs.750.00 at Myntra is 9XXXXX. Never share this OTP with anyone, even if the caller claims to be from Axis Bank. - AXISBK",
+        "diagnosis": "Legitimate security/OTP alert mistaken for credential harvesting."
+      },
+      {
+        "id": "REAL-022",
+        "true_label": "benign",
+        "predicted": "suspicious",
+        "text": "One Time Password (OTP) for HDFC Bank card transaction of Rs.2,499.00 at Swiggy is 9XXXXX. Do not disclose this OTP to anyone. - HDFCBANK",
+        "diagnosis": "Legitimate security/OTP alert mistaken for credential harvesting."
+      },
+      {
+        "id": "REAL-024",
+        "true_label": "suspicious",
+        "predicted": "benign",
+        "text": "We have all really enjoyed speaking with you and getting to know you over the course of the last days. The team and I have been impressed with your background and approach and would love to formally offer you a position as a HRM (Team Member) at Tata Consultancy Services. We can offer you a Per Month Indian Rupees 24400 RS base per month salary bonus and equity information, if equitable. We offer cab facility, Guest House and food. Security Amount - 18000 RS Guest House ( After training this amount will be refundable ).",
+        "diagnosis": "Scam job offer uses formal, polite corporate phrasing lacking crude scam payload."
+      },
+      {
+        "id": "REAL-025",
+        "true_label": "suspicious",
+        "predicted": "benign",
+        "text": "Congratulations, And we Welcomes You to CZone India. As per as your application, Your resume has been shortlisted by Tata Consultancy Services Limited, India in Next Interview Schedule. Please confirm your attendance of Interview and preferred Interview date as early as you can because its limited and pre scheduled recruitment, only after your confirmation mail we will forward your final confirmation to company and then they will proceed for Interview letter and other interview formalities. Please complete your pro registration and forward payment detail on ppo@czone-i.com.",
+        "diagnosis": "Scam job offer uses formal, polite corporate phrasing lacking crude scam payload."
+      }
+    ]
+  }
+}
